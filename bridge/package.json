@@ -1,0 +1,20 @@
+{
+  "name": "samantha-bridge",
+  "version": "1.0.0",
+  "description": "Bridge server that spawns opencode and exposes it over WebSocket + HTTP",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}
