@@ -1,20 +1,17 @@
 import { ChildProcess, spawn } from "child_process";
 import { EventEmitter } from "events";
 
-export interface OpencodeProcessEvents {
-  output: (data: string) => void;
-  error: (error: Error) => void;
-  exit: (code: number | null) => void;
-}
+const ANSI_RE = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
 
 export class OpencodeProcess extends EventEmitter {
   private process: ChildProcess | null = null;
+  private outputBuffer = "";
 
   get running(): boolean {
     return this.process !== null && !this.process.killed;
   }
 
-  start(): void {
+  start(): boolean {
     if (this.process) {
       this.stop();
     }
@@ -25,23 +22,40 @@ export class OpencodeProcess extends EventEmitter {
     });
 
     this.process.stdout?.on("data", (data: Buffer) => {
-      const text = data.toString();
-      this.emit("output", text);
+      this.outputBuffer += this.stripAnsi(data.toString());
+      this.flushBuffer();
     });
 
     this.process.stderr?.on("data", (data: Buffer) => {
-      const text = data.toString();
-      this.emit("output", text);
+      this.outputBuffer += this.stripAnsi(data.toString());
+      this.flushBuffer();
     });
 
     this.process.on("error", (err: Error) => {
+      console.error(`[bridge] opencode error: ${err.message}`);
       this.emit("error", err);
     });
 
     this.process.on("exit", (code: number | null) => {
-      this.process = null;
+      console.log(`[bridge] opencode exited with code ${code}`);
       this.emit("exit", code);
+      this.process = null;
     });
+
+    return true;
+  }
+
+  private flushBuffer(): void {
+    const lines = this.outputBuffer.split("\n");
+    this.outputBuffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      this.emit("output", line + "\n");
+    }
+  }
+
+  private stripAnsi(text: string): string {
+    return text.replace(ANSI_RE, "");
   }
 
   write(input: string): void {

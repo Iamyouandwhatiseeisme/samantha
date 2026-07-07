@@ -1,23 +1,23 @@
-import 'package:samantha/models/message.dart';
+import 'package:samantha/features/chat/domain/entities.dart';
 
-enum ConnectionStatus { disconnected, connecting, connected }
+enum ChatConnectionStatus { disconnected, connecting, connected, streaming }
 
 class ChatState {
-  final List<Message> messages;
-  final ConnectionStatus connectionStatus;
+  final List<ChatMessage> messages;
+  final ChatConnectionStatus connectionStatus;
   final String? errorMessage;
   final String inputText;
 
   const ChatState({
     this.messages = const [],
-    this.connectionStatus = ConnectionStatus.disconnected,
+    this.connectionStatus = ChatConnectionStatus.disconnected,
     this.errorMessage,
     this.inputText = '',
   });
 
   ChatState copyWith({
-    List<Message>? messages,
-    ConnectionStatus? connectionStatus,
+    List<ChatMessage>? messages,
+    ChatConnectionStatus? connectionStatus,
     String? errorMessage,
     bool clearError = false,
     String? inputText,
