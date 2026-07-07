@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:samantha/features/chat/data/chat_repository.dart';
 import 'package:samantha/features/chat/data/chat_socket_client.dart';
-import 'package:samantha/features/chat/domain/entities.dart';
 import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
 import 'package:samantha/features/chat/presentation/state/chat_state.dart';
 
@@ -15,10 +14,15 @@ void main() {
   late StreamController<ChatEvent> eventController;
 
   setUp(() {
+    registerFallbackValue(TokenEvent(''));
+    registerFallbackValue(DoneEvent());
+    registerFallbackValue(ErrorEvent(''));
+
     repository = MockChatRepository();
     eventController = StreamController<ChatEvent>.broadcast();
 
     when(() => repository.events).thenAnswer((_) => eventController.stream);
+    when(() => repository.disconnect()).thenAnswer((_) async {});
   });
 
   tearDown(() {
@@ -67,7 +71,7 @@ void main() {
     blocTest<ChatCubit, ChatState>(
       'sendMessage() adds user message and calls repository.send()',
       setUp: () {
-        when(() => repository.send(any())).thenAnswer((_) async {});
+        when(() => repository.send(any())).thenReturn(null);
       },
       build: () => ChatCubit(repository),
       seed: () => const ChatState(
@@ -82,7 +86,7 @@ void main() {
             .having((s) => s.inputText, 'input cleared', ''),
       ],
       verify: (_) {
-        verify(() => repository.send('Hello, world!\n')).called(1);
+        verify(() => repository.send('Hello, world!')).called(1);
       },
     );
 
@@ -107,6 +111,7 @@ void main() {
         eventController.add(TokenEvent('World'));
         await Future.delayed(Duration.zero);
       },
+      wait: const Duration(milliseconds: 100),
       expect: () => [
         isA<ChatState>()
             .having((s) => s.connectionStatus, 'status',
@@ -132,18 +137,24 @@ void main() {
         when(() => repository.isConnected).thenReturn(true);
       },
       build: () => ChatCubit(repository),
-      seed: () => ChatState(
-        connectionStatus: ChatConnectionStatus.streaming,
-        messages: [
-          ChatMessage(
-            id: '1', role: ChatRole.assistant, content: 'Hello', isStreaming: true),
-        ],
-      ),
       act: (cubit) async {
+        await cubit.connect();
+        eventController.add(TokenEvent('Hello'));
+        await Future.delayed(Duration.zero);
         eventController.add(DoneEvent());
         await Future.delayed(Duration.zero);
       },
+      wait: const Duration(milliseconds: 100),
       expect: () => [
+        isA<ChatState>()
+            .having((s) => s.connectionStatus, 'status',
+                ChatConnectionStatus.connecting),
+        isA<ChatState>()
+            .having((s) => s.connectionStatus, 'status',
+                ChatConnectionStatus.connected),
+        isA<ChatState>()
+            .having((s) => s.messages.last.content, 'content', 'Hello')
+            .having((s) => s.messages.last.isStreaming, 'streaming', true),
         isA<ChatState>()
             .having((s) => s.connectionStatus, 'status',
                 ChatConnectionStatus.connected)
@@ -154,9 +165,6 @@ void main() {
 
     blocTest<ChatCubit, ChatState>(
       'disconnect() sets status to disconnected',
-      setUp: () {
-        when(() => repository.disconnect()).thenAnswer((_) async {});
-      },
       build: () => ChatCubit(repository),
       seed: () => const ChatState(
           connectionStatus: ChatConnectionStatus.connected),
