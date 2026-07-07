@@ -17,6 +17,11 @@ class ErrorEvent extends ChatEvent {
   ErrorEvent(this.message);
 }
 
+class AuthFailedEvent extends ChatEvent {
+  final String message;
+  AuthFailedEvent(this.message);
+}
+
 @injectable
 class ChatSocketClient {
   WebSocketChannel? _channel;
@@ -29,21 +34,42 @@ class ChatSocketClient {
     disconnect();
 
     final uri = Uri.parse('ws://$host:8383/chat');
-    _channel = WebSocketChannel.connect(uri);
+    final channel = WebSocketChannel.connect(uri);
+    _channel = channel;
 
-    _channel!.sink.add(jsonEncode({'type': 'auth', 'token': authToken}));
+    // Wait for the WebSocket handshake to actually complete. `ready`
+    // throws if the TCP/TLS connection or the HTTP upgrade fails, so the
+    // caller sees a real error instead of a false "connected".
+    try {
+      await channel.ready;
+    } catch (e) {
+      _channel = null;
+      throw Exception('WebSocket connection failed: $e');
+    }
 
-    _channel!.stream.listen(
+    channel.sink.add(jsonEncode({'type': 'auth', 'token': authToken}));
+
+    channel.stream.listen(
       (data) {
         try {
           final parsed = jsonDecode(data) as Map<String, dynamic>;
           switch (parsed['type']) {
             case 'token':
-              _eventController.add(TokenEvent(parsed['content']));
+              _eventController.add(TokenEvent(parsed['content'] ?? ''));
             case 'done':
               _eventController.add(DoneEvent());
+            case 'auth_failed':
+              _channel = null;
+              _eventController
+                  .add(AuthFailedEvent(parsed['message'] ?? 'Authentication failed'));
             case 'error':
-              _eventController.add(ErrorEvent(parsed['message']));
+              final message = parsed['message'] ?? 'Unknown error';
+              if (message == 'Authentication failed') {
+                _channel = null;
+                _eventController.add(AuthFailedEvent(message));
+              } else {
+                _eventController.add(ErrorEvent(message));
+              }
             case 'status':
               break;
           }

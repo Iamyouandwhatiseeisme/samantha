@@ -13,6 +13,7 @@ class ChatCubit extends Cubit<ChatState> {
   StreamSubscription<ChatEvent>? _eventSubscription;
   Timer? _reconnectTimer;
   int _reconnectAttempt = 0;
+  bool _authFailed = false;
 
   ChatCubit(this._repository) : super(const ChatState());
 
@@ -40,6 +41,8 @@ class ChatCubit extends Cubit<ChatState> {
   }
 
   Future<void> connect() async {
+    _reconnectTimer?.cancel();
+    _authFailed = false;
     emit(state.copyWith(
       connectionStatus: ChatConnectionStatus.connecting,
       clearError: true,
@@ -70,6 +73,8 @@ class ChatCubit extends Cubit<ChatState> {
             _handleDone();
           case ErrorEvent(:final message):
             emit(state.copyWith(errorMessage: message));
+          case AuthFailedEvent(:final message):
+            _handleAuthFailed(message);
         }
       },
       onError: (err) {
@@ -77,14 +82,14 @@ class ChatCubit extends Cubit<ChatState> {
           connectionStatus: ChatConnectionStatus.disconnected,
           errorMessage: err.toString(),
         ));
-        _attemptReconnect();
+        if (!_authFailed) _attemptReconnect();
       },
       onDone: () {
         if (state.connectionStatus != ChatConnectionStatus.disconnected) {
           emit(state.copyWith(
             connectionStatus: ChatConnectionStatus.disconnected,
           ));
-          _attemptReconnect();
+          if (!_authFailed) _attemptReconnect();
         }
       },
     );
@@ -141,6 +146,15 @@ class ChatCubit extends Cubit<ChatState> {
       _reconnectAttempt++;
       connect();
     });
+  }
+
+  void _handleAuthFailed(String message) {
+    _authFailed = true;
+    _reconnectTimer?.cancel();
+    emit(state.copyWith(
+      connectionStatus: ChatConnectionStatus.disconnected,
+      errorMessage: message,
+    ));
   }
 
   void disconnect() {

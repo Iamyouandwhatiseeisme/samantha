@@ -108,13 +108,18 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () {
-                          context.read<ConnectionSettingsCubit>().save(
-                                _hostController.text.trim(),
-                                _authTokenController.text.trim(),
-                              );
-                          context.router.replace(const ChatRoute());
-                        },
+                        onPressed: state is ConnectionSettingsTesting
+                            ? null
+                            : () async {
+                                await context
+                                    .read<ConnectionSettingsCubit>()
+                                    .save(
+                                      _hostController.text.trim(),
+                                      _authTokenController.text.trim(),
+                                    );
+                                if (!context.mounted) return;
+                                context.router.replace(const ChatRoute());
+                              },
                         child: const Text('Save & Connect'),
                       ),
                     ),

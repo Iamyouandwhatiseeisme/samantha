@@ -105,8 +105,7 @@ lib/
 │               ├── chat_cubit.dart
 │               └── chat_state.dart
 └── core/
-    └── models/
-        └── app_error.dart
+    └── ...
 ```
 
 ## Stack
@@ -116,4 +115,4 @@ lib/
 - **Routing**: auto_route
 - **HTTP**: dio
 - **WebSocket**: web_socket_channel
-- **Local storage**: shared_preferences (SharedPreferencesAsync)
+- **Local storage**: shared_preferences (SharedPreferences)

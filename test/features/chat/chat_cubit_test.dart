@@ -17,6 +17,7 @@ void main() {
     registerFallbackValue(TokenEvent(''));
     registerFallbackValue(DoneEvent());
     registerFallbackValue(ErrorEvent(''));
+    registerFallbackValue(AuthFailedEvent(''));
 
     repository = MockChatRepository();
     eventController = StreamController<ChatEvent>.broadcast();
@@ -174,6 +175,40 @@ void main() {
             .having((s) => s.connectionStatus, 'status',
                 ChatConnectionStatus.disconnected),
       ],
+    );
+
+    blocTest<ChatCubit, ChatState>(
+      'AuthFailedEvent sets disconnected with error and does not reconnect',
+      setUp: () {
+        when(() => repository.connect()).thenAnswer((_) async {});
+        when(() => repository.isConnected).thenReturn(true);
+      },
+      build: () => ChatCubit(repository),
+      seed: () => const ChatState(
+          connectionStatus: ChatConnectionStatus.connected),
+      act: (cubit) async {
+        await cubit.connect();
+        eventController.add(AuthFailedEvent('Authentication failed'));
+        await Future.delayed(Duration.zero);
+      },
+      wait: const Duration(milliseconds: 250),
+      expect: () => [
+        isA<ChatState>()
+            .having((s) => s.connectionStatus, 'status',
+                ChatConnectionStatus.connecting),
+        isA<ChatState>()
+            .having((s) => s.connectionStatus, 'status',
+                ChatConnectionStatus.connected),
+        isA<ChatState>()
+            .having((s) => s.connectionStatus, 'status',
+                ChatConnectionStatus.disconnected)
+            .having((s) => s.errorMessage, 'error',
+                'Authentication failed'),
+      ],
+      verify: (cubit) {
+        // No subsequent connect() should be triggered.
+        verify(() => repository.connect()).called(1);
+      },
     );
   });
 }

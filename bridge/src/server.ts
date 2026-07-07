@@ -7,20 +7,13 @@ interface BridgeConfig {
   authToken: string;
 }
 
-export function createBridgeServer(
-  config: BridgeConfig,
-  opencode: OpencodeProcess
-) {
+export function createBridgeServer(config: BridgeConfig) {
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {
-    if (req.url === "/health") {
+    if (req.method === "GET" && req.url === "/health") {
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({
-        status: "ok",
-        opencodeRunning: opencode.running,
-      }));
+      res.end(JSON.stringify({ status: "ok" }));
       return;
     }
-
     res.writeHead(404);
     res.end("Not found");
   });
@@ -31,88 +24,78 @@ export function createBridgeServer(
     console.log(`[bridge] WebSocket client connected`);
 
     let authenticated = false;
-    let currentOutputHandler: ((data: string) => void) | null = null;
-    let currentExitHandler: ((code: number | null) => void) | null = null;
-    let currentErrorHandler: ((err: Error) => void) | null = null;
-    let opencodeStarted = false;
+    let opencode: OpencodeProcess | null = null;
 
-    const cleanup = () => {
-      if (currentOutputHandler) opencode.off("output", currentOutputHandler);
-      if (currentExitHandler) opencode.off("exit", currentExitHandler);
-      if (currentErrorHandler) opencode.off("error", currentErrorHandler);
+    const teardownOpencode = () => {
+      if (opencode) {
+        opencode.stop();
+        opencode = null;
+      }
     };
 
-    ws.on("message", (raw: Buffer) => {
-      try {
-        const msg = JSON.parse(raw.toString());
-
-        if (!authenticated) {
-          if (msg.type === "auth" && msg.token === config.authToken) {
-            authenticated = true;
-            console.log(`[bridge] client authenticated`);
-            startOpencode();
-            return;
-          } else {
-            console.log(`[bridge] auth failed`);
-            ws.send(JSON.stringify({
-              type: "error",
-              message: "Authentication failed",
-            }));
-            ws.close();
-            return;
-          }
-        }
-
-        if (msg.type === "prompt" && typeof msg.content === "string") {
-          opencode.write(msg.content);
-        }
-      } catch {
-        ws.send(JSON.stringify({
-          type: "error",
-          message: "Invalid message format",
-        }));
-      }
-    });
-
     const startOpencode = () => {
-      opencodeStarted = true;
+      opencode = new OpencodeProcess();
 
-      currentOutputHandler = (data: string) => {
+      opencode.on("output", (data: string) => {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: "token", content: data }));
         }
-      };
+      });
 
-      currentExitHandler = (code: number | null) => {
-        if (ws.readyState === WebSocket.OPEN) {
+      opencode.on("exit", (_code: number | null) => {
+        if (ws.readyState === WebSocket.OPEN && opencode && !opencode.manualStop) {
           ws.send(JSON.stringify({ type: "done" }));
         }
-      };
+      });
 
-      currentErrorHandler = (err: Error) => {
+      opencode.on("error", (err: Error) => {
         if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({
-            type: "error",
-            message: err.message,
-          }));
+          ws.send(JSON.stringify({ type: "error", message: err.message }));
         }
-      };
+      });
 
-      opencode.on("output", currentOutputHandler);
-      opencode.on("exit", currentExitHandler);
-      opencode.on("error", currentErrorHandler);
+      opencode.start();
     };
+
+    const handleMessage = (raw: Buffer) => {
+      let msg: any;
+      try {
+        msg = JSON.parse(raw.toString());
+      } catch {
+        ws.send(JSON.stringify({ type: "error", message: "Invalid message format" }));
+        return;
+      }
+
+      if (!authenticated) {
+        if (msg?.type === "auth" && msg.token === config.authToken) {
+          authenticated = true;
+          console.log(`[bridge] client authenticated`);
+          startOpencode();
+        } else {
+          console.log(`[bridge] auth failed`);
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "auth_failed", message: "Authentication failed" }));
+          }
+          ws.close();
+        }
+        return;
+      }
+
+      if (msg?.type === "prompt" && typeof msg.content === "string") {
+        if (opencode) opencode.write(msg.content);
+      }
+    };
+
+    ws.on("message", handleMessage);
 
     ws.on("close", () => {
       console.log(`[bridge] WebSocket client disconnected`);
-      cleanup();
-      if (opencodeStarted && opencode.running) {
-        opencode.stop();
-      }
+      teardownOpencode();
     });
 
     ws.on("error", (err: Error) => {
       console.error(`[bridge] WebSocket error: ${err.message}`);
+      teardownOpencode();
     });
   });
 

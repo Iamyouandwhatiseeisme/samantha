@@ -77,7 +77,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 return _ErrorBanner(message: state.errorMessage!);
               },
             ),
-            Expanded(child: _MessageList()),
+            Expanded(child: _MessageList(scrollController: _scrollController)),
             _MessageInput(inputController: _inputController),
           ],
         ),
@@ -135,51 +135,53 @@ class _ErrorBanner extends StatelessWidget {
 }
 
 class _MessageList extends StatelessWidget {
+  final ScrollController scrollController;
+
+  const _MessageList({required this.scrollController});
+
   @override
   Widget build(BuildContext context) {
     final messages = context.watch<ChatCubit>().state.messages;
 
-    return Expanded(
-      child: ListView.builder(
-        controller: context.findAncestorStateOfType<_ChatScreenState>()?._scrollController,
-        padding: const EdgeInsets.all(8.0),
-        itemCount: messages.length,
-        itemBuilder: (context, index) {
-          final msg = messages[index];
-          final isUser = msg.role == ChatRole.user;
+    return ListView.builder(
+      controller: scrollController,
+      padding: const EdgeInsets.all(8.0),
+      itemCount: messages.length,
+      itemBuilder: (context, index) {
+        final msg = messages[index];
+        final isUser = msg.role == ChatRole.user;
 
-          return Align(
-            alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-            child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 4.0),
-              padding: const EdgeInsets.all(12.0),
-              decoration: BoxDecoration(
-                color: isUser
-                    ? Theme.of(context).colorScheme.primaryContainer
-                    : Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12.0),
-              ),
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.75,
-              ),
-              child: msg.isStreaming
-                  ? Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(child: Text(msg.content)),
-                        const SizedBox(width: 4),
-                        const SizedBox(
-                          width: 12,
-                          height: 12,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      ],
-                    )
-                  : Text(msg.content),
+        return Align(
+          alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 4.0),
+            padding: const EdgeInsets.all(12.0),
+            decoration: BoxDecoration(
+              color: isUser
+                  ? Theme.of(context).colorScheme.primaryContainer
+                  : Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12.0),
             ),
-          );
-        },
-      ),
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.75,
+            ),
+            child: msg.isStreaming
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(child: Text(msg.content)),
+                      const SizedBox(width: 4),
+                      const SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ],
+                  )
+                : Text(msg.content),
+          ),
+        );
+      },
     );
   }
 }
