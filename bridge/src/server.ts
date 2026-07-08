@@ -7,6 +7,7 @@ interface BridgeConfig {
   port: number;
   authToken: string;
   opencodeServeUrl: string;
+  restartOpencodeServe: (cwd?: string) => Promise<void>;
 }
 
 const fetchJson = (url: string): Promise<any> =>
@@ -87,7 +88,7 @@ export function createBridgeServer(config: BridgeConfig) {
       });
     };
 
-    const fetchModels = () => {
+    const fetchModels = (retries = 3, delay = 1000) => {
       const url = new URL("/config/providers", config.opencodeServeUrl);
       httpGet(url.href, (res) => {
         let data = "";
@@ -98,11 +99,15 @@ export function createBridgeServer(config: BridgeConfig) {
             const providers = body.providers ?? body;
             ws.send(JSON.stringify({ type: "models", providers }));
           } catch {
-            ws.send(JSON.stringify({ type: "error", message: "Failed to parse models" }));
+            if (retries > 0) {
+              setTimeout(() => fetchModels(retries - 1, delay), delay);
+            }
           }
         });
-      }).on("error", (err) => {
-        ws.send(JSON.stringify({ type: "error", message: `Failed to fetch models: ${err.message}` }));
+      }).on("error", () => {
+        if (retries > 0) {
+          setTimeout(() => fetchModels(retries - 1, delay), delay);
+        }
       });
     };
 
@@ -139,7 +144,6 @@ export function createBridgeServer(config: BridgeConfig) {
               opencode.write(
                 msg.content.trim(),
                 msg.model ?? currentModel ?? undefined,
-                currentProjectPath ?? undefined,
               );
             }
           }
@@ -162,6 +166,12 @@ export function createBridgeServer(config: BridgeConfig) {
             currentProjectPath = msg.path;
             console.log(`[bridge] project set to: ${currentProjectPath}`);
             ws.send(JSON.stringify({ type: "project_set", path: currentProjectPath }));
+            config.restartOpencodeServe(currentProjectPath ?? undefined).then(() => {
+              console.log("[bridge] server restarted, re-fetching models");
+              fetchModels();
+            }).catch((err) => {
+              console.error(`[bridge] failed to restart opencode serve: ${err.message}`);
+            });
           }
           break;
       }

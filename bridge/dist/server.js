@@ -5,11 +5,38 @@ const http_1 = require("http");
 const http_2 = require("http");
 const ws_1 = require("ws");
 const opencode_1 = require("./opencode");
+const fetchJson = (url) => new Promise((resolve, reject) => {
+    (0, http_2.get)(url, (res) => {
+        let data = "";
+        res.on("data", (chunk) => (data += chunk));
+        res.on("end", () => {
+            try {
+                resolve(JSON.parse(data));
+            }
+            catch {
+                reject(new Error("Failed to parse JSON response"));
+            }
+        });
+    }).on("error", reject);
+});
 function createBridgeServer(config) {
     const server = (0, http_1.createServer)((req, res) => {
         if (req.method === "GET" && req.url === "/health") {
             res.writeHead(200, { "Content-Type": "application/json" });
             res.end(JSON.stringify({ status: "ok" }));
+            return;
+        }
+        if (req.method === "GET" && req.url === "/projects") {
+            const url = new URL("/project", config.opencodeServeUrl);
+            fetchJson(url.href)
+                .then((body) => {
+                res.writeHead(200, { "Content-Type": "application/json" });
+                res.end(JSON.stringify(body));
+            })
+                .catch((err) => {
+                res.writeHead(502, { "Content-Type": "application/json" });
+                res.end(JSON.stringify({ error: err.message }));
+            });
             return;
         }
         res.writeHead(404);
@@ -21,6 +48,7 @@ function createBridgeServer(config) {
         let authenticated = false;
         let opencode = null;
         let currentModel = null;
+        let currentProjectPath = null;
         const teardownOpencode = () => {
             if (opencode) {
                 opencode.stop();
@@ -45,7 +73,7 @@ function createBridgeServer(config) {
                 }
             });
         };
-        const fetchModels = () => {
+        const fetchModels = (retries = 3, delay = 1000) => {
             const url = new URL("/config/providers", config.opencodeServeUrl);
             (0, http_2.get)(url.href, (res) => {
                 let data = "";
@@ -57,11 +85,15 @@ function createBridgeServer(config) {
                         ws.send(JSON.stringify({ type: "models", providers }));
                     }
                     catch {
-                        ws.send(JSON.stringify({ type: "error", message: "Failed to parse models" }));
+                        if (retries > 0) {
+                            setTimeout(() => fetchModels(retries - 1, delay), delay);
+                        }
                     }
                 });
-            }).on("error", (err) => {
-                ws.send(JSON.stringify({ type: "error", message: `Failed to fetch models: ${err.message}` }));
+            }).on("error", () => {
+                if (retries > 0) {
+                    setTimeout(() => fetchModels(retries - 1, delay), delay);
+                }
             });
         };
         const handleMessage = (raw) => {
@@ -107,6 +139,19 @@ function createBridgeServer(config) {
                     break;
                 case "get_models":
                     fetchModels();
+                    break;
+                case "set_project":
+                    if (typeof msg.path === "string") {
+                        currentProjectPath = msg.path;
+                        console.log(`[bridge] project set to: ${currentProjectPath}`);
+                        ws.send(JSON.stringify({ type: "project_set", path: currentProjectPath }));
+                        config.restartOpencodeServe(currentProjectPath ?? undefined).then(() => {
+                            console.log("[bridge] server restarted, re-fetching models");
+                            fetchModels();
+                        }).catch((err) => {
+                            console.error(`[bridge] failed to restart opencode serve: ${err.message}`);
+                        });
+                    }
                     break;
             }
         };

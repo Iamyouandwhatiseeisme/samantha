@@ -20,7 +20,7 @@ export class OpencodeProcess extends EventEmitter {
     return this.stopping;
   }
 
-  write(prompt: string, model?: string, cwd?: string): void {
+  write(prompt: string, model?: string): void {
     if (this.process) {
       this.stop();
     }
@@ -36,7 +36,6 @@ export class OpencodeProcess extends EventEmitter {
     args.push(prompt);
 
     this.process = spawn("opencode", args, {
-      cwd: cwd ?? undefined,
       stdio: ["ignore", "pipe", "pipe"],
       env: { ...process.env },
     });

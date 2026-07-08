@@ -1,4 +1,5 @@
 import { spawn, ChildProcess } from "child_process";
+import { get as httpGet } from "http";
 import { createBridgeServer } from "./server";
 
 const BRIDGE_PORT = parseInt(process.env.PORT || "8383", 10);
@@ -15,29 +16,30 @@ if (!AUTH_TOKEN) {
 const opencodeServeUrl = `http://${OPENCODE_HOST}:${OPENCODE_PORT}`;
 let opencodeServe: ChildProcess | null = null;
 
+const watchProcess = (proc: ChildProcess, label: string) => {
+  proc.stdout?.on("data", (data: Buffer) => {
+    console.log(`[bridge:opencode:serve] ${data.toString().trim()}`);
+  });
+  proc.stderr?.on("data", (data: Buffer) => {
+    console.log(`[bridge:opencode:serve] ${data.toString().trim()}`);
+  });
+  proc.on("error", (err: Error) => {
+    console.error(`[bridge:opencode:serve] spawn error: ${err.message}`);
+  });
+  proc.on("exit", (code: number | null) => {
+    console.log(`[bridge:opencode:serve] exited with code ${code}`);
+    if (opencodeServe === proc) opencodeServe = null;
+  });
+};
+
 const startOpencodeServe = () => {
   console.log(`[bridge] starting opencode serve on ${opencodeServeUrl}...`);
-  opencodeServe = spawn("opencode", ["web", "--port", String(OPENCODE_PORT), "--hostname", "0.0.0.0"], {
+  const proc = spawn("opencode", ["web", "--port", String(OPENCODE_PORT), "--hostname", "0.0.0.0"], {
     stdio: ["ignore", "pipe", "pipe"],
     env: { ...process.env },
   });
-
-  opencodeServe.stdout?.on("data", (data: Buffer) => {
-    console.log(`[bridge:opencode:serve] ${data.toString().trim()}`);
-  });
-
-  opencodeServe.stderr?.on("data", (data: Buffer) => {
-    console.log(`[bridge:opencode:serve] ${data.toString().trim()}`);
-  });
-
-  opencodeServe.on("error", (err: Error) => {
-    console.error(`[bridge:opencode:serve] spawn error: ${err.message}`);
-  });
-
-  opencodeServe.on("exit", (code: number | null) => {
-    console.log(`[bridge:opencode:serve] exited with code ${code}`);
-    opencodeServe = null;
-  });
+  opencodeServe = proc;
+  watchProcess(proc, "opencode");
 };
 
 const stopOpencodeServe = () => {
@@ -48,10 +50,46 @@ const stopOpencodeServe = () => {
   }
 };
 
+const waitForHealth = (url: string, retries = 30, interval = 500): Promise<void> =>
+  new Promise((resolve, reject) => {
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; reject(new Error("Health check timed out")); }, retries * interval + 5000);
+    const attempt = (n: number) => {
+      if (timedOut) return;
+      const req = httpGet(url, (res) => {
+        res.resume();
+        if (res.statusCode === 200) { clearTimeout(timer); resolve(); }
+        else if (n > 0) setTimeout(() => attempt(n - 1), interval);
+        else { clearTimeout(timer); reject(new Error("Server not ready after retries")); }
+      });
+      req.on("error", () => {
+        if (n > 0) setTimeout(() => attempt(n - 1), interval);
+        else { clearTimeout(timer); reject(new Error("Server not ready after retries")); }
+      });
+    };
+    attempt(retries);
+  });
+
+const restartOpencodeServe = async (cwd?: string) => {
+  stopOpencodeServe();
+  await new Promise((r) => setTimeout(r, 500));
+  console.log(`[bridge] starting opencode serve${cwd ? ` in ${cwd}` : ""}...`);
+  const proc = spawn("opencode", ["web", "--port", String(OPENCODE_PORT), "--hostname", "0.0.0.0"], {
+    cwd: cwd ?? undefined,
+    stdio: ["ignore", "pipe", "pipe"],
+    env: { ...process.env },
+  });
+  opencodeServe = proc;
+  watchProcess(proc, "opencode");
+  await waitForHealth(`${opencodeServeUrl}/global/health`);
+  console.log("[bridge] opencode serve is ready");
+};
+
 const server = createBridgeServer({
   port: BRIDGE_PORT,
   authToken: AUTH_TOKEN,
   opencodeServeUrl,
+  restartOpencodeServe,
 });
 
 startOpencodeServe();
