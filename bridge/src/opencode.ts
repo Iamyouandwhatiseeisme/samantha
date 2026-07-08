@@ -137,12 +137,14 @@ export class OpencodeProcess extends EventEmitter {
         }
         break;
 
-      case "tool": {
+      case "tool":
+      case "tool_use": {
         const part = msg.part as Record<string, unknown> | undefined;
-        const state = part?.state as Record<string, unknown> | undefined;
-        const toolName = (part?.tool as string) ?? "unknown";
-        const status = (state?.status as string) ?? "pending";
-        const input = state?.input as Record<string, unknown> | undefined;
+        const rawMsg = part ?? (msg as Record<string, unknown>);
+        const state = (part?.state ?? rawMsg.state ?? rawMsg) as Record<string, unknown> | undefined;
+        const toolName = (part?.tool as string) ?? (rawMsg.name as string) ?? (rawMsg.tool as string) ?? "unknown";
+        const status = (state?.status as string) ?? (rawMsg.status as string) ?? "running";
+        const input = (state?.input ?? rawMsg.input) as Record<string, unknown> | undefined;
         const description = this.formatToolDesc(toolName, input, status);
         this.emit("tool", {
           tool: toolName,
@@ -150,10 +152,24 @@ export class OpencodeProcess extends EventEmitter {
           description,
           output: status === "completed" && typeof state?.output === "string"
             ? (state.output as string).slice(0, 200) : undefined,
-          error: status === "error" && typeof state?.error === "string"
-            ? state.error as string : undefined,
+          error: (status === "error" || rawMsg.error) ? ((state?.error ?? rawMsg.error) as string | undefined) : undefined,
           title: typeof state?.title === "string" ? state.title : undefined,
-          callID: part?.callID as string | undefined,
+          callID: (part?.callID ?? rawMsg.callID ?? rawMsg.id) as string | undefined,
+        } as ToolEvent);
+        break;
+      }
+
+      case "tool_result": {
+        const toolName = (msg.name as string) ?? (msg.tool as string) ?? "tool";
+        const isError = msg.is_error === true;
+        const content = typeof msg.content === "string" ? msg.content.slice(0, 200) : "";
+        this.emit("tool", {
+          tool: toolName,
+          status: isError ? "error" : "completed",
+          description: isError ? `Failed` : `Done`,
+          output: isError ? undefined : content,
+          error: isError ? content : undefined,
+          callID: (msg.tool_use_id ?? msg.callID ?? msg.id) as string | undefined,
         } as ToolEvent);
         break;
       }
@@ -174,27 +190,28 @@ export class OpencodeProcess extends EventEmitter {
   }
 
   private formatToolDesc(tool: string, input: Record<string, unknown> | undefined, status: string): string {
-    if (!input) return tool;
+    if (!input) return `${tool} (${status})`;
+    const pre = status === "error" ? "\u2717 " : status === "completed" ? "\u2713 " : "";
     switch (tool) {
       case "bash":
       case "shell":
-        return typeof input.command === "string" ? input.command : tool;
+        return pre + (typeof input.command === "string" ? input.command : `${tool} (${status})`);
       case "write":
-        return typeof input.filePath === "string" ? `\u270E ${input.filePath}` : tool;
+        return pre + (typeof input.filePath === "string" ? `\u270E ${input.filePath}` : `${tool} (${status})`);
       case "edit":
-        return typeof input.filePath === "string" ? `\u270E ${input.filePath}` : tool;
+        return pre + (typeof input.filePath === "string" ? `\u270E ${input.filePath}` : `${tool} (${status})`);
       case "read":
       case "glob":
       case "grep": {
         const p = typeof input.path === "string" ? input.path
           : typeof input.pattern === "string" ? input.pattern
           : typeof input.filePath === "string" ? input.filePath : "";
-        return p || tool;
+        return pre + (p || `${tool} (${status})`);
       }
       case "webfetch":
-        return typeof input.url === "string" ? input.url : tool;
+        return pre + (typeof input.url === "string" ? input.url : `${tool} (${status})`);
       default:
-        return tool;
+        return pre + `${tool} (${status})`;
     }
   }
 

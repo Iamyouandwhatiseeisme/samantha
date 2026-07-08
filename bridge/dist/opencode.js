@@ -107,12 +107,14 @@ class OpencodeProcess extends events_1.EventEmitter {
                     this.emit("thinking", msg.part.text);
                 }
                 break;
-            case "tool": {
+            case "tool":
+            case "tool_use": {
                 const part = msg.part;
-                const state = part?.state;
-                const toolName = part?.tool ?? "unknown";
-                const status = state?.status ?? "pending";
-                const input = state?.input;
+                const rawMsg = part ?? msg;
+                const state = (part?.state ?? rawMsg.state ?? rawMsg);
+                const toolName = part?.tool ?? rawMsg.name ?? rawMsg.tool ?? "unknown";
+                const status = state?.status ?? rawMsg.status ?? "running";
+                const input = (state?.input ?? rawMsg.input);
                 const description = this.formatToolDesc(toolName, input, status);
                 this.emit("tool", {
                     tool: toolName,
@@ -120,10 +122,23 @@ class OpencodeProcess extends events_1.EventEmitter {
                     description,
                     output: status === "completed" && typeof state?.output === "string"
                         ? state.output.slice(0, 200) : undefined,
-                    error: status === "error" && typeof state?.error === "string"
-                        ? state.error : undefined,
+                    error: (status === "error" || rawMsg.error) ? (state?.error ?? rawMsg.error) : undefined,
                     title: typeof state?.title === "string" ? state.title : undefined,
-                    callID: part?.callID,
+                    callID: (part?.callID ?? rawMsg.callID ?? rawMsg.id),
+                });
+                break;
+            }
+            case "tool_result": {
+                const toolName = msg.name ?? msg.tool ?? "tool";
+                const isError = msg.is_error === true;
+                const content = typeof msg.content === "string" ? msg.content.slice(0, 200) : "";
+                this.emit("tool", {
+                    tool: toolName,
+                    status: isError ? "error" : "completed",
+                    description: isError ? `Failed` : `Done`,
+                    output: isError ? undefined : content,
+                    error: isError ? content : undefined,
+                    callID: (msg.tool_use_id ?? msg.callID ?? msg.id),
                 });
                 break;
             }
@@ -141,27 +156,28 @@ class OpencodeProcess extends events_1.EventEmitter {
     }
     formatToolDesc(tool, input, status) {
         if (!input)
-            return tool;
+            return `${tool} (${status})`;
+        const pre = status === "error" ? "\u2717 " : status === "completed" ? "\u2713 " : "";
         switch (tool) {
             case "bash":
             case "shell":
-                return typeof input.command === "string" ? input.command : tool;
+                return pre + (typeof input.command === "string" ? input.command : `${tool} (${status})`);
             case "write":
-                return typeof input.filePath === "string" ? `\u270E ${input.filePath}` : tool;
+                return pre + (typeof input.filePath === "string" ? `\u270E ${input.filePath}` : `${tool} (${status})`);
             case "edit":
-                return typeof input.filePath === "string" ? `\u270E ${input.filePath}` : tool;
+                return pre + (typeof input.filePath === "string" ? `\u270E ${input.filePath}` : `${tool} (${status})`);
             case "read":
             case "glob":
             case "grep": {
                 const p = typeof input.path === "string" ? input.path
                     : typeof input.pattern === "string" ? input.pattern
                         : typeof input.filePath === "string" ? input.filePath : "";
-                return p || tool;
+                return pre + (p || `${tool} (${status})`);
             }
             case "webfetch":
-                return typeof input.url === "string" ? input.url : tool;
+                return pre + (typeof input.url === "string" ? input.url : `${tool} (${status})`);
             default:
-                return tool;
+                return pre + `${tool} (${status})`;
         }
     }
     stop() {
