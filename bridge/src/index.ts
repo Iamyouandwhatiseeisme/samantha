@@ -17,7 +17,7 @@ let opencodeServe: ChildProcess | null = null;
 
 const startOpencodeServe = () => {
   console.log(`[bridge] starting opencode serve on ${opencodeServeUrl}...`);
-  opencodeServe = spawn("opencode", ["serve", "--port", String(OPENCODE_PORT), "--hostname", "0.0.0.0"], {
+  opencodeServe = spawn("opencode", ["web", "--port", String(OPENCODE_PORT), "--hostname", "0.0.0.0"], {
     stdio: ["ignore", "pipe", "pipe"],
     env: { ...process.env },
   });

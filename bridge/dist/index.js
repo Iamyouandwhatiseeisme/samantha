@@ -15,7 +15,7 @@ const opencodeServeUrl = `http://${OPENCODE_HOST}:${OPENCODE_PORT}`;
 let opencodeServe = null;
 const startOpencodeServe = () => {
     console.log(`[bridge] starting opencode serve on ${opencodeServeUrl}...`);
-    opencodeServe = (0, child_process_1.spawn)("opencode", ["serve", "--port", String(OPENCODE_PORT), "--hostname", "0.0.0.0"], {
+    opencodeServe = (0, child_process_1.spawn)("opencode", ["web", "--port", String(OPENCODE_PORT), "--hostname", "0.0.0.0"], {
         stdio: ["ignore", "pipe", "pipe"],
         env: { ...process.env },
     });
