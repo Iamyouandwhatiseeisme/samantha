@@ -31,6 +31,9 @@ class ChatRepository {
 
   void requestModels() => _socketClient.requestModels();
 
+  void requestSessionMessages(String sessionId) =>
+      _socketClient.requestSessionMessages(sessionId);
+
   void setProject(String path) => _socketClient.setProject(path);
 
   void setSession(String sessionId, String path) =>

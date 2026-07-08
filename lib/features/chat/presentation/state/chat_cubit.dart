@@ -87,6 +87,8 @@ class ChatCubit extends Cubit<ChatState> {
             _handleModels(providers);
           case ModelSetEvent(:final model):
             emit(state.copyWith(selectedModel: model));
+          case SessionMessagesEvent(:final messages):
+            _handleSessionMessages(messages);
         }
       },
       onError: (err) {
@@ -174,6 +176,19 @@ class ChatCubit extends Cubit<ChatState> {
         .map((p) => ModelProvider.fromJson(p))
         .toList();
     emit(state.copyWith(availableModels: models));
+  }
+
+  void _handleSessionMessages(List<Map<String, dynamic>> messages) {
+    final chatMessages = messages.map((m) {
+      final role = m['role'] == 'user' ? ChatRole.user : ChatRole.assistant;
+      final content = m['content'] as String? ?? '';
+      return ChatMessage(
+        id: DateTime.now().millisecondsSinceEpoch.toString() + content.hashCode.toString(),
+        role: role,
+        content: content,
+      );
+    }).toList();
+    emit(state.copyWith(messages: chatMessages));
   }
 
   void setModel(String model) {

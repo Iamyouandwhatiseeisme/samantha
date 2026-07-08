@@ -120,6 +120,51 @@ export function createBridgeServer(config: BridgeConfig) {
       });
     };
 
+    const fetchSessionMessages = () => {
+      if (!currentSessionId) return;
+      const url = new URL(`/session/${currentSessionId}/message`, config.opencodeServeUrl);
+      fetchJson(url.href)
+        .then((messages: any) => {
+          const simplified = (Array.isArray(messages) ? messages : []).map((m: any) => {
+            const info = m.info ?? {};
+            const parts = m.parts ?? [];
+            const role = info.role === "user" ? "user" : "assistant";
+
+            const segments: string[] = [];
+            for (const p of Array.isArray(parts) ? parts : []) {
+              if (p.type === "text" && p.text) {
+                segments.push(p.text);
+              } else if (p.type === "tool") {
+                const toolName = p.tool ?? "tool";
+                const input = p.state?.input;
+                const cmd = typeof input?.command === "string" ? input.command
+                  : typeof input === "object" && input !== null ? JSON.stringify(input, null, 2)
+                  : "";
+                if (cmd) {
+                  segments.push(`\`\`\`${toolName}\n${cmd}\n\`\`\``);
+                }
+                const output = p.state?.output;
+                if (typeof output === "string" && output.trim()) {
+                  const preview = output.length > 500 ? output.slice(0, 500) + "\n..." : output;
+                  segments.push(`\`\`\`\n${preview}\n\`\`\``);
+                }
+                const errMsg = p.state?.error;
+                if (typeof errMsg === "string") {
+                  segments.push(`\`\`\`error\n${errMsg}\n\`\`\``);
+                }
+              }
+            }
+
+            const content = segments.join("\n\n");
+            return { role, content };
+          });
+          ws.send(JSON.stringify({ type: "session_messages", messages: simplified }));
+        })
+        .catch((err: Error) => {
+          console.error(`[bridge] failed to fetch session messages: ${err.message}`);
+        });
+    };
+
     const handleMessage = (raw: Buffer) => {
       let msg: any;
       try {
@@ -185,6 +230,7 @@ export function createBridgeServer(config: BridgeConfig) {
               config.restartOpencodeServe(sessionPath).then(() => {
                 console.log("[bridge] server restarted for session, re-fetching models");
                 fetchModels();
+                fetchSessionMessages();
               }).catch((err) => {
                 console.error(`[bridge] failed to restart opencode serve: ${err.message}`);
               });
@@ -206,6 +252,7 @@ export function createBridgeServer(config: BridgeConfig) {
             });
           }
           break;
+
       }
     };
 

@@ -54,6 +54,7 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       },
       child: Scaffold(
+        backgroundColor: const Color(0xFFF0F0F0),
         body: SafeArea(
           child: Column(
             children: [
@@ -186,7 +187,7 @@ class _MessageList extends StatelessWidget {
 
     return ListView.builder(
       controller: scrollController,
-      padding: const EdgeInsets.all(8.0),
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 80),
       itemCount: messages.length,
       itemBuilder: (context, index) {
         final msg = messages[index];
@@ -210,7 +211,11 @@ class _MessageList extends StatelessWidget {
                 ? Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Flexible(child: Text(msg.content)),
+                      Flexible(
+                        child: Text(
+                          msg.content.isEmpty ? 'Thinking...' : msg.content,
+                        ),
+                      ),
                       const SizedBox(width: 4),
                       const SizedBox(
                         width: 12,
@@ -240,7 +245,7 @@ class _MessageInput extends StatelessWidget {
             ChatConnectionStatus.disconnected;
 
         return Padding(
-          padding: const EdgeInsets.all(8.0),
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 80),
           child: Row(
             children: [
               Expanded(

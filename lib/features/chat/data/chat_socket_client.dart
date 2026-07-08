@@ -32,6 +32,11 @@ class ModelSetEvent extends ChatEvent {
   ModelSetEvent(this.model);
 }
 
+class SessionMessagesEvent extends ChatEvent {
+  final List<Map<String, dynamic>> messages;
+  SessionMessagesEvent(this.messages);
+}
+
 @injectable
 class ChatSocketClient {
   WebSocketChannel? _channel;
@@ -86,6 +91,10 @@ class ChatSocketClient {
               _eventController.add(ModelsEvent(providers));
             case 'model_set':
               _eventController.add(ModelSetEvent(parsed['model'] ?? ''));
+            case 'session_messages':
+              final msgs = (parsed['messages'] as List)
+                  .cast<Map<String, dynamic>>();
+              _eventController.add(SessionMessagesEvent(msgs));
           }
         } catch (_) {}
       },
@@ -115,6 +124,15 @@ class ChatSocketClient {
   void requestModels() {
     if (_channel != null) {
       _channel!.sink.add(jsonEncode({'type': 'get_models'}));
+    }
+  }
+
+  void requestSessionMessages(String sessionId) {
+    if (_channel != null) {
+      _channel!.sink.add(jsonEncode({
+        'type': 'get_session_messages',
+        'session_id': sessionId,
+      }));
     }
   }
 
