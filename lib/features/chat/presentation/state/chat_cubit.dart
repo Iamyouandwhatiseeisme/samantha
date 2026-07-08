@@ -90,7 +90,7 @@ class ChatCubit extends Cubit<ChatState> {
           case SessionMessagesEvent(:final messages):
             _handleSessionMessages(messages);
           case ThinkingEvent(:final content):
-            _handleToken(content);
+            _handleThinking(content);
         }
       },
       onError: (err) {
@@ -126,6 +126,29 @@ class ChatCubit extends Cubit<ChatState> {
 
     messages.add(streamingMessage.copyWith(
       content: streamingMessage.content + content,
+    ));
+
+    emit(state.copyWith(
+      messages: messages,
+      connectionStatus: ChatConnectionStatus.streaming,
+    ));
+  }
+
+  void _handleThinking(String content) {
+    final messages = List<ChatMessage>.from(state.messages);
+
+    final streamingMessage = messages.isNotEmpty &&
+            messages.last.role == ChatRole.assistant &&
+            messages.last.isStreaming
+        ? messages.removeLast()
+        : ChatMessage(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            role: ChatRole.assistant,
+            isStreaming: true,
+          );
+
+    messages.add(streamingMessage.copyWith(
+      thinkingContent: streamingMessage.thinkingContent + content,
     ));
 
     emit(state.copyWith(

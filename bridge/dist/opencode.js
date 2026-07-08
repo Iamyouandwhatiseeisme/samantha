@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OpencodeProcess = void 0;
-const child_process_1 = require("child_process");
 const events_1 = require("events");
+const child_process_1 = require("child_process");
 class OpencodeProcess extends events_1.EventEmitter {
     process = null;
     stopping = false;
@@ -37,7 +37,11 @@ class OpencodeProcess extends events_1.EventEmitter {
             args.push("--session", this.sessionId);
         }
         args.push(prompt);
-        this.process = (0, child_process_1.spawn)("opencode", args, {
+        // Use `script` to create a PTY so the child process line-buffers
+        // stdout instead of block-buffering. Without a PTY, pipe-based
+        // stdio causes full buffering — streaming events arrive only on exit.
+        const ptyArgs = ["-q", "/dev/null", "opencode", ...args];
+        this.process = (0, child_process_1.spawn)("script", ptyArgs, {
             stdio: ["ignore", "pipe", "pipe"],
             env: { ...process.env },
         });
@@ -55,7 +59,7 @@ class OpencodeProcess extends events_1.EventEmitter {
                     this.handleMessage(msg);
                 }
                 catch {
-                    // skip unparseable lines
+                    // skip unparseable lines (e.g. script's own output)
                 }
             }
         });

@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -122,23 +121,27 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildTitle() {
-    return BlocBuilder<ChatCubit, ChatState>(
-      builder: (context, state) {
-        final (icon, label) = switch (state.connectionStatus) {
+    return BlocSelector<ChatCubit, ChatState, _TitleState>(
+      selector: (state) => _TitleState(
+        connectionStatus: state.connectionStatus,
+        currentProjectPath: state.currentProjectPath,
+      ),
+      builder: (context, titleState) {
+        final (icon, label) = switch (titleState.connectionStatus) {
           ChatConnectionStatus.connected => (Icons.circle, 'Connected'),
           ChatConnectionStatus.streaming => (Icons.circle, 'Streaming'),
           ChatConnectionStatus.connecting => (Icons.sync, 'Connecting...'),
           ChatConnectionStatus.disconnected => (Icons.cloud_off, 'Disconnected'),
         };
 
-        Color color = switch (state.connectionStatus) {
+        Color color = switch (titleState.connectionStatus) {
           ChatConnectionStatus.connected => Colors.green,
           ChatConnectionStatus.streaming => Colors.blue,
           ChatConnectionStatus.connecting => Colors.orange,
           ChatConnectionStatus.disconnected => Colors.red,
         };
 
-        final repoName = state.currentProjectPath
+        final repoName = titleState.currentProjectPath
             ?.split('/')
             .last;
 
@@ -173,7 +176,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ),
             const SizedBox(height: 8),
-            _ModelDropdown(),
+            const _ModelDropdown(),
           ],
         );
       },
@@ -233,6 +236,7 @@ class _MessageList extends StatelessWidget {
             ),
             child: _ChatMessageContent(
               content: msg.content,
+              thinkingContent: msg.thinkingContent,
               isStreaming: msg.isStreaming,
             ),
           ),
@@ -304,75 +308,146 @@ class _MessageInput extends StatelessWidget {
 
 class _ChatMessageContent extends StatelessWidget {
   final String content;
+  final String thinkingContent;
   final bool isStreaming;
 
   const _ChatMessageContent({
     required this.content,
+    this.thinkingContent = '',
     required this.isStreaming,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (isStreaming && content.isEmpty) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('Thinking...'),
-          const SizedBox(width: 4),
-          const SizedBox(
-            width: 12,
-            height: 12,
-            child: CircularProgressIndicator(strokeWidth: 2),
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    final hasThinking = thinkingContent.isNotEmpty;
+    final isEmptyContent = isStreaming && content.isEmpty;
+
+    final children = <Widget>[];
+
+    if (hasThinking) {
+      children.add(
+        Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+            ),
           ),
-        ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.psychology,
+                    size: 14,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Thinking',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                thinkingContent,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
-    final segments = _parseContent(content);
+    if (isEmptyContent) {
+      children.add(
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Thinking...'),
+            const SizedBox(width: 4),
+            const SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ],
+        ),
+      );
+    } else if (content.isNotEmpty) {
+      final segments = _parseContent(content);
 
-    if (segments.isEmpty) {
-      return isStreaming
-          ? Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Flexible(child: Text(content)),
-                const SizedBox(width: 4),
-                const SizedBox(
-                  width: 12,
-                  height: 12,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+      if (segments.isEmpty) {
+        children.add(
+          isStreaming
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Flexible(child: Text(content)),
+                    const SizedBox(width: 4),
+                    const SizedBox(
+                      width: 12,
+                      height: 12,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ],
+                )
+              : Text(content),
+        );
+      } else {
+        children.add(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final seg in segments)
+                if (seg.isCode)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: _CollapsibleCodeBlock(code: seg.text),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 1),
+                    child: Text(seg.text),
+                  ),
+              if (isStreaming)
+                const Padding(
+                  padding: EdgeInsets.only(top: 4),
+                  child: SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
                 ),
-              ],
-            )
-          : Text(content);
+            ],
+          ),
+        );
+      }
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
-      children: [
-        for (final seg in segments)
-          if (seg.isCode)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: _CollapsibleCodeBlock(code: seg.text),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 1),
-              child: Text(seg.text),
-            ),
-        if (isStreaming)
-          const Padding(
-            padding: EdgeInsets.only(top: 4),
-            child: SizedBox(
-              width: 12,
-              height: 12,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          ),
-      ],
+      children: children,
     );
   }
 
@@ -493,17 +568,35 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
   }
 }
 
+class _TitleState {
+  final ChatConnectionStatus connectionStatus;
+  final String? currentProjectPath;
+  const _TitleState({required this.connectionStatus, this.currentProjectPath});
+}
+
+class _ModelDropdownState {
+  final List<ModelProvider> availableModels;
+  final String? selectedModel;
+  const _ModelDropdownState({required this.availableModels, this.selectedModel});
+}
+
 class _ModelDropdown extends StatelessWidget {
+  const _ModelDropdown();
+
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ChatCubit, ChatState>(
-      builder: (context, state) {
-        if (state.availableModels.isEmpty) {
+    return BlocSelector<ChatCubit, ChatState, _ModelDropdownState>(
+      selector: (state) => _ModelDropdownState(
+        availableModels: state.availableModels,
+        selectedModel: state.selectedModel,
+      ),
+      builder: (context, dropdownState) {
+        if (dropdownState.availableModels.isEmpty) {
           return const SizedBox(height: 36);
         }
 
         final items = <DropdownMenuItem<String>>[];
-        for (final provider in state.availableModels) {
+        for (final provider in dropdownState.availableModels) {
           for (final model in provider.models) {
             items.add(DropdownMenuItem(
               value: model.qualifiedId,
@@ -516,14 +609,13 @@ class _ModelDropdown extends StatelessWidget {
           }
         }
 
-        final selected = state.selectedModel;
+        final selected = dropdownState.selectedModel;
         final hasValidSelection =
             selected != null && items.any((i) => i.value == selected);
 
-        final randomModel = items[Random().nextInt(items.length)];
-        final hintText = items.length == 1
-            ? (randomModel.child as Text).data ?? 'Model'
-            : '${(randomModel.child as Text).data}';
+        final hintText = items.isNotEmpty
+            ? (items.first.child as Text).data ?? 'Select model'
+            : 'Select model';
 
         return Container(
           height: 36,

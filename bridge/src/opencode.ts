@@ -1,5 +1,5 @@
-import { ChildProcess, spawn } from "child_process";
 import { EventEmitter } from "events";
+import { spawn, ChildProcess } from "child_process";
 
 export class OpencodeProcess extends EventEmitter {
   private process: ChildProcess | null = null;
@@ -43,7 +43,11 @@ export class OpencodeProcess extends EventEmitter {
     }
     args.push(prompt);
 
-    this.process = spawn("opencode", args, {
+    // Use `script` to create a PTY so the child process line-buffers
+    // stdout instead of block-buffering. Without a PTY, pipe-based
+    // stdio causes full buffering — streaming events arrive only on exit.
+    const ptyArgs = ["-q", "/dev/null", "opencode", ...args];
+    this.process = spawn("script", ptyArgs, {
       stdio: ["ignore", "pipe", "pipe"],
       env: { ...process.env },
     });
@@ -61,7 +65,7 @@ export class OpencodeProcess extends EventEmitter {
           const msg = JSON.parse(trimmed);
           this.handleMessage(msg);
         } catch {
-          // skip unparseable lines
+          // skip unparseable lines (e.g. script's own output)
         }
       }
     });
