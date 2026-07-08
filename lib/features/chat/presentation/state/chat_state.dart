@@ -53,16 +53,16 @@ class ModelProvider {
 
   factory ModelProvider.fromJson(Map<String, dynamic> json) {
     final providerId = json['id'] as String;
+    final modelsMap = json['models'] as Map<String, dynamic>? ?? {};
+    final models = modelsMap.entries.map((e) {
+      final modelJson = Map<String, dynamic>.from(e.value as Map);
+      modelJson['id'] = e.key;
+      return ModelInfo.fromJson(modelJson, providerId: providerId);
+    }).toList();
     return ModelProvider(
       id: providerId,
       name: json['name'] as String? ?? providerId,
-      models: (json['models'] as List?)
-              ?.map((m) => ModelInfo.fromJson(
-                    m as Map<String, dynamic>,
-                    providerId: providerId,
-                  ))
-              .toList() ??
-          [],
+      models: models,
     );
   }
 }

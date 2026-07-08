@@ -103,13 +103,21 @@ class _ChatScreenState extends State<ChatScreen> {
           ChatConnectionStatus.disconnected => Colors.red,
         };
 
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: color, size: 12),
-            const SizedBox(width: 6),
-            Text(label, style: const TextStyle(fontSize: 16)),
-          ],
+        return Flexible(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: color, size: 12),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  style: const TextStyle(fontSize: 16),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -249,7 +257,7 @@ class _ModelDropdown extends StatelessWidget {
             items.add(DropdownMenuItem(
               value: model.qualifiedId,
               child: Text(
-                model.displayName,
+                '${model.displayName} (${provider.name})',
                 style: const TextStyle(fontSize: 13),
               ),
             ));
