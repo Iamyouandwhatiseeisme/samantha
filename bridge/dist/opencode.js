@@ -7,6 +7,11 @@ class OpencodeProcess extends events_1.EventEmitter {
     process = null;
     stopping = false;
     sessionId = null;
+    serveUrl;
+    constructor(serveUrl) {
+        super();
+        this.serveUrl = serveUrl;
+    }
     get running() {
         return this.process !== null && !this.process.killed;
     }
@@ -18,7 +23,7 @@ class OpencodeProcess extends events_1.EventEmitter {
             this.stop();
         }
         this.stopping = false;
-        const args = ["run", "--format", "json"];
+        const args = ["run", "--format", "json", "--attach", this.serveUrl];
         if (this.sessionId) {
             args.push("--session", this.sessionId);
         }
@@ -92,7 +97,6 @@ class OpencodeProcess extends events_1.EventEmitter {
                 this.emit("error", new Error(msg.message ?? "Unknown error"));
                 break;
             default:
-                // unknown message type — ignore
                 break;
         }
     }

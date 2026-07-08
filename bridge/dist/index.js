@@ -1,22 +1,59 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const child_process_1 = require("child_process");
 const server_1 = require("./server");
-const PORT = parseInt(process.env.PORT || "8383", 10);
+const BRIDGE_PORT = parseInt(process.env.PORT || "8383", 10);
 const AUTH_TOKEN = process.env.BRIDGE_AUTH_TOKEN;
+const OPENCODE_PORT = parseInt(process.env.OPENCODE_PORT || "4096", 10);
+const OPENCODE_HOST = process.env.OPENCODE_HOST || "127.0.0.1";
 if (!AUTH_TOKEN) {
     console.error("[bridge] BRIDGE_AUTH_TOKEN environment variable is required");
     console.error("[bridge] Set it: BRIDGE_AUTH_TOKEN=your-secret npm start");
     process.exit(1);
 }
-const server = (0, server_1.createBridgeServer)({ port: PORT, authToken: AUTH_TOKEN });
-server.listen(PORT, "0.0.0.0", () => {
-    console.log(`[bridge] listening on http://0.0.0.0:${PORT}`);
-    console.log(`[bridge] health check: http://localhost:${PORT}/health`);
-    console.log(`[bridge] WebSocket: ws://localhost:${PORT}/chat`);
+const opencodeServeUrl = `http://${OPENCODE_HOST}:${OPENCODE_PORT}`;
+let opencodeServe = null;
+const startOpencodeServe = () => {
+    console.log(`[bridge] starting opencode serve on ${opencodeServeUrl}...`);
+    opencodeServe = (0, child_process_1.spawn)("opencode", ["serve", "--port", String(OPENCODE_PORT), "--hostname", "0.0.0.0"], {
+        stdio: ["ignore", "pipe", "pipe"],
+        env: { ...process.env },
+    });
+    opencodeServe.stdout?.on("data", (data) => {
+        console.log(`[bridge:opencode:serve] ${data.toString().trim()}`);
+    });
+    opencodeServe.stderr?.on("data", (data) => {
+        console.log(`[bridge:opencode:serve] ${data.toString().trim()}`);
+    });
+    opencodeServe.on("error", (err) => {
+        console.error(`[bridge:opencode:serve] spawn error: ${err.message}`);
+    });
+    opencodeServe.on("exit", (code) => {
+        console.log(`[bridge:opencode:serve] exited with code ${code}`);
+        opencodeServe = null;
+    });
+};
+const stopOpencodeServe = () => {
+    if (opencodeServe) {
+        console.log("[bridge] stopping opencode serve...");
+        opencodeServe.kill("SIGTERM");
+        opencodeServe = null;
+    }
+};
+const server = (0, server_1.createBridgeServer)({
+    port: BRIDGE_PORT,
+    authToken: AUTH_TOKEN,
+    opencodeServeUrl,
+});
+startOpencodeServe();
+server.listen(BRIDGE_PORT, "0.0.0.0", () => {
+    console.log(`[bridge] listening on http://0.0.0.0:${BRIDGE_PORT}`);
+    console.log(`[bridge] opencode serve at ${opencodeServeUrl}`);
 });
 const shutdown = (sig) => () => {
     console.log(`\n[bridge] received ${sig}, shutting down...`);
     server.close();
+    stopOpencodeServe();
     process.exit(0);
 };
 process.on("SIGINT", shutdown("SIGINT"));

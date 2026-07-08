@@ -26,7 +26,7 @@ function createBridgeServer(config) {
             }
         };
         const createOpencode = () => {
-            opencode = new opencode_1.OpencodeProcess();
+            opencode = new opencode_1.OpencodeProcess(config.opencodeServeUrl);
             opencode.on("output", (data) => {
                 if (ws.readyState === ws_1.WebSocket.OPEN) {
                     ws.send(JSON.stringify({ type: "token", content: data }));

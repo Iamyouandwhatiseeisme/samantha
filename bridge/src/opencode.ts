@@ -5,6 +5,12 @@ export class OpencodeProcess extends EventEmitter {
   private process: ChildProcess | null = null;
   private stopping = false;
   private sessionId: string | null = null;
+  private readonly serveUrl: string;
+
+  constructor(serveUrl: string) {
+    super();
+    this.serveUrl = serveUrl;
+  }
 
   get running(): boolean {
     return this.process !== null && !this.process.killed;
@@ -20,7 +26,7 @@ export class OpencodeProcess extends EventEmitter {
     }
     this.stopping = false;
 
-    const args = ["run", "--format", "json"];
+    const args = ["run", "--format", "json", "--attach", this.serveUrl];
     if (this.sessionId) {
       args.push("--session", this.sessionId);
     }
@@ -103,7 +109,6 @@ export class OpencodeProcess extends EventEmitter {
         break;
 
       default:
-        // unknown message type — ignore
         break;
     }
   }

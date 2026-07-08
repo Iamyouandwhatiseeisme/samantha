@@ -5,6 +5,7 @@ import { OpencodeProcess } from "./opencode";
 interface BridgeConfig {
   port: number;
   authToken: string;
+  opencodeServeUrl: string;
 }
 
 export function createBridgeServer(config: BridgeConfig) {
@@ -34,7 +35,7 @@ export function createBridgeServer(config: BridgeConfig) {
     };
 
     const createOpencode = () => {
-      opencode = new OpencodeProcess();
+      opencode = new OpencodeProcess(config.opencodeServeUrl);
 
       opencode.on("output", (data: string) => {
         if (ws.readyState === WebSocket.OPEN) {
