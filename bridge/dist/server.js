@@ -141,15 +141,13 @@ function createBridgeServer(config) {
                         else if (p.type === "tool") {
                             const toolName = p.tool ?? "tool";
                             const input = p.state?.input;
-                            const cmd = typeof input?.command === "string" ? input.command
-                                : typeof input === "object" && input !== null ? JSON.stringify(input, null, 2)
-                                    : "";
-                            if (cmd) {
-                                segments.push(`\`\`\`${toolName}\n${cmd}\n\`\`\``);
-                            }
+                            const status = p.state?.status ?? "completed";
+                            const formatted = formatToolInput(toolName, input, status);
+                            if (formatted)
+                                segments.push(formatted);
                             const output = p.state?.output;
                             if (typeof output === "string" && output.trim()) {
-                                const preview = output.length > 500 ? output.slice(0, 500) + "\n..." : output;
+                                const preview = output.length > 800 ? output.slice(0, 800) + "\n..." : output;
                                 segments.push(`\`\`\`\n${preview}\n\`\`\``);
                             }
                             const errMsg = p.state?.error;
@@ -166,6 +164,52 @@ function createBridgeServer(config) {
                 .catch((err) => {
                 console.error(`[bridge] failed to fetch session messages: ${err.message}`);
             });
+        };
+        const formatToolInput = (tool, input, status) => {
+            if (!input || typeof input !== "object")
+                return null;
+            const action = status === "error" ? "\u2717" : status === "running" ? "\u23F3" : "\u2713";
+            switch (tool) {
+                case "bash":
+                case "shell":
+                    return typeof input.command === "string"
+                        ? `\`\`\`sh\n${input.command}\n\`\`\``
+                        : null;
+                case "write": {
+                    const fp = typeof input.filePath === "string" ? input.filePath : "";
+                    const content = typeof input.content === "string" ? input.content
+                        : typeof input.filePath === "string" ? JSON.stringify(input) : null;
+                    if (!fp)
+                        return null;
+                    const ext = fp.includes(".") ? fp.split(".").pop() ?? "" : "";
+                    const preview = content
+                        ? content.length > 600 ? content.slice(0, 600) + "\n..." : content
+                        : "(empty)";
+                    return `${action} **${tool}** \`${fp}\`\n\`\`\`${ext}\n${preview}\n\`\`\``;
+                }
+                case "edit": {
+                    const fp = typeof input.filePath === "string" ? input.filePath : "";
+                    const oldText = typeof input.oldString === "string" ? input.oldString.slice(0, 100) : "";
+                    const newText = typeof input.newString === "string" ? input.newString.slice(0, 100) : "";
+                    return fp
+                        ? `${action} **${tool}** \`${fp}\`\n\`\`\`diff\n- ${oldText}\n+ ${newText}\n\`\`\``
+                        : null;
+                }
+                case "read":
+                case "glob":
+                case "grep": {
+                    const path = typeof input.path === "string" ? input.path
+                        : typeof input.pattern === "string" ? input.pattern
+                            : typeof input.filePath === "string" ? input.filePath : "";
+                    return path ? `${action} **${tool}** \`${path}\`` : null;
+                }
+                case "webfetch": {
+                    const url = typeof input.url === "string" ? input.url : "";
+                    return url ? `${action} **${tool}** ${url}` : null;
+                }
+                default:
+                    return `${action} **${tool}** \`\`\`json\n${JSON.stringify(input, null, 2)}\n\`\`\``;
+            }
         };
         const handleMessage = (raw) => {
             let msg;

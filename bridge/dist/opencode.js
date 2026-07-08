@@ -113,21 +113,11 @@ class OpencodeProcess extends events_1.EventEmitter {
                 const toolName = part?.tool ?? "unknown";
                 const status = state?.status ?? "pending";
                 const input = state?.input;
-                let description = "";
-                if (typeof input?.command === "string") {
-                    description = input.command;
-                }
-                else if (typeof input?.description === "string") {
-                    description = input.description;
-                }
-                else if (input && typeof input === "object") {
-                    const key = Object.keys(input)[0];
-                    description = String(input[key] ?? "");
-                }
+                const description = this.formatToolDesc(toolName, input, status);
                 this.emit("tool", {
                     tool: toolName,
                     status,
-                    description: description.slice(0, 200),
+                    description,
                     output: status === "completed" && typeof state?.output === "string"
                         ? state.output.slice(0, 200) : undefined,
                     error: status === "error" && typeof state?.error === "string"
@@ -144,7 +134,34 @@ class OpencodeProcess extends events_1.EventEmitter {
                 this.emit("error", new Error(msg.message ?? "Unknown error"));
                 break;
             default:
+                // Log once per unknown type for debugging
+                console.log(`[bridge:opencode] unknown msg type: ${msg.type}`);
                 break;
+        }
+    }
+    formatToolDesc(tool, input, status) {
+        if (!input)
+            return tool;
+        switch (tool) {
+            case "bash":
+            case "shell":
+                return typeof input.command === "string" ? input.command : tool;
+            case "write":
+                return typeof input.filePath === "string" ? `\u270E ${input.filePath}` : tool;
+            case "edit":
+                return typeof input.filePath === "string" ? `\u270E ${input.filePath}` : tool;
+            case "read":
+            case "glob":
+            case "grep": {
+                const p = typeof input.path === "string" ? input.path
+                    : typeof input.pattern === "string" ? input.pattern
+                        : typeof input.filePath === "string" ? input.filePath : "";
+                return p || tool;
+            }
+            case "webfetch":
+                return typeof input.url === "string" ? input.url : tool;
+            default:
+                return tool;
         }
     }
     stop() {

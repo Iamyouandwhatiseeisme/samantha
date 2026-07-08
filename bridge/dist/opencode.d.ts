@@ -25,6 +25,7 @@ export declare class OpencodeProcess extends EventEmitter {
     setSessionId(id: string): void;
     write(prompt: string, model?: string, projectPath?: string): void;
     private handleCliMessage;
+    private formatToolDesc;
     stop(): void;
     reply(_permissionID: string, _response: string): Promise<void>;
 }
