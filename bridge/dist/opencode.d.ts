@@ -1,14 +1,12 @@
 import { EventEmitter } from "events";
 export declare class OpencodeProcess extends EventEmitter {
     private process;
-    private stdoutBuffer;
     private stopping;
+    private sessionId;
     get running(): boolean;
-    start(): void;
-    write(input: string): void;
-    stop(): void;
     get manualStop(): boolean;
-    private flushStdout;
-    private stripAnsi;
+    write(prompt: string): void;
+    private handleMessage;
+    stop(): void;
 }
 //# sourceMappingURL=opencode.d.ts.map

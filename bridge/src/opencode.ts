@@ -1,39 +1,56 @@
 import { ChildProcess, spawn } from "child_process";
 import { EventEmitter } from "events";
 
-const ANSI_RE = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
-
 export class OpencodeProcess extends EventEmitter {
   private process: ChildProcess | null = null;
-  private stdoutBuffer = "";
   private stopping = false;
+  private sessionId: string | null = null;
 
   get running(): boolean {
     return this.process !== null && !this.process.killed;
   }
 
-  start(): void {
+  get manualStop(): boolean {
+    return this.stopping;
+  }
+
+  write(prompt: string): void {
     if (this.process) {
       this.stop();
     }
     this.stopping = false;
-    this.stdoutBuffer = "";
 
-    this.process = spawn("opencode", [], {
-      stdio: ["pipe", "pipe", "pipe"],
+    const args = ["run", "--format", "json"];
+    if (this.sessionId) {
+      args.push("--session", this.sessionId);
+    }
+    args.push(prompt);
+
+    this.process = spawn("opencode", args, {
+      stdio: ["ignore", "pipe", "pipe"],
       env: { ...process.env },
     });
 
+    let buffer = "";
+
     this.process.stdout?.on("data", (data: Buffer) => {
-      this.stdoutBuffer += this.stripAnsi(data.toString());
-      this.flushStdout();
+      buffer += data.toString();
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        try {
+          const msg = JSON.parse(trimmed);
+          this.handleMessage(msg);
+        } catch {
+          // skip unparseable lines
+        }
+      }
     });
 
-    // Diagnostics/warnings from stderr are not model output — log them
-    // on the bridge console instead of leaking into the chat stream.
     this.process.stderr?.on("data", (data: Buffer) => {
-      const text = this.stripAnsi(data.toString()).trim();
-      if (text) console.error(`[bridge:opencode:stderr] ${text}`);
+      console.error(`[bridge:opencode:stderr] ${data.toString().trim()}`);
     });
 
     this.process.on("error", (err: Error) => {
@@ -43,19 +60,51 @@ export class OpencodeProcess extends EventEmitter {
 
     this.process.on("exit", (code: number | null) => {
       console.log(`[bridge:opencode] exited with code ${code}`);
-      // Flush any trailing stdout that lacked a trailing newline.
-      if (this.stdoutBuffer.length > 0) {
-        this.emit("output", this.stdoutBuffer);
-        this.stdoutBuffer = "";
+      if (buffer.trim()) {
+        try {
+          const msg = JSON.parse(buffer.trim());
+          this.handleMessage(msg);
+        } catch {
+          // skip trailing incomplete JSON
+        }
       }
-      this.emit("exit", code);
       this.process = null;
     });
   }
 
-  write(input: string): void {
-    if (this.process?.stdin?.writable) {
-      this.process.stdin.write(input);
+  private handleMessage(msg: any) {
+    switch (msg.type) {
+      case "step_start":
+        if (msg.sessionID && !this.sessionId) {
+          this.sessionId = msg.sessionID;
+          console.log(`[bridge:opencode] session: ${this.sessionId}`);
+        }
+        break;
+
+      case "text":
+        if (msg.part?.text) {
+          this.emit("output", msg.part.text);
+        }
+        break;
+
+      case "thinking":
+        if (msg.part?.text) {
+          this.emit("output", msg.part.text);
+        }
+        break;
+
+      case "step_finish":
+        this.process = null;
+        this.emit("exit", 0);
+        break;
+
+      case "error":
+        this.emit("error", new Error(msg.message ?? "Unknown error"));
+        break;
+
+      default:
+        // unknown message type — ignore
+        break;
     }
   }
 
@@ -64,21 +113,5 @@ export class OpencodeProcess extends EventEmitter {
     this.stopping = true;
     this.process.kill("SIGTERM");
     this.process = null;
-  }
-
-  get manualStop(): boolean {
-    return this.stopping;
-  }
-
-  private flushStdout(): void {
-    const lines = this.stdoutBuffer.split("\n");
-    this.stdoutBuffer = lines.pop() ?? "";
-    for (const line of lines) {
-      this.emit("output", line + "\n");
-    }
-  }
-
-  private stripAnsi(text: string): string {
-    return text.replace(ANSI_RE, "");
   }
 }

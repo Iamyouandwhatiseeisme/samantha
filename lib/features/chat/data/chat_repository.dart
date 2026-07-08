@@ -24,7 +24,7 @@ class ChatRepository {
     await _socketClient.connect(host, token);
   }
 
-  void send(String prompt) => _socketClient.sendPrompt('$prompt\n');
+  void send(String prompt) => _socketClient.sendPrompt(prompt);
 
   Future<void> disconnect() async {
     _socketClient.disconnect();

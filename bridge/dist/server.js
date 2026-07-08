@@ -25,7 +25,7 @@ function createBridgeServer(config) {
                 opencode = null;
             }
         };
-        const startOpencode = () => {
+        const createOpencode = () => {
             opencode = new opencode_1.OpencodeProcess();
             opencode.on("output", (data) => {
                 if (ws.readyState === ws_1.WebSocket.OPEN) {
@@ -42,7 +42,6 @@ function createBridgeServer(config) {
                     ws.send(JSON.stringify({ type: "error", message: err.message }));
                 }
             });
-            opencode.start();
         };
         const handleMessage = (raw) => {
             let msg;
@@ -57,7 +56,7 @@ function createBridgeServer(config) {
                 if (msg?.type === "auth" && msg.token === config.authToken) {
                     authenticated = true;
                     console.log(`[bridge] client authenticated`);
-                    startOpencode();
+                    createOpencode();
                 }
                 else {
                     console.log(`[bridge] auth failed`);
@@ -69,8 +68,10 @@ function createBridgeServer(config) {
                 return;
             }
             if (msg?.type === "prompt" && typeof msg.content === "string") {
-                if (opencode)
-                    opencode.write(msg.content);
+                console.log(`[bridge] received prompt: ${msg.content.trim()}`);
+                if (opencode) {
+                    opencode.write(msg.content.trim());
+                }
             }
         };
         ws.on("message", handleMessage);
