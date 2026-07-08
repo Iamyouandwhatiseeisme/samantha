@@ -40,7 +40,6 @@ class OpencodeProcess extends events_1.EventEmitter {
             args.push("--session", this.sessionId);
         }
         args.push(prompt);
-        // PTY via script for line-buffered stdout (real-time streaming)
         const ptyArgs = ["-q", "/dev/null", "opencode", ...args];
         this.process = (0, child_process_1.spawn)("script", ptyArgs, {
             stdio: ["ignore", "pipe", "pipe"],
@@ -83,7 +82,6 @@ class OpencodeProcess extends events_1.EventEmitter {
                 }
             }
             this.process = null;
-            // Also emit exit event (only when not manually stopped)
             if (!this.stopping) {
                 this.emit("exit", 0);
             }
@@ -113,28 +111,29 @@ class OpencodeProcess extends events_1.EventEmitter {
                 const rawMsg = part ?? msg;
                 const state = (part?.state ?? rawMsg.state ?? rawMsg);
                 const toolName = part?.tool ?? rawMsg.name ?? rawMsg.tool ?? "unknown";
-                // Only trust explicit "completed" or "error" statuses — default to "running"
                 const explicitStatus = state?.status ?? "";
                 const status = (explicitStatus === "completed" || explicitStatus === "error")
                     ? explicitStatus : "running";
                 const input = (state?.input ?? rawMsg.input);
                 const description = this.formatToolDesc(toolName, input, status);
-                const hasOutput = status === "completed" && typeof state?.output === "string";
+                const writtenContent = this.extractToolContent(toolName, input, state);
                 this.emit("tool", {
                     tool: toolName,
                     status,
                     description,
-                    output: hasOutput ? (state.output).slice(0, 200) : undefined,
+                    output: status === "completed" && typeof state?.output === "string"
+                        ? state.output.slice(0, 500) : undefined,
                     error: (status === "error" || rawMsg.error) ? (state?.error ?? rawMsg.error) : undefined,
                     title: typeof state?.title === "string" ? state.title : undefined,
                     callID: (part?.callID ?? rawMsg.callID ?? rawMsg.id),
+                    content: writtenContent,
                 });
                 break;
             }
             case "tool_result": {
                 const toolName = msg.name ?? msg.tool ?? "tool";
                 const isError = msg.is_error === true;
-                const content = typeof msg.content === "string" ? msg.content.slice(0, 200) : "";
+                const content = typeof msg.content === "string" ? msg.content.slice(0, 500) : "";
                 this.emit("tool", {
                     tool: toolName,
                     status: isError ? "error" : "completed",
@@ -142,17 +141,16 @@ class OpencodeProcess extends events_1.EventEmitter {
                     output: isError ? undefined : content,
                     error: isError ? content : undefined,
                     callID: (msg.tool_use_id ?? msg.callID ?? msg.id),
+                    content: isError ? undefined : content,
                 });
                 break;
             }
             case "step_finish":
-                // Exit event is already emitted on process exit
                 break;
             case "error":
                 this.emit("error", new Error(msg.message ?? "Unknown error"));
                 break;
             default:
-                // Log once per unknown type for debugging
                 console.log(`[bridge:opencode] unknown msg type: ${msg.type}`);
                 break;
         }
@@ -183,6 +181,22 @@ class OpencodeProcess extends events_1.EventEmitter {
                 return pre + `${tool} (${status})`;
         }
     }
+    extractToolContent(tool, input, state) {
+        if (!input)
+            return undefined;
+        switch (tool) {
+            case "write":
+                return typeof input.content === "string" ? input.content
+                    : typeof state?.output === "string" ? state.output.slice(0, 500) : undefined;
+            case "edit":
+                return typeof input.newString === "string" ? input.newString : undefined;
+            case "bash":
+            case "shell":
+                return typeof state?.output === "string" ? state.output.slice(0, 500) : undefined;
+            default:
+                return typeof state?.output === "string" ? state.output.slice(0, 500) : undefined;
+        }
+    }
     stop() {
         if (!this.process)
             return;
@@ -191,9 +205,7 @@ class OpencodeProcess extends events_1.EventEmitter {
         this.process = null;
     }
     async reply(_permissionID, _response) {
-        // Permissions are auto-approved by --auto. This stub exists for
-        // protocol compatibility — interactive permission dialogs need
-        // the SSE-based approach.
+        // Permissions auto-approved via --auto
     }
 }
 exports.OpencodeProcess = OpencodeProcess;

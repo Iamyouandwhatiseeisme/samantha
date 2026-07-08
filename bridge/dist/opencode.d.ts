@@ -7,6 +7,7 @@ export interface ToolEvent {
     error?: string;
     title?: string;
     callID?: string;
+    content?: string;
 }
 export interface PermissionEvent {
     id: string;
@@ -26,6 +27,7 @@ export declare class OpencodeProcess extends EventEmitter {
     write(prompt: string, model?: string, projectPath?: string): void;
     private handleCliMessage;
     private formatToolDesc;
+    private extractToolContent;
     stop(): void;
     reply(_permissionID: string, _response: string): Promise<void>;
 }

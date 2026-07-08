@@ -95,8 +95,8 @@ class ChatCubit extends Cubit<ChatState> {
             _handleSessionMessages(messages);
           case ThinkingEvent(:final content):
             _handleThinking(content);
-          case ToolEvent(:final tool, :final status, :final title, :final description):
-            _handleTool(tool, status, title ?? description);
+          case ToolEvent(:final tool, :final status, :final title, :final description, :final content):
+            _handleTool(tool, status, title ?? description, content: content);
           case PermissionRequestEvent(:final id, :final title):
             _handlePermission(id, title);
         }
@@ -186,12 +186,28 @@ class ChatCubit extends Cubit<ChatState> {
     _reconnectAttempt = 0;
   }
 
-  void _handleTool(String tool, String status, String description) {
+  void _handleTool(String tool, String status, String description, {String? content}) {
     if (status == 'completed' || status == 'error') {
-      final prefix = status == 'error' ? '\u2717 ' : '\u2713 ';
-      final summary = '\n$prefix $tool: $description';
-      _handleToken(summary);
+      final messages = List<ChatMessage>.from(state.messages);
+      if (messages.isNotEmpty &&
+          messages.last.role == ChatRole.assistant &&
+          messages.last.isStreaming) {
+        final last = messages.removeLast();
+        messages.add(last.copyWith(
+          toolResults: [
+            ...last.toolResults,
+            ToolResult(tool: tool, description: description, content: content),
+          ],
+        ));
+      } else {
+        messages.add(ChatMessage(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          role: ChatRole.assistant,
+          toolResults: [ToolResult(tool: tool, description: description, content: content)],
+        ));
+      }
       emit(state.copyWith(
+        messages: messages,
         clearToolName: true,
         clearToolStatus: true,
       ));

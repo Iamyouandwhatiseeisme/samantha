@@ -50,6 +50,7 @@ class ToolEvent extends ChatEvent {
   final String? error;
   final String? title;
   final String? callID;
+  final String? content;
   ToolEvent({
     required this.tool,
     required this.status,
@@ -58,6 +59,7 @@ class ToolEvent extends ChatEvent {
     this.error,
     this.title,
     this.callID,
+    this.content,
   });
 }
 
@@ -131,12 +133,13 @@ class ChatSocketClient {
               _eventController.add(ToolEvent(
                 tool: parsed['tool'] ?? '',
                 status: parsed['status'] ?? 'pending',
-                description: parsed['description'] ?? '',
+              description: parsed['description'] ?? '',
                 output: parsed['output'],
                 error: parsed['error'],
                 title: parsed['title'],
-              callID: parsed['callID'],
-            ));
+                callID: parsed['callID'],
+                content: parsed['content'],
+              ));
           case 'permission_request':
             _eventController.add(PermissionRequestEvent(
               id: parsed['id'] ?? '',

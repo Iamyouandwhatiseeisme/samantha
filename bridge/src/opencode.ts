@@ -1,6 +1,5 @@
 import { EventEmitter } from "events";
 import { spawn, ChildProcess } from "child_process";
-import { get as httpGet, request as httpRequest } from "http";
 
 export interface ToolEvent {
   tool: string;
@@ -10,6 +9,7 @@ export interface ToolEvent {
   error?: string;
   title?: string;
   callID?: string;
+  content?: string;
 }
 
 export interface PermissionEvent {
@@ -63,7 +63,6 @@ export class OpencodeProcess extends EventEmitter {
     }
     args.push(prompt);
 
-    // PTY via script for line-buffered stdout (real-time streaming)
     const ptyArgs = ["-q", "/dev/null", "opencode", ...args];
     this.process = spawn("script", ptyArgs, {
       stdio: ["ignore", "pipe", "pipe"],
@@ -108,8 +107,6 @@ export class OpencodeProcess extends EventEmitter {
         }
       }
       this.process = null;
-
-      // Also emit exit event (only when not manually stopped)
       if (!this.stopping) {
         this.emit("exit", 0);
       }
@@ -143,21 +140,22 @@ export class OpencodeProcess extends EventEmitter {
         const rawMsg = part ?? (msg as Record<string, unknown>);
         const state = (part?.state ?? rawMsg.state ?? rawMsg) as Record<string, unknown> | undefined;
         const toolName = (part?.tool as string) ?? (rawMsg.name as string) ?? (rawMsg.tool as string) ?? "unknown";
-        // Only trust explicit "completed" or "error" statuses — default to "running"
         const explicitStatus = (state?.status as string) ?? "";
         const status = (explicitStatus === "completed" || explicitStatus === "error")
           ? explicitStatus : "running";
         const input = (state?.input ?? rawMsg.input) as Record<string, unknown> | undefined;
         const description = this.formatToolDesc(toolName, input, status);
-        const hasOutput = status === "completed" && typeof state?.output === "string";
+        const writtenContent = this.extractToolContent(toolName, input, state as Record<string, unknown> | undefined);
         this.emit("tool", {
           tool: toolName,
           status,
           description,
-          output: hasOutput ? ((state as Record<string, string>).output).slice(0, 200) : undefined,
+          output: status === "completed" && typeof state?.output === "string"
+            ? (state.output as string).slice(0, 500) : undefined,
           error: (status === "error" || rawMsg.error) ? ((state?.error ?? rawMsg.error) as string | undefined) : undefined,
           title: typeof state?.title === "string" ? state.title : undefined,
           callID: (part?.callID ?? rawMsg.callID ?? rawMsg.id) as string | undefined,
+          content: writtenContent,
         } as ToolEvent);
         break;
       }
@@ -165,7 +163,7 @@ export class OpencodeProcess extends EventEmitter {
       case "tool_result": {
         const toolName = (msg.name as string) ?? (msg.tool as string) ?? "tool";
         const isError = msg.is_error === true;
-        const content = typeof msg.content === "string" ? msg.content.slice(0, 200) : "";
+        const content = typeof msg.content === "string" ? msg.content.slice(0, 500) : "";
         this.emit("tool", {
           tool: toolName,
           status: isError ? "error" : "completed",
@@ -173,12 +171,12 @@ export class OpencodeProcess extends EventEmitter {
           output: isError ? undefined : content,
           error: isError ? content : undefined,
           callID: (msg.tool_use_id ?? msg.callID ?? msg.id) as string | undefined,
+          content: isError ? undefined : content,
         } as ToolEvent);
         break;
       }
 
       case "step_finish":
-        // Exit event is already emitted on process exit
         break;
 
       case "error":
@@ -186,7 +184,6 @@ export class OpencodeProcess extends EventEmitter {
         break;
 
       default:
-        // Log once per unknown type for debugging
         console.log(`[bridge:opencode] unknown msg type: ${msg.type}`);
         break;
     }
@@ -218,6 +215,26 @@ export class OpencodeProcess extends EventEmitter {
     }
   }
 
+  private extractToolContent(
+    tool: string,
+    input: Record<string, unknown> | undefined,
+    state: Record<string, unknown> | undefined,
+  ): string | undefined {
+    if (!input) return undefined;
+    switch (tool) {
+      case "write":
+        return typeof input.content === "string" ? input.content
+          : typeof state?.output === "string" ? (state.output as string).slice(0, 500) : undefined;
+      case "edit":
+        return typeof input.newString === "string" ? input.newString : undefined;
+      case "bash":
+      case "shell":
+        return typeof state?.output === "string" ? (state.output as string).slice(0, 500) : undefined;
+      default:
+        return typeof state?.output === "string" ? (state.output as string).slice(0, 500) : undefined;
+    }
+  }
+
   stop(): void {
     if (!this.process) return;
     this.stopping = true;
@@ -226,8 +243,6 @@ export class OpencodeProcess extends EventEmitter {
   }
 
   async reply(_permissionID: string, _response: string): Promise<void> {
-    // Permissions are auto-approved by --auto. This stub exists for
-    // protocol compatibility — interactive permission dialogs need
-    // the SSE-based approach.
+    // Permissions auto-approved via --auto
   }
 }
