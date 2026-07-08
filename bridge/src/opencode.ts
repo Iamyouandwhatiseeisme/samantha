@@ -143,15 +143,18 @@ export class OpencodeProcess extends EventEmitter {
         const rawMsg = part ?? (msg as Record<string, unknown>);
         const state = (part?.state ?? rawMsg.state ?? rawMsg) as Record<string, unknown> | undefined;
         const toolName = (part?.tool as string) ?? (rawMsg.name as string) ?? (rawMsg.tool as string) ?? "unknown";
-        const status = (state?.status as string) ?? (rawMsg.status as string) ?? "running";
+        // Only trust explicit "completed" or "error" statuses — default to "running"
+        const explicitStatus = (state?.status as string) ?? "";
+        const status = (explicitStatus === "completed" || explicitStatus === "error")
+          ? explicitStatus : "running";
         const input = (state?.input ?? rawMsg.input) as Record<string, unknown> | undefined;
         const description = this.formatToolDesc(toolName, input, status);
+        const hasOutput = status === "completed" && typeof state?.output === "string";
         this.emit("tool", {
           tool: toolName,
           status,
           description,
-          output: status === "completed" && typeof state?.output === "string"
-            ? (state.output as string).slice(0, 200) : undefined,
+          output: hasOutput ? ((state as Record<string, string>).output).slice(0, 200) : undefined,
           error: (status === "error" || rawMsg.error) ? ((state?.error ?? rawMsg.error) as string | undefined) : undefined,
           title: typeof state?.title === "string" ? state.title : undefined,
           callID: (part?.callID ?? rawMsg.callID ?? rawMsg.id) as string | undefined,
@@ -166,7 +169,7 @@ export class OpencodeProcess extends EventEmitter {
         this.emit("tool", {
           tool: toolName,
           status: isError ? "error" : "completed",
-          description: isError ? `Failed` : `Done`,
+          description: isError ? `${toolName} failed` : `${toolName} finished`,
           output: isError ? undefined : content,
           error: isError ? content : undefined,
           callID: (msg.tool_use_id ?? msg.callID ?? msg.id) as string | undefined,

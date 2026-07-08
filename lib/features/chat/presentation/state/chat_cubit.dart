@@ -187,11 +187,21 @@ class ChatCubit extends Cubit<ChatState> {
   }
 
   void _handleTool(String tool, String status, String description) {
-    emit(state.copyWith(
-      connectionStatus: ChatConnectionStatus.streaming,
-      currentToolName: tool,
-      currentToolStatus: '$status: $description',
-    ));
+    if (status == 'completed' || status == 'error') {
+      final prefix = status == 'error' ? '\u2717 ' : '\u2713 ';
+      final summary = '\n$prefix $tool: $description';
+      _handleToken(summary);
+      emit(state.copyWith(
+        clearToolName: true,
+        clearToolStatus: true,
+      ));
+    } else {
+      emit(state.copyWith(
+        connectionStatus: ChatConnectionStatus.streaming,
+        currentToolName: tool,
+        currentToolStatus: '$status: $description',
+      ));
+    }
   }
 
   void _handlePermission(String id, String title) {

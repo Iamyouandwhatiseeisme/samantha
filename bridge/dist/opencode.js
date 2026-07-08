@@ -113,15 +113,18 @@ class OpencodeProcess extends events_1.EventEmitter {
                 const rawMsg = part ?? msg;
                 const state = (part?.state ?? rawMsg.state ?? rawMsg);
                 const toolName = part?.tool ?? rawMsg.name ?? rawMsg.tool ?? "unknown";
-                const status = state?.status ?? rawMsg.status ?? "running";
+                // Only trust explicit "completed" or "error" statuses — default to "running"
+                const explicitStatus = state?.status ?? "";
+                const status = (explicitStatus === "completed" || explicitStatus === "error")
+                    ? explicitStatus : "running";
                 const input = (state?.input ?? rawMsg.input);
                 const description = this.formatToolDesc(toolName, input, status);
+                const hasOutput = status === "completed" && typeof state?.output === "string";
                 this.emit("tool", {
                     tool: toolName,
                     status,
                     description,
-                    output: status === "completed" && typeof state?.output === "string"
-                        ? state.output.slice(0, 200) : undefined,
+                    output: hasOutput ? (state.output).slice(0, 200) : undefined,
                     error: (status === "error" || rawMsg.error) ? (state?.error ?? rawMsg.error) : undefined,
                     title: typeof state?.title === "string" ? state.title : undefined,
                     callID: (part?.callID ?? rawMsg.callID ?? rawMsg.id),
@@ -135,7 +138,7 @@ class OpencodeProcess extends events_1.EventEmitter {
                 this.emit("tool", {
                     tool: toolName,
                     status: isError ? "error" : "completed",
-                    description: isError ? `Failed` : `Done`,
+                    description: isError ? `${toolName} failed` : `${toolName} finished`,
                     output: isError ? undefined : content,
                     error: isError ? content : undefined,
                     callID: (msg.tool_use_id ?? msg.callID ?? msg.id),
