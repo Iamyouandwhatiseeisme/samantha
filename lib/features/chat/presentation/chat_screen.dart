@@ -103,21 +103,19 @@ class _ChatScreenState extends State<ChatScreen> {
           ChatConnectionStatus.disconnected => Colors.red,
         };
 
-        return Flexible(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: color, size: 12),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  label,
-                  style: const TextStyle(fontSize: 16),
-                  overflow: TextOverflow.ellipsis,
-                ),
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 12),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                style: const TextStyle(fontSize: 16),
+                overflow: TextOverflow.ellipsis,
               ),
-            ],
-          ),
+            ),
+          ],
         );
       },
     );
