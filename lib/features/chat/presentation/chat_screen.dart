@@ -210,38 +210,50 @@ class _MessageList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final messages = context.watch<ChatCubit>().state.messages;
+    final state = context.watch<ChatCubit>().state;
+    final messages = state.messages;
 
-    return ListView.builder(
-      controller: scrollController,
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 80),
-      itemCount: messages.length,
-      itemBuilder: (context, index) {
-        final msg = messages[index];
-        final isUser = msg.role == ChatRole.user;
+    return Column(
+      children: [
+        Expanded(
+          child: ListView.builder(
+            controller: scrollController,
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+            itemCount: messages.length,
+            itemBuilder: (context, index) {
+              final msg = messages[index];
+              final isUser = msg.role == ChatRole.user;
 
-        return Align(
-          alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 4.0),
-            padding: const EdgeInsets.all(12.0),
-            decoration: BoxDecoration(
-              color: isUser
-                  ? Theme.of(context).colorScheme.primaryContainer
-                  : Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(12.0),
-            ),
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.75,
-            ),
-            child: _ChatMessageContent(
-              content: msg.content,
-              thinkingContent: msg.thinkingContent,
-              isStreaming: msg.isStreaming,
-            ),
+              return Align(
+                alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 4.0),
+                  padding: const EdgeInsets.all(12.0),
+                  decoration: BoxDecoration(
+                    color: isUser
+                        ? Theme.of(context).colorScheme.primaryContainer
+                        : Theme.of(context).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.75,
+                  ),
+                  child: _ChatMessageContent(
+                    content: msg.content,
+                    thinkingContent: msg.thinkingContent,
+                    isStreaming: msg.isStreaming,
+                  ),
+                ),
+              );
+            },
           ),
-        );
-      },
+        ),
+        if (state.currentToolName != null)
+          _ToolStatusBanner(
+            tool: state.currentToolName!,
+            status: state.currentToolStatus ?? state.currentToolName!,
+          ),
+      ],
     );
   }
 }
@@ -641,6 +653,48 @@ class _ModelDropdown extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _ToolStatusBanner extends StatelessWidget {
+  final String tool;
+  final String status;
+  const _ToolStatusBanner({required this.tool, required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 4, 12, 80),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          const SizedBox(width: 8),
+          Icon(Icons.build, size: 14, color: colorScheme.onSecondaryContainer),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              status,
+              style: TextStyle(
+                fontSize: 12,
+                color: colorScheme.onSecondaryContainer,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

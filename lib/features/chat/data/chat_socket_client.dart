@@ -42,6 +42,25 @@ class ThinkingEvent extends ChatEvent {
   ThinkingEvent(this.content);
 }
 
+class ToolEvent extends ChatEvent {
+  final String tool;
+  final String status;
+  final String description;
+  final String? output;
+  final String? error;
+  final String? title;
+  final String? callID;
+  ToolEvent({
+    required this.tool,
+    required this.status,
+    this.description = '',
+    this.output,
+    this.error,
+    this.title,
+    this.callID,
+  });
+}
+
 @injectable
 class ChatSocketClient {
   WebSocketChannel? _channel;
@@ -102,6 +121,16 @@ class ChatSocketClient {
               _eventController.add(SessionMessagesEvent(msgs));
             case 'thinking':
               _eventController.add(ThinkingEvent(parsed['content'] ?? ''));
+            case 'tool':
+              _eventController.add(ToolEvent(
+                tool: parsed['tool'] ?? '',
+                status: parsed['status'] ?? 'pending',
+                description: parsed['description'] ?? '',
+                output: parsed['output'],
+                error: parsed['error'],
+                title: parsed['title'],
+                callID: parsed['callID'],
+              ));
           }
         } catch (_) {}
       },

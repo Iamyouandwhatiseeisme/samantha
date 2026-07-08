@@ -75,6 +75,11 @@ function createBridgeServer(config) {
                     ws.send(JSON.stringify({ type: "thinking", content: data }));
                 }
             });
+            opencode.on("tool", (data) => {
+                if (ws.readyState === ws_1.WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: "tool", ...data }));
+                }
+            });
             opencode.on("exit", (_code) => {
                 if (ws.readyState === ws_1.WebSocket.OPEN && opencode && !opencode.manualStop) {
                     ws.send(JSON.stringify({ type: "done" }));

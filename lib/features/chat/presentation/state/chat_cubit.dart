@@ -35,6 +35,8 @@ class ChatCubit extends Cubit<ChatState> {
     emit(state.copyWith(
       messages: [...state.messages, userMessage],
       inputText: '',
+      clearToolName: true,
+      clearToolStatus: true,
     ));
 
     _repository.send(text, model: state.selectedModel);
@@ -91,6 +93,8 @@ class ChatCubit extends Cubit<ChatState> {
             _handleSessionMessages(messages);
           case ThinkingEvent(:final content):
             _handleThinking(content);
+          case ToolEvent(:final tool, :final status, :final title, :final description):
+            _handleTool(tool, status, title ?? description);
         }
       },
       onError: (err) {
@@ -169,9 +173,19 @@ class ChatCubit extends Cubit<ChatState> {
     emit(state.copyWith(
       messages: messages,
       connectionStatus: ChatConnectionStatus.connected,
+      clearToolName: true,
+      clearToolStatus: true,
     ));
 
     _reconnectAttempt = 0;
+  }
+
+  void _handleTool(String tool, String status, String description) {
+    emit(state.copyWith(
+      connectionStatus: ChatConnectionStatus.streaming,
+      currentToolName: tool,
+      currentToolStatus: '$status: $description',
+    ));
   }
 
   void _attemptReconnect() {

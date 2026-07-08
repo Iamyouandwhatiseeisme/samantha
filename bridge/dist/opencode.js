@@ -29,7 +29,7 @@ class OpencodeProcess extends events_1.EventEmitter {
             this.stop();
         }
         this.stopping = false;
-        const args = ["run", "--format", "json", "--attach", this.serveUrl];
+        const args = ["run", "--format", "json", "--attach", this.serveUrl, "--auto"];
         if (model) {
             args.push("--model", model);
         }
@@ -106,11 +106,45 @@ class OpencodeProcess extends events_1.EventEmitter {
                 this.process = null;
                 this.emit("exit", 0);
                 break;
-            case "error":
-                this.emit("error", new Error(msg.message ?? "Unknown error"));
+            case "tool": {
+                const state = msg.part?.state;
+                const toolName = msg.part?.tool ?? "unknown";
+                const status = state?.status ?? "pending";
+                const input = state?.input;
+                let description = "";
+                if (typeof input?.command === "string") {
+                    description = input.command;
+                }
+                else if (typeof input?.description === "string") {
+                    description = input.description;
+                }
+                else if (input && typeof input === "object") {
+                    const key = Object.keys(input)[0];
+                    if (key === "description" && typeof input.description === "string") {
+                        description = input.description;
+                    }
+                    else if (typeof input.pattern === "string") {
+                        description = input.pattern;
+                    }
+                    else if (typeof input.path === "string") {
+                        description = input.path;
+                    }
+                }
+                const output = status === "completed" && typeof state?.output === "string"
+                    ? state.output.slice(0, 200) : undefined;
+                const error = status === "error" && typeof state?.error === "string"
+                    ? state.error : undefined;
+                this.emit("tool", {
+                    tool: toolName,
+                    status,
+                    description,
+                    output,
+                    error,
+                    title: typeof state?.title === "string" ? state.title : undefined,
+                    callID: msg.part?.callID,
+                });
                 break;
-            default:
-                break;
+            }
         }
     }
     stop() {

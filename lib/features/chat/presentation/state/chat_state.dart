@@ -10,6 +10,8 @@ class ChatState {
   final List<ModelProvider> availableModels;
   final String? selectedModel;
   final String? currentProjectPath;
+  final String? currentToolName;
+  final String? currentToolStatus;
 
   const ChatState({
     this.messages = const [],
@@ -19,6 +21,8 @@ class ChatState {
     this.availableModels = const [],
     this.selectedModel,
     this.currentProjectPath,
+    this.currentToolName,
+    this.currentToolStatus,
   });
 
   ChatState copyWith({
@@ -32,6 +36,10 @@ class ChatState {
     bool clearSelectedModel = false,
     String? currentProjectPath,
     bool clearProjectPath = false,
+    String? currentToolName,
+    bool clearToolName = false,
+    String? currentToolStatus,
+    bool clearToolStatus = false,
   }) {
     return ChatState(
       messages: messages ?? this.messages,
@@ -41,6 +49,8 @@ class ChatState {
       availableModels: availableModels ?? this.availableModels,
       selectedModel: clearSelectedModel ? null : (selectedModel ?? this.selectedModel),
       currentProjectPath: clearProjectPath ? null : (currentProjectPath ?? this.currentProjectPath),
+      currentToolName: clearToolName ? null : (currentToolName ?? this.currentToolName),
+      currentToolStatus: clearToolStatus ? null : (currentToolStatus ?? this.currentToolStatus),
     );
   }
 }
