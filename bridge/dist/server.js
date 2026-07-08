@@ -200,7 +200,7 @@ function createBridgeServer(config) {
                             if (currentSessionId && !opencode.currentSessionId) {
                                 opencode.setSessionId(currentSessionId);
                             }
-                            opencode.write(msg.content.trim(), msg.model ?? currentModel ?? undefined);
+                            opencode.write(msg.content.trim(), msg.model ?? currentModel ?? undefined, currentProjectPath ?? undefined);
                         }
                     }
                     break;
@@ -230,15 +230,8 @@ function createBridgeServer(config) {
                         currentProjectPath = sessionPath ?? currentProjectPath;
                         console.log(`[bridge] session set to: ${currentSessionId}`);
                         ws.send(JSON.stringify({ type: "session_set", session_id: currentSessionId }));
-                        if (sessionPath) {
-                            config.restartOpencodeServe(sessionPath).then(() => {
-                                console.log("[bridge] server restarted for session, re-fetching models");
-                                fetchModels();
-                                fetchSessionMessages();
-                            }).catch((err) => {
-                                console.error(`[bridge] failed to restart opencode serve: ${err.message}`);
-                            });
-                        }
+                        fetchModels();
+                        fetchSessionMessages();
                     }
                     break;
                 }
@@ -247,12 +240,7 @@ function createBridgeServer(config) {
                         currentProjectPath = msg.path;
                         console.log(`[bridge] project set to: ${currentProjectPath}`);
                         ws.send(JSON.stringify({ type: "project_set", path: currentProjectPath }));
-                        config.restartOpencodeServe(currentProjectPath ?? undefined).then(() => {
-                            console.log("[bridge] server restarted, re-fetching models");
-                            fetchModels();
-                        }).catch((err) => {
-                            console.error(`[bridge] failed to restart opencode serve: ${err.message}`);
-                        });
+                        fetchModels();
                     }
                     break;
             }
