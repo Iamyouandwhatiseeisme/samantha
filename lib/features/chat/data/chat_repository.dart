@@ -31,6 +31,10 @@ class ChatRepository {
 
   void requestModels() => _socketClient.requestModels();
 
+  void setProject(String path) => _socketClient.setProject(path);
+
+  Future<String?> getProjectPath() => _settingsRepository.getProjectPath();
+
   Future<void> disconnect() async {
     _socketClient.disconnect();
   }

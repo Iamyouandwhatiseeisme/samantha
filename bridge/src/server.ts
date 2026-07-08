@@ -9,11 +9,39 @@ interface BridgeConfig {
   opencodeServeUrl: string;
 }
 
+const fetchJson = (url: string): Promise<any> =>
+  new Promise((resolve, reject) => {
+    httpGet(url, (res) => {
+      let data = "";
+      res.on("data", (chunk) => (data += chunk));
+      res.on("end", () => {
+        try {
+          resolve(JSON.parse(data));
+        } catch {
+          reject(new Error("Failed to parse JSON response"));
+        }
+      });
+    }).on("error", reject);
+  });
+
 export function createBridgeServer(config: BridgeConfig) {
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {
     if (req.method === "GET" && req.url === "/health") {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ status: "ok" }));
+      return;
+    }
+    if (req.method === "GET" && req.url === "/projects") {
+      const url = new URL("/project", config.opencodeServeUrl);
+      fetchJson(url.href)
+        .then((body) => {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify(body));
+        })
+        .catch((err) => {
+          res.writeHead(502, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: err.message }));
+        });
       return;
     }
     res.writeHead(404);
@@ -28,6 +56,7 @@ export function createBridgeServer(config: BridgeConfig) {
     let authenticated = false;
     let opencode: OpencodeProcess | null = null;
     let currentModel: string | null = null;
+    let currentProjectPath: string | null = null;
 
     const teardownOpencode = () => {
       if (opencode) {
@@ -107,7 +136,11 @@ export function createBridgeServer(config: BridgeConfig) {
           if (typeof msg.content === "string") {
             console.log(`[bridge] received prompt: ${msg.content.trim()}`);
             if (opencode) {
-              opencode.write(msg.content.trim(), msg.model ?? currentModel ?? undefined);
+              opencode.write(
+                msg.content.trim(),
+                msg.model ?? currentModel ?? undefined,
+                currentProjectPath ?? undefined,
+              );
             }
           }
           break;
@@ -122,6 +155,14 @@ export function createBridgeServer(config: BridgeConfig) {
 
         case "get_models":
           fetchModels();
+          break;
+
+        case "set_project":
+          if (typeof msg.path === "string") {
+            currentProjectPath = msg.path;
+            console.log(`[bridge] project set to: ${currentProjectPath}`);
+            ws.send(JSON.stringify({ type: "project_set", path: currentProjectPath }));
+          }
           break;
       }
     };

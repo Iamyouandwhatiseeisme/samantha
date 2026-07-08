@@ -22,6 +22,7 @@ import '../features/connection_settings/data/connection_settings_repository.dart
     as _i533;
 import '../features/connection_settings/presentation/state/connection_settings_cubit.dart'
     as _i99;
+import '../features/project_selection/data/project_api.dart' as _i596;
 import 'module.dart' as _i946;
 
 // initializes the registration of main-scope dependencies inside of GetIt
@@ -38,6 +39,7 @@ Future<_i174.GetIt> init(
     () => appModule.prefs,
     preResolve: true,
   );
+  gh.factory<_i596.ProjectApi>(() => _i596.ProjectApi(gh<_i361.Dio>()));
   gh.lazySingleton<_i100.ConnectionApi>(
     () => _i100.ConnectionApi(gh<_i361.Dio>()),
   );

@@ -21,6 +21,8 @@ void main() {
     when(() => repository.disconnect()).thenAnswer((_) async {});
     when(() => repository.connect()).thenAnswer((_) async {});
     when(() => repository.send(any())).thenReturn(null);
+    when(() => repository.getProjectPath()).thenAnswer((_) async => null);
+    when(() => repository.setProject(any())).thenReturn(null);
   });
 
   tearDown(() {

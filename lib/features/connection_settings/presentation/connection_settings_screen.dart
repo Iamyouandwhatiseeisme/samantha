@@ -118,7 +118,7 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
                                       _authTokenController.text.trim(),
                                     );
                                 if (!context.mounted) return;
-                                context.router.replace(const ChatRoute());
+                                context.router.replace(const ProjectSelectionRoute());
                               },
                         child: const Text('Save & Connect'),
                       ),

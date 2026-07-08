@@ -118,6 +118,12 @@ class ChatSocketClient {
     }
   }
 
+  void setProject(String path) {
+    if (_channel != null) {
+      _channel!.sink.add(jsonEncode({'type': 'set_project', 'path': path}));
+    }
+  }
+
   void disconnect() {
     _channel?.sink.close();
     _channel = null;

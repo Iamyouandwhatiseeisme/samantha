@@ -41,3 +41,19 @@ class ConnectionSettingsRoute extends PageRouteInfo<void> {
     },
   );
 }
+
+/// generated route for
+/// [ProjectSelectionScreen]
+class ProjectSelectionRoute extends PageRouteInfo<void> {
+  const ProjectSelectionRoute({List<PageRouteInfo>? children})
+    : super(ProjectSelectionRoute.name, initialChildren: children);
+
+  static const String name = 'ProjectSelectionRoute';
+
+  static PageInfo page = PageInfo(
+    name,
+    builder: (data) {
+      return const ProjectSelectionScreen();
+    },
+  );
+}

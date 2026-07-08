@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ConnectionSettingsRepository {
   static const _hostKey = 'opencode_host';
   static const _authTokenKey = 'opencode_auth_token';
+  static const _projectPathKey = 'opencode_project_path';
 
   final SharedPreferences _prefs;
 
@@ -24,5 +25,13 @@ class ConnectionSettingsRepository {
 
   Future<String?> getAuthToken() async {
     return _prefs.getString(_authTokenKey);
+  }
+
+  Future<void> saveProjectPath(String path) async {
+    await _prefs.setString(_projectPathKey, path);
+  }
+
+  Future<String?> getProjectPath() async {
+    return _prefs.getString(_projectPathKey);
   }
 }
