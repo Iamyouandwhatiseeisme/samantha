@@ -53,6 +53,9 @@ class _ChatScreenState extends State<ChatScreen> {
         if (state.messages.isNotEmpty) {
           _scrollToBottom();
         }
+        if (state.currentPermissionId != null) {
+          _showPermissionDialog(context, state.currentPermissionTitle ?? '');
+        }
       },
       child: Scaffold(
         backgroundColor: Theme.of(context).colorScheme.surface,
@@ -73,6 +76,33 @@ class _ChatScreenState extends State<ChatScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showPermissionDialog(BuildContext context, String title) {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Permission Required'),
+        content: Text(title.isNotEmpty ? title : 'Allow this action?'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              ctx.read<ChatCubit>().respondToPermission(false);
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('Deny'),
+          ),
+          FilledButton(
+            onPressed: () {
+              ctx.read<ChatCubit>().respondToPermission(true);
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('Allow'),
+          ),
+        ],
       ),
     );
   }

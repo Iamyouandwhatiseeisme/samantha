@@ -96,6 +96,16 @@ export function createBridgeServer(config: BridgeConfig) {
         }
       });
 
+      opencode.on("permission", (data: any) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: "permission_request",
+            id: data.id,
+            title: data.title,
+          }));
+        }
+      });
+
       opencode.on("exit", (_code: number | null) => {
         if (ws.readyState === WebSocket.OPEN && opencode && !opencode.manualStop) {
           ws.send(JSON.stringify({ type: "done" }));
@@ -214,6 +224,15 @@ export function createBridgeServer(config: BridgeConfig) {
                 msg.content.trim(),
                 msg.model ?? currentModel ?? undefined,
               );
+            }
+          }
+          break;
+
+        case "permission_response":
+          if (typeof msg.id === "string" && typeof msg.response === "string") {
+            console.log(`[bridge] permission response: ${msg.id} → ${msg.response}`);
+            if (opencode) {
+              opencode.reply(msg.id, msg.response as "allow" | "deny");
             }
           }
           break;

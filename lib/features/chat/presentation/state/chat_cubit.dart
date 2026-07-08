@@ -37,6 +37,8 @@ class ChatCubit extends Cubit<ChatState> {
       inputText: '',
       clearToolName: true,
       clearToolStatus: true,
+      clearPermissionId: true,
+      clearPermissionTitle: true,
     ));
 
     _repository.send(text, model: state.selectedModel);
@@ -95,6 +97,8 @@ class ChatCubit extends Cubit<ChatState> {
             _handleThinking(content);
           case ToolEvent(:final tool, :final status, :final title, :final description):
             _handleTool(tool, status, title ?? description);
+          case PermissionRequestEvent(:final id, :final title):
+            _handlePermission(id, title);
         }
       },
       onError: (err) {
@@ -175,6 +179,8 @@ class ChatCubit extends Cubit<ChatState> {
       connectionStatus: ChatConnectionStatus.connected,
       clearToolName: true,
       clearToolStatus: true,
+      clearPermissionId: true,
+      clearPermissionTitle: true,
     ));
 
     _reconnectAttempt = 0;
@@ -185,6 +191,23 @@ class ChatCubit extends Cubit<ChatState> {
       connectionStatus: ChatConnectionStatus.streaming,
       currentToolName: tool,
       currentToolStatus: '$status: $description',
+    ));
+  }
+
+  void _handlePermission(String id, String title) {
+    emit(state.copyWith(
+      currentPermissionId: id,
+      currentPermissionTitle: title,
+    ));
+  }
+
+  void respondToPermission(bool allow) {
+    final id = state.currentPermissionId;
+    if (id == null) return;
+    _repository.respondToPermission(id, allow ? 'allow' : 'deny');
+    emit(state.copyWith(
+      clearPermissionId: true,
+      clearPermissionTitle: true,
     ));
   }
 

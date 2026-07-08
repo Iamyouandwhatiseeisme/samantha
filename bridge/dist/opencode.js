@@ -2,18 +2,19 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OpencodeProcess = void 0;
 const events_1 = require("events");
-const child_process_1 = require("child_process");
+const http_1 = require("http");
 class OpencodeProcess extends events_1.EventEmitter {
-    process = null;
-    stopping = false;
     sessionId = null;
     serveUrl;
+    sseRequest = null;
+    sseResponse = null;
+    stopping = false;
     constructor(serveUrl) {
         super();
         this.serveUrl = serveUrl;
     }
     get running() {
-        return this.process !== null && !this.process.killed;
+        return this.sseRequest !== null;
     }
     get manualStop() {
         return this.stopping;
@@ -24,73 +25,153 @@ class OpencodeProcess extends events_1.EventEmitter {
     setSessionId(id) {
         this.sessionId = id;
     }
-    write(prompt, model) {
-        if (this.process) {
+    async write(prompt, model) {
+        if (this.sseRequest) {
             this.stop();
         }
         this.stopping = false;
-        const args = ["run", "--format", "json", "--attach", this.serveUrl, "--auto"];
-        if (model) {
-            args.push("--model", model);
-        }
-        if (this.sessionId) {
-            args.push("--session", this.sessionId);
-        }
-        args.push(prompt);
-        // Use `script` to create a PTY so the child process line-buffers
-        // stdout instead of block-buffering. Without a PTY, pipe-based
-        // stdio causes full buffering — streaming events arrive only on exit.
-        const ptyArgs = ["-q", "/dev/null", "opencode", ...args];
-        this.process = (0, child_process_1.spawn)("script", ptyArgs, {
-            stdio: ["ignore", "pipe", "pipe"],
-            env: { ...process.env },
-        });
-        let buffer = "";
-        this.process.stdout?.on("data", (data) => {
-            buffer += data.toString();
-            const lines = buffer.split("\n");
-            buffer = lines.pop() ?? "";
-            for (const line of lines) {
-                const trimmed = line.trim();
-                if (!trimmed)
-                    continue;
-                try {
-                    const msg = JSON.parse(trimmed);
-                    this.handleMessage(msg);
-                }
-                catch {
-                    // skip unparseable lines (e.g. script's own output)
+        try {
+            // 1. Create session if needed
+            if (!this.sessionId) {
+                const sessionUrl = new URL("/session", this.serveUrl);
+                const session = await this.postJSON(sessionUrl, {});
+                this.sessionId = session.id;
+                console.log(`[bridge:opencode] created session: ${this.sessionId}`);
+            }
+            // 2. Connect SSE FIRST so we don't miss events
+            this.connectSSE();
+            // Give the SSE connection a moment to establish
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            // 3. Send prompt async
+            const promptUrl = new URL(`/session/${this.sessionId}/prompt_async`, this.serveUrl);
+            const body = {
+                parts: [{ type: "text", text: prompt }],
+            };
+            if (model) {
+                const parts = model.split("/");
+                if (parts.length === 2) {
+                    body.model = { providerID: parts[0], modelID: parts[1] };
                 }
             }
-        });
-        this.process.stderr?.on("data", (data) => {
-            console.error(`[bridge:opencode:stderr] ${data.toString().trim()}`);
-        });
-        this.process.on("error", (err) => {
-            console.error(`[bridge:opencode] spawn error: ${err.message}`);
-            this.emit("error", err);
-        });
-        this.process.on("exit", (code) => {
-            console.log(`[bridge:opencode] exited with code ${code}`);
-            if (buffer.trim()) {
-                try {
-                    const msg = JSON.parse(buffer.trim());
-                    this.handleMessage(msg);
-                }
-                catch {
-                    // skip trailing incomplete JSON
-                }
-            }
-            this.process = null;
-        });
+            console.log(`[bridge:opencode] sending prompt to session ${this.sessionId}`);
+            await this.postJSON(promptUrl, body);
+        }
+        catch (err) {
+            console.error(`[bridge:opencode] write error: ${err instanceof Error ? err.message : String(err)}`);
+            this.emit("error", err instanceof Error ? err : new Error(String(err)));
+        }
     }
-    handleMessage(msg) {
-        switch (msg.type) {
+    async reply(permissionID, response) {
+        if (!this.sessionId)
+            return;
+        const url = new URL(`/session/${this.sessionId}/permissions/${permissionID}`, this.serveUrl);
+        console.log(`[bridge:opencode] replying to permission ${permissionID}: ${response}`);
+        await this.postJSON(url, { response });
+    }
+    connectSSE() {
+        const url = new URL("/event", this.serveUrl);
+        console.log(`[bridge:opencode] connecting SSE: ${url.href}`);
+        const req = (0, http_1.get)(url, (res) => {
+            console.log(`[bridge:opencode] SSE connected, status: ${res.statusCode}`);
+            this.sseResponse = res;
+            if (res.statusCode !== 200) {
+                let body = "";
+                res.on("data", (chunk) => (body += chunk.toString()));
+                res.on("end", () => {
+                    console.error(`[bridge:opencode] SSE non-200 response: ${body}`);
+                    this.sseRequest = null;
+                    this.sseResponse = null;
+                    this.emit("error", new Error(`SSE connection failed: HTTP ${res.statusCode}`));
+                });
+                return;
+            }
+            let buffer = "";
+            res.on("data", (chunk) => {
+                buffer += chunk.toString();
+                const parts = buffer.split("\n\n");
+                buffer = parts.pop() ?? "";
+                for (const part of parts) {
+                    if (!part.trim())
+                        continue;
+                    const msg = this.parseSSE(part);
+                    if (msg) {
+                        try {
+                            const parsed = JSON.parse(msg.data);
+                            this.handleMessage(parsed, msg.event);
+                        }
+                        catch {
+                            // skip unparseable
+                        }
+                    }
+                }
+            });
+            res.on("end", () => {
+                console.log("[bridge:opencode] SSE stream ended");
+                this.sseRequest = null;
+                this.sseResponse = null;
+            });
+            res.on("close", () => {
+                console.log("[bridge:opencode] SSE stream closed");
+                this.sseRequest = null;
+                this.sseResponse = null;
+            });
+            res.on("error", (err) => {
+                console.error(`[bridge:opencode:sse] error: ${err.message}`);
+                this.sseRequest = null;
+                this.sseResponse = null;
+                if (!this.stopping) {
+                    this.emit("error", err);
+                }
+            });
+        });
+        req.on("error", (err) => {
+            console.error(`[bridge:opencode:sse] request error: ${err.message}`);
+            if (this.sseRequest === req) {
+                this.sseRequest = null;
+                this.sseResponse = null;
+            }
+        });
+        req.on("close", () => {
+            console.log("[bridge:opencode:sse] request closed");
+        });
+        req.setTimeout(0); // No timeout for SSE
+        req.end();
+        this.sseRequest = req;
+    }
+    parseSSE(raw) {
+        const lines = raw.split("\n");
+        let event;
+        let data = "";
+        for (const line of lines) {
+            if (line.startsWith("event: ")) {
+                event = line.slice(7);
+            }
+            else if (line.startsWith("data: ")) {
+                data += line.slice(6);
+            }
+        }
+        if (!data)
+            return null;
+        return { event, data };
+    }
+    handleMessage(msg, sseEvent) {
+        const type = sseEvent ?? msg.type;
+        switch (type) {
+            case "server.connected":
+                console.log("[bridge:opencode] server connected event received");
+                break;
             case "step_start":
                 if (msg.sessionID && !this.sessionId) {
                     this.sessionId = msg.sessionID;
                     console.log(`[bridge:opencode] session: ${this.sessionId}`);
                 }
+                break;
+            case "step_finish":
+                console.log("[bridge:opencode] step finished");
+                this.sseRequest?.abort();
+                this.sseRequest = null;
+                this.sseResponse = null;
+                this.emit("exit", 0);
                 break;
             case "text":
                 if (msg.part?.text) {
@@ -102,13 +183,10 @@ class OpencodeProcess extends events_1.EventEmitter {
                     this.emit("thinking", msg.part.text);
                 }
                 break;
-            case "step_finish":
-                this.process = null;
-                this.emit("exit", 0);
-                break;
             case "tool": {
-                const state = msg.part?.state;
-                const toolName = msg.part?.tool ?? "unknown";
+                const part = msg.part;
+                const state = part?.state;
+                const toolName = part?.tool ?? "unknown";
                 const status = state?.status ?? "pending";
                 const input = state?.input;
                 let description = "";
@@ -130,29 +208,88 @@ class OpencodeProcess extends events_1.EventEmitter {
                         description = input.path;
                     }
                 }
-                const output = status === "completed" && typeof state?.output === "string"
-                    ? state.output.slice(0, 200) : undefined;
-                const error = status === "error" && typeof state?.error === "string"
-                    ? state.error : undefined;
                 this.emit("tool", {
                     tool: toolName,
                     status,
                     description,
-                    output,
-                    error,
+                    output: status === "completed" && typeof state?.output === "string" ? state.output : undefined,
+                    error: status === "error" && typeof state?.error === "string" ? state.error : undefined,
                     title: typeof state?.title === "string" ? state.title : undefined,
-                    callID: msg.part?.callID,
+                    callID: part?.callID,
                 });
                 break;
             }
+            case "permission.updated":
+            case "permission": {
+                const perm = msg;
+                if (perm.id) {
+                    console.log(`[bridge:opencode] permission requested: ${perm.id} — ${perm.title ?? "untitled"}`);
+                    this.emit("permission", {
+                        id: perm.id,
+                        sessionID: perm.sessionID ?? this.sessionId,
+                        title: perm.title,
+                        metadata: perm.metadata,
+                    });
+                }
+                break;
+            }
+            case "error":
+                this.emit("error", new Error(msg.message ?? "Unknown error"));
+                break;
+            default:
+                // Silently skip unknown types
+                break;
         }
     }
     stop() {
-        if (!this.process)
-            return;
-        this.stopping = true;
-        this.process.kill("SIGTERM");
-        this.process = null;
+        if (this.sseRequest) {
+            this.stopping = true;
+            console.log("[bridge:opencode] stopping SSE connection");
+            this.sseRequest.abort();
+            this.sseRequest = null;
+            this.sseResponse = null;
+        }
+    }
+    postJSON(url, body) {
+        return new Promise((resolve, reject) => {
+            const data = body ? JSON.stringify(body) : null;
+            const req = (0, http_1.request)(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                    ...(data
+                        ? { "Content-Length": String(Buffer.byteLength(data)) }
+                        : {}),
+                },
+            }, (res) => {
+                let responseData = "";
+                res.on("data", (chunk) => (responseData += chunk.toString()));
+                res.on("end", () => {
+                    if (res.statusCode &&
+                        res.statusCode >= 200 &&
+                        res.statusCode < 300) {
+                        try {
+                            resolve(JSON.parse(responseData || "{}"));
+                        }
+                        catch {
+                            resolve({});
+                        }
+                    }
+                    else {
+                        reject(new Error(`HTTP ${res.statusCode}: ${responseData}`));
+                    }
+                });
+            });
+            req.on("error", reject);
+            req.setTimeout(10000, () => {
+                req.destroy();
+                reject(new Error("Request timeout"));
+            });
+            if (data)
+                req.write(data);
+            req.end();
+        });
     }
 }
 exports.OpencodeProcess = OpencodeProcess;

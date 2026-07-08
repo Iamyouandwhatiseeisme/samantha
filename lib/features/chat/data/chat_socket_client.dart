@@ -61,6 +61,12 @@ class ToolEvent extends ChatEvent {
   });
 }
 
+class PermissionRequestEvent extends ChatEvent {
+  final String id;
+  final String title;
+  PermissionRequestEvent({required this.id, this.title = ''});
+}
+
 @injectable
 class ChatSocketClient {
   WebSocketChannel? _channel;
@@ -129,8 +135,13 @@ class ChatSocketClient {
                 output: parsed['output'],
                 error: parsed['error'],
                 title: parsed['title'],
-                callID: parsed['callID'],
-              ));
+              callID: parsed['callID'],
+            ));
+          case 'permission_request':
+            _eventController.add(PermissionRequestEvent(
+              id: parsed['id'] ?? '',
+              title: parsed['title'] ?? '',
+            ));
           }
         } catch (_) {}
       },
@@ -148,6 +159,16 @@ class ChatSocketClient {
       final msg = <String, dynamic>{'type': 'prompt', 'content': content};
       if (model != null) msg['model'] = model;
       _channel!.sink.add(jsonEncode(msg));
+    }
+  }
+
+  void sendPermissionResponse(String id, String response) {
+    if (_channel != null) {
+      _channel!.sink.add(jsonEncode({
+        'type': 'permission_response',
+        'id': id,
+        'response': response,
+      }));
     }
   }
 

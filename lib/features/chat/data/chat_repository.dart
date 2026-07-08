@@ -34,6 +34,9 @@ class ChatRepository {
   void requestSessionMessages(String sessionId) =>
       _socketClient.requestSessionMessages(sessionId);
 
+  void respondToPermission(String id, String response) =>
+      _socketClient.sendPermissionResponse(id, response);
+
   void setProject(String path) => _socketClient.setProject(path);
 
   void setSession(String sessionId, String path) =>

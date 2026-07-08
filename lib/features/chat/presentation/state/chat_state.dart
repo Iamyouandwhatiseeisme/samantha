@@ -12,6 +12,8 @@ class ChatState {
   final String? currentProjectPath;
   final String? currentToolName;
   final String? currentToolStatus;
+  final String? currentPermissionId;
+  final String? currentPermissionTitle;
 
   const ChatState({
     this.messages = const [],
@@ -23,6 +25,8 @@ class ChatState {
     this.currentProjectPath,
     this.currentToolName,
     this.currentToolStatus,
+    this.currentPermissionId,
+    this.currentPermissionTitle,
   });
 
   ChatState copyWith({
@@ -40,6 +44,10 @@ class ChatState {
     bool clearToolName = false,
     String? currentToolStatus,
     bool clearToolStatus = false,
+    String? currentPermissionId,
+    bool clearPermissionId = false,
+    String? currentPermissionTitle,
+    bool clearPermissionTitle = false,
   }) {
     return ChatState(
       messages: messages ?? this.messages,
@@ -51,6 +59,8 @@ class ChatState {
       currentProjectPath: clearProjectPath ? null : (currentProjectPath ?? this.currentProjectPath),
       currentToolName: clearToolName ? null : (currentToolName ?? this.currentToolName),
       currentToolStatus: clearToolStatus ? null : (currentToolStatus ?? this.currentToolStatus),
+      currentPermissionId: clearPermissionId ? null : (currentPermissionId ?? this.currentPermissionId),
+      currentPermissionTitle: clearPermissionTitle ? null : (currentPermissionTitle ?? this.currentPermissionTitle),
     );
   }
 }
