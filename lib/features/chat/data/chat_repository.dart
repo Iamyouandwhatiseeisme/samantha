@@ -24,7 +24,12 @@ class ChatRepository {
     await _socketClient.connect(host, token);
   }
 
-  void send(String prompt) => _socketClient.sendPrompt(prompt);
+  void send(String prompt, {String? model}) =>
+      _socketClient.sendPrompt(prompt, model: model);
+
+  void setModel(String model) => _socketClient.setModel(model);
+
+  void requestModels() => _socketClient.requestModels();
 
   Future<void> disconnect() async {
     _socketClient.disconnect();

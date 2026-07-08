@@ -22,6 +22,16 @@ class AuthFailedEvent extends ChatEvent {
   AuthFailedEvent(this.message);
 }
 
+class ModelsEvent extends ChatEvent {
+  final List<Map<String, dynamic>> providers;
+  ModelsEvent(this.providers);
+}
+
+class ModelSetEvent extends ChatEvent {
+  final String model;
+  ModelSetEvent(this.model);
+}
+
 @injectable
 class ChatSocketClient {
   WebSocketChannel? _channel;
@@ -70,8 +80,12 @@ class ChatSocketClient {
               } else {
                 _eventController.add(ErrorEvent(message));
               }
-            case 'status':
-              break;
+            case 'models':
+              final providers = (parsed['providers'] as List)
+                  .cast<Map<String, dynamic>>();
+              _eventController.add(ModelsEvent(providers));
+            case 'model_set':
+              _eventController.add(ModelSetEvent(parsed['model'] ?? ''));
           }
         } catch (_) {}
       },
@@ -84,10 +98,23 @@ class ChatSocketClient {
     );
   }
 
-  void sendPrompt(String content) {
+  void sendPrompt(String content, {String? model}) {
     if (_channel != null) {
-      _channel!.sink
-          .add(jsonEncode({'type': 'prompt', 'content': content}));
+      final msg = <String, dynamic>{'type': 'prompt', 'content': content};
+      if (model != null) msg['model'] = model;
+      _channel!.sink.add(jsonEncode(msg));
+    }
+  }
+
+  void setModel(String model) {
+    if (_channel != null) {
+      _channel!.sink.add(jsonEncode({'type': 'set_model', 'model': model}));
+    }
+  }
+
+  void requestModels() {
+    if (_channel != null) {
+      _channel!.sink.add(jsonEncode({'type': 'get_models'}));
     }
   }
 

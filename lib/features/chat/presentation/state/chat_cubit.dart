@@ -37,7 +37,7 @@ class ChatCubit extends Cubit<ChatState> {
       inputText: '',
     ));
 
-    _repository.send(text);
+    _repository.send(text, model: state.selectedModel);
   }
 
   Future<void> connect() async {
@@ -75,6 +75,10 @@ class ChatCubit extends Cubit<ChatState> {
             emit(state.copyWith(errorMessage: message));
           case AuthFailedEvent(:final message):
             _handleAuthFailed(message);
+          case ModelsEvent(:final providers):
+            _handleModels(providers);
+          case ModelSetEvent(:final model):
+            emit(state.copyWith(selectedModel: model));
         }
       },
       onError: (err) {
@@ -155,6 +159,18 @@ class ChatCubit extends Cubit<ChatState> {
       connectionStatus: ChatConnectionStatus.disconnected,
       errorMessage: message,
     ));
+  }
+
+  void _handleModels(List<Map<String, dynamic>> providers) {
+    final models = providers
+        .map((p) => ModelProvider.fromJson(p))
+        .toList();
+    emit(state.copyWith(availableModels: models));
+  }
+
+  void setModel(String model) {
+    emit(state.copyWith(selectedModel: model));
+    _repository.setModel(model);
   }
 
   void disconnect() {

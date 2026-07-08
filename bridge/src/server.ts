@@ -1,4 +1,5 @@
 import { createServer, IncomingMessage, ServerResponse } from "http";
+import { get as httpGet } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { OpencodeProcess } from "./opencode";
 
@@ -26,6 +27,7 @@ export function createBridgeServer(config: BridgeConfig) {
 
     let authenticated = false;
     let opencode: OpencodeProcess | null = null;
+    let currentModel: string | null = null;
 
     const teardownOpencode = () => {
       if (opencode) {
@@ -56,6 +58,25 @@ export function createBridgeServer(config: BridgeConfig) {
       });
     };
 
+    const fetchModels = () => {
+      const url = new URL("/config/providers", config.opencodeServeUrl);
+      httpGet(url.href, (res) => {
+        let data = "";
+        res.on("data", (chunk) => (data += chunk));
+        res.on("end", () => {
+          try {
+            const body = JSON.parse(data);
+            const providers = body.providers ?? body;
+            ws.send(JSON.stringify({ type: "models", providers }));
+          } catch {
+            ws.send(JSON.stringify({ type: "error", message: "Failed to parse models" }));
+          }
+        });
+      }).on("error", (err) => {
+        ws.send(JSON.stringify({ type: "error", message: `Failed to fetch models: ${err.message}` }));
+      });
+    };
+
     const handleMessage = (raw: Buffer) => {
       let msg: any;
       try {
@@ -70,6 +91,7 @@ export function createBridgeServer(config: BridgeConfig) {
           authenticated = true;
           console.log(`[bridge] client authenticated`);
           createOpencode();
+          fetchModels();
         } else {
           console.log(`[bridge] auth failed`);
           if (ws.readyState === WebSocket.OPEN) {
@@ -80,11 +102,27 @@ export function createBridgeServer(config: BridgeConfig) {
         return;
       }
 
-      if (msg?.type === "prompt" && typeof msg.content === "string") {
-        console.log(`[bridge] received prompt: ${msg.content.trim()}`);
-        if (opencode) {
-          opencode.write(msg.content.trim());
-        }
+      switch (msg?.type) {
+        case "prompt":
+          if (typeof msg.content === "string") {
+            console.log(`[bridge] received prompt: ${msg.content.trim()}`);
+            if (opencode) {
+              opencode.write(msg.content.trim(), msg.model ?? currentModel ?? undefined);
+            }
+          }
+          break;
+
+        case "set_model":
+          if (typeof msg.model === "string") {
+            currentModel = msg.model;
+            console.log(`[bridge] model set to: ${currentModel}`);
+            ws.send(JSON.stringify({ type: "model_set", model: currentModel }));
+          }
+          break;
+
+        case "get_models":
+          fetchModels();
+          break;
       }
     };
 

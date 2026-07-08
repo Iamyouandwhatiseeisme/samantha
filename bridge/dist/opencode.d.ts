@@ -7,7 +7,7 @@ export declare class OpencodeProcess extends EventEmitter {
     constructor(serveUrl: string);
     get running(): boolean;
     get manualStop(): boolean;
-    write(prompt: string): void;
+    write(prompt: string, model?: string): void;
     private handleMessage;
     stop(): void;
 }

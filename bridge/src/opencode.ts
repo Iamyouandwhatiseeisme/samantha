@@ -20,13 +20,16 @@ export class OpencodeProcess extends EventEmitter {
     return this.stopping;
   }
 
-  write(prompt: string): void {
+  write(prompt: string, model?: string): void {
     if (this.process) {
       this.stop();
     }
     this.stopping = false;
 
     const args = ["run", "--format", "json", "--attach", this.serveUrl];
+    if (model) {
+      args.push("--model", model);
+    }
     if (this.sessionId) {
       args.push("--session", this.sessionId);
     }

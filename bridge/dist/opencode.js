@@ -18,12 +18,15 @@ class OpencodeProcess extends events_1.EventEmitter {
     get manualStop() {
         return this.stopping;
     }
-    write(prompt) {
+    write(prompt, model) {
         if (this.process) {
             this.stop();
         }
         this.stopping = false;
         const args = ["run", "--format", "json", "--attach", this.serveUrl];
+        if (model) {
+            args.push("--model", model);
+        }
         if (this.sessionId) {
             args.push("--session", this.sessionId);
         }

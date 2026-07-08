@@ -63,6 +63,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           title: _buildConnectionIndicator(),
           actions: [
+            _ModelDropdown(),
             IconButton(
               icon: const Icon(Icons.refresh),
               onPressed: () => context.read<ChatCubit>().connect(),
@@ -230,5 +231,52 @@ class _MessageInput extends StatelessWidget {
   void _send(BuildContext context) {
     context.read<ChatCubit>().sendMessage();
     inputController.clear();
+  }
+}
+
+class _ModelDropdown extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<ChatCubit, ChatState>(
+      builder: (context, state) {
+        if (state.availableModels.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final items = <DropdownMenuItem<String>>[];
+        for (final provider in state.availableModels) {
+          for (final model in provider.models) {
+            items.add(DropdownMenuItem(
+              value: model.qualifiedId,
+              child: Text(
+                model.displayName,
+                style: const TextStyle(fontSize: 13),
+              ),
+            ));
+          }
+        }
+
+        final selected = state.selectedModel;
+        final hasValidSelection =
+            selected != null && items.any((i) => i.value == selected);
+
+        return SizedBox(
+          height: 36,
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: hasValidSelection ? selected : null,
+              hint: const Text('Model', style: TextStyle(fontSize: 13)),
+              isDense: true,
+              items: items,
+              onChanged: (model) {
+                if (model != null) {
+                  context.read<ChatCubit>().setModel(model);
+                }
+              },
+            ),
+          ),
+        );
+      },
+    );
   }
 }
