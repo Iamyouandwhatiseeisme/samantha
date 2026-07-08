@@ -37,6 +37,11 @@ class SessionMessagesEvent extends ChatEvent {
   SessionMessagesEvent(this.messages);
 }
 
+class ThinkingEvent extends ChatEvent {
+  final String content;
+  ThinkingEvent(this.content);
+}
+
 @injectable
 class ChatSocketClient {
   WebSocketChannel? _channel;
@@ -95,6 +100,8 @@ class ChatSocketClient {
               final msgs = (parsed['messages'] as List)
                   .cast<Map<String, dynamic>>();
               _eventController.add(SessionMessagesEvent(msgs));
+            case 'thinking':
+              _eventController.add(ThinkingEvent(parsed['content'] ?? ''));
           }
         } catch (_) {}
       },

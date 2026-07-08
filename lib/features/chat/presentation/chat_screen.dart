@@ -1,7 +1,9 @@
+import 'dart:math';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:samantha/app/router.dart';
+import 'package:samantha/app/theme_mode_cubit.dart';
 import 'package:samantha/features/chat/domain/entities.dart';
 import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
 import 'package:samantha/features/chat/presentation/state/chat_state.dart';
@@ -54,7 +56,7 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFFF0F0F0),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         body: SafeArea(
           child: Column(
             children: [
@@ -78,23 +80,44 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildTopBar(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.only(left: 4),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          IconButton(
-            icon: const Icon(Icons.settings),
+          _iconButton(
+            icon: Icons.settings,
             onPressed: () => context.router.replace(
               const ConnectionSettingsRoute(),
             ),
           ),
           Expanded(child: _buildTitle()),
-          IconButton(
-            icon: const Icon(Icons.refresh),
+          BlocBuilder<ThemeModeCubit, ThemeMode>(
+            builder: (context, themeMode) {
+              return _iconButton(
+                icon: themeMode == ThemeMode.dark
+                    ? Icons.light_mode
+                    : Icons.dark_mode,
+                onPressed: () => context.read<ThemeModeCubit>().toggle(),
+              );
+            },
+          ),
+          _iconButton(
+            icon: Icons.refresh,
             onPressed: () => context.read<ChatCubit>().connect(),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _iconButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return IconButton(
+      icon: Icon(icon, size: 20),
+      constraints: const BoxConstraints(minWidth: 36, maxWidth: 36, minHeight: 36, maxHeight: 36),
+      padding: EdgeInsets.zero,
+      onPressed: onPressed,
     );
   }
 
@@ -149,6 +172,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+            const SizedBox(height: 8),
             _ModelDropdown(),
           ],
         );
@@ -207,24 +231,10 @@ class _MessageList extends StatelessWidget {
             constraints: BoxConstraints(
               maxWidth: MediaQuery.of(context).size.width * 0.75,
             ),
-            child: msg.isStreaming
-                ? Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          msg.content.isEmpty ? 'Thinking...' : msg.content,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      const SizedBox(
-                        width: 12,
-                        height: 12,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    ],
-                  )
-                : Text(msg.content),
+            child: _ChatMessageContent(
+              content: msg.content,
+              isStreaming: msg.isStreaming,
+            ),
           ),
         );
       },
@@ -245,26 +255,39 @@ class _MessageInput extends StatelessWidget {
             ChatConnectionStatus.disconnected;
 
         return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 80),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 80),
           child: Row(
             children: [
               Expanded(
                 child: TextField(
                   controller: inputController,
                   enabled: isConnected,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     hintText: 'Type a message...',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
                   onChanged: (text) =>
                       context.read<ChatCubit>().updateInput(text),
-                  onSubmitted: (_) => _send(context),
+                  onSubmitted: isConnected ? (_) => _send(context) : null,
                 ),
               ),
               const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(Icons.send),
-                onPressed: isConnected ? () => _send(context) : null,
+              SizedBox(
+                width: 44,
+                height: 44,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    shape: const CircleBorder(),
+                    backgroundColor: isConnected ? Colors.blue : Colors.grey.shade300,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: isConnected ? () => _send(context) : null,
+                  child: const Icon(Icons.send, size: 20),
+                ),
               ),
             ],
           ),
@@ -279,13 +302,204 @@ class _MessageInput extends StatelessWidget {
   }
 }
 
+class _ChatMessageContent extends StatelessWidget {
+  final String content;
+  final bool isStreaming;
+
+  const _ChatMessageContent({
+    required this.content,
+    required this.isStreaming,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (isStreaming && content.isEmpty) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('Thinking...'),
+          const SizedBox(width: 4),
+          const SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ],
+      );
+    }
+
+    final segments = _parseContent(content);
+
+    if (segments.isEmpty) {
+      return isStreaming
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Flexible(child: Text(content)),
+                const SizedBox(width: 4),
+                const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ],
+            )
+          : Text(content);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final seg in segments)
+          if (seg.isCode)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: _CollapsibleCodeBlock(code: seg.text),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 1),
+              child: Text(seg.text),
+            ),
+        if (isStreaming)
+          const Padding(
+            padding: EdgeInsets.only(top: 4),
+            child: SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+      ],
+    );
+  }
+
+  List<_ContentSegment> _parseContent(String text) {
+    if (!text.contains('```')) return [];
+
+    final parts = text.split('```');
+    final segments = <_ContentSegment>[];
+
+    for (int i = 0; i < parts.length; i++) {
+      if (i.isOdd) {
+        final trimmed = parts[i];
+        final firstLineEnd = trimmed.indexOf('\n');
+        if (firstLineEnd == -1) {
+          segments.add(
+            _ContentSegment(text: '```$trimmed```', isCode: false),
+          );
+          continue;
+        }
+        final lang = trimmed.substring(0, firstLineEnd).trim();
+        if (lang == 'sh' || lang == 'bash') {
+          final code = trimmed.substring(firstLineEnd + 1);
+          segments.add(_ContentSegment(text: code, isCode: true));
+        } else {
+          segments.add(
+            _ContentSegment(text: '```$trimmed```', isCode: false),
+          );
+        }
+      } else {
+        if (parts[i].isNotEmpty) {
+          segments.add(_ContentSegment(text: parts[i], isCode: false));
+        }
+      }
+    }
+
+    return segments;
+  }
+}
+
+class _ContentSegment {
+  final String text;
+  final bool isCode;
+  const _ContentSegment({required this.text, required this.isCode});
+}
+
+class _CollapsibleCodeBlock extends StatefulWidget {
+  final String code;
+  const _CollapsibleCodeBlock({required this.code});
+
+  @override
+  State<_CollapsibleCodeBlock> createState() => _CollapsibleCodeBlockState();
+}
+
+class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
+                children: [
+                  Icon(Icons.terminal, size: 16, color: colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Shell Command',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.primary,
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    _expanded ? Icons.expand_less : Icons.expand_more,
+                    size: 20,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          AnimatedCrossFade(
+            firstChild: const SizedBox.shrink(),
+            secondChild: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: Text(
+                widget.code,
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 13,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+            ),
+            crossFadeState:
+                _expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 200),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ModelDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<ChatCubit, ChatState>(
       builder: (context, state) {
         if (state.availableModels.isEmpty) {
-          return const SizedBox.shrink();
+          return const SizedBox(height: 36);
         }
 
         final items = <DropdownMenuItem<String>>[];
@@ -296,6 +510,7 @@ class _ModelDropdown extends StatelessWidget {
               child: Text(
                 '${model.displayName} (${provider.name})',
                 style: const TextStyle(fontSize: 13),
+                overflow: TextOverflow.ellipsis,
               ),
             ));
           }
@@ -305,13 +520,25 @@ class _ModelDropdown extends StatelessWidget {
         final hasValidSelection =
             selected != null && items.any((i) => i.value == selected);
 
-        return SizedBox(
+        final randomModel = items[Random().nextInt(items.length)];
+        final hintText = items.length == 1
+            ? (randomModel.child as Text).data ?? 'Model'
+            : '${(randomModel.child as Text).data}';
+
+        return Container(
           height: 36,
+          margin: const EdgeInsets.only(bottom: 6),
+          decoration: BoxDecoration(
+            border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5)),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: hasValidSelection ? selected : null,
-              hint: const Text('Model', style: TextStyle(fontSize: 13)),
+              hint: Text(hintText, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
               isDense: true,
+              isExpanded: true,
               items: items,
               onChanged: (model) {
                 if (model != null) {

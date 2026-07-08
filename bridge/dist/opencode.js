@@ -95,7 +95,7 @@ class OpencodeProcess extends events_1.EventEmitter {
                 break;
             case "thinking":
                 if (msg.part?.text) {
-                    this.emit("output", msg.part.text);
+                    this.emit("thinking", msg.part.text);
                 }
                 break;
             case "step_finish":

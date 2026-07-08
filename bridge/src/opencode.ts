@@ -106,7 +106,7 @@ export class OpencodeProcess extends EventEmitter {
 
       case "thinking":
         if (msg.part?.text) {
-          this.emit("output", msg.part.text);
+          this.emit("thinking", msg.part.text);
         }
         break;
 

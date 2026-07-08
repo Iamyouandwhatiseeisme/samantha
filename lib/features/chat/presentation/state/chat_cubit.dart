@@ -89,6 +89,8 @@ class ChatCubit extends Cubit<ChatState> {
             emit(state.copyWith(selectedModel: model));
           case SessionMessagesEvent(:final messages):
             _handleSessionMessages(messages);
+          case ThinkingEvent(:final content):
+            _handleToken(content);
         }
       },
       onError: (err) {

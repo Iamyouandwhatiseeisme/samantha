@@ -2,11 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:samantha/app/injection.dart';
 import 'package:samantha/app/router.dart';
+import 'package:samantha/app/theme_mode_cubit.dart';
 import 'package:samantha/features/connection_settings/presentation/state/connection_settings_cubit.dart';
 import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
 
-class App extends StatelessWidget {
+class App extends StatefulWidget {
   const App({super.key});
+
+  @override
+  State<App> createState() => _AppState();
+}
+
+class _AppState extends State<App> {
+  late final _routerConfig;
+
+  @override
+  void initState() {
+    super.initState();
+    _routerConfig = AppRouter().config();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,15 +28,29 @@ class App extends StatelessWidget {
       providers: [
         BlocProvider(create: (_) => getIt<ConnectionSettingsCubit>()..load()),
         BlocProvider(create: (_) => getIt<ChatCubit>()),
+        BlocProvider(create: (_) => ThemeModeCubit()),
       ],
-      child: MaterialApp.router(
-        title: 'Samantha',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-          useMaterial3: true,
-        ),
-        routerConfig: AppRouter().config(),
+      child: BlocBuilder<ThemeModeCubit, ThemeMode>(
+        builder: (context, themeMode) {
+          return MaterialApp.router(
+            title: 'Samantha',
+            debugShowCheckedModeBanner: false,
+            theme: ThemeData(
+              colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+              useMaterial3: true,
+            ),
+            darkTheme: ThemeData(
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: const Color(0xFF1A237E),
+                brightness: Brightness.dark,
+                surface: const Color(0xFF0D1B2A),
+              ),
+              useMaterial3: true,
+            ),
+            themeMode: themeMode,
+            routerConfig: _routerConfig,
+          );
+        },
       ),
     );
   }
