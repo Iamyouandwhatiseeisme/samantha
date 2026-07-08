@@ -33,7 +33,12 @@ class ChatRepository {
 
   void setProject(String path) => _socketClient.setProject(path);
 
+  void setSession(String sessionId, String path) =>
+      _socketClient.setSession(sessionId, path);
+
   Future<String?> getProjectPath() => _settingsRepository.getProjectPath();
+
+  Future<String?> getSessionId() => _settingsRepository.getSessionId();
 
   Future<void> disconnect() async {
     _socketClient.disconnect();

@@ -124,6 +124,16 @@ class ChatSocketClient {
     }
   }
 
+  void setSession(String sessionId, String path) {
+    if (_channel != null) {
+      _channel!.sink.add(jsonEncode({
+        'type': 'set_session',
+        'session_id': sessionId,
+        'path': path,
+      }));
+    }
+  }
+
   void disconnect() {
     _channel?.sink.close();
     _channel = null;

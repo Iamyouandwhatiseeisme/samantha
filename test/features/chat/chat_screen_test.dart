@@ -22,7 +22,9 @@ void main() {
     when(() => repository.connect()).thenAnswer((_) async {});
     when(() => repository.send(any())).thenReturn(null);
     when(() => repository.getProjectPath()).thenAnswer((_) async => null);
+    when(() => repository.getSessionId()).thenAnswer((_) async => null);
     when(() => repository.setProject(any())).thenReturn(null);
+    when(() => repository.setSession(any(), any())).thenReturn(null);
   });
 
   tearDown(() {

@@ -20,6 +20,14 @@ export class OpencodeProcess extends EventEmitter {
     return this.stopping;
   }
 
+  get currentSessionId(): string | null {
+    return this.sessionId;
+  }
+
+  setSessionId(id: string): void {
+    this.sessionId = id;
+  }
+
   write(prompt: string, model?: string): void {
     if (this.process) {
       this.stop();

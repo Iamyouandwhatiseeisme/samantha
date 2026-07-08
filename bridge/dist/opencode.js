@@ -18,6 +18,12 @@ class OpencodeProcess extends events_1.EventEmitter {
     get manualStop() {
         return this.stopping;
     }
+    get currentSessionId() {
+        return this.sessionId;
+    }
+    setSessionId(id) {
+        this.sessionId = id;
+    }
     write(prompt, model) {
         if (this.process) {
             this.stop();

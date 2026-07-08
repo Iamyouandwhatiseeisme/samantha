@@ -13,25 +13,34 @@ class ProjectSelectionScreen extends StatefulWidget {
   State<ProjectSelectionScreen> createState() => _ProjectSelectionScreenState();
 }
 
-class _ProjectSelectionScreenState extends State<ProjectSelectionScreen> {
+class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
+    with SingleTickerProviderStateMixin {
   final _api = getIt<ProjectApi>();
   final _repository = getIt<ConnectionSettingsRepository>();
+  late final TabController _tabController;
+
   List<OpenCodeProject> _projects = [];
-  OpenCodeProject? _selected;
+  OpenCodeProject? _selectedProject;
+  List<OpenCodeSession> _sessions = [];
+  OpenCodeSession? _selectedSession;
   bool _loading = true;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _loadProjects();
+    _tabController = TabController(length: 2, vsync: this);
+    _loadData();
   }
 
-  Future<void> _loadProjects() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadData() async {
+    setState(() { _loading = true; _error = null; });
 
     try {
       final host = await _repository.getHost();
@@ -40,24 +49,34 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen> {
         context.router.replace(const ConnectionSettingsRoute());
         return;
       }
-      final projects = await _api.getProjects(host);
+
+      final results = await Future.wait([
+        _api.getProjects(host),
+        _api.getSessions(host),
+      ]);
+
       if (!mounted) return;
       setState(() {
-        _projects = projects;
+        _projects = results[0] as List<OpenCodeProject>;
+        _sessions = results[1] as List<OpenCodeSession>;
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
+      setState(() { _error = e.toString(); _loading = false; });
     }
   }
 
   Future<void> _continue() async {
-    if (_selected == null) return;
-    await _repository.saveProjectPath(_selected!.worktree);
+    if (_tabController.index == 0 && _selectedProject != null) {
+      await _repository.saveProjectPath(_selectedProject!.worktree);
+      await _repository.saveSessionId(null);
+    } else if (_tabController.index == 1 && _selectedSession != null) {
+      await _repository.saveProjectPath(_selectedSession!.directory);
+      await _repository.saveSessionId(_selectedSession!.id);
+    } else {
+      return;
+    }
     if (!mounted) return;
     context.router.replace(const ChatRoute());
   }
@@ -65,44 +84,84 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Select Repository')),
-      body: _buildBody(),
+      appBar: AppBar(
+        title: const Text('OpenCode'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(icon: Icon(Icons.folder), text: 'Repository'),
+            Tab(icon: Icon(Icons.history), text: 'Session'),
+          ],
+        ),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? _buildError()
+              : Column(
+                  children: [
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildProjectList(),
+                          _buildSessionList(),
+                        ],
+                      ),
+                    ),
+                    SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: (_tabController.index == 0 && _selectedProject != null) ||
+                                    (_tabController.index == 1 && _selectedSession != null)
+                                ? _continue
+                                : null,
+                            child: Text(
+                              _tabController.index == 0 ? 'New Session' : 'Continue Session',
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
     );
   }
 
-  Widget _buildBody() {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
-              const SizedBox(height: 16),
-              Text('Failed to load repositories',
-                  style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              Text(_error!, textAlign: TextAlign.center),
-              const SizedBox(height: 24),
-              FilledButton.icon(
-                onPressed: _loadProjects,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => context.router.replace(const ConnectionSettingsRoute()),
-                child: const Text('Back to Settings'),
-              ),
-            ],
-          ),
+  Widget _buildError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: Colors.red),
+            const SizedBox(height: 16),
+            Text('Failed to load data',
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Text(_error!, textAlign: TextAlign.center),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: _loadData,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => context.router.replace(const ConnectionSettingsRoute()),
+              child: const Text('Back to Settings'),
+            ),
+          ],
         ),
-      );
-    }
+      ),
+    );
+  }
+
+  Widget _buildProjectList() {
     if (_projects.isEmpty) {
       return Center(
         child: Padding(
@@ -121,7 +180,7 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen> {
               ),
               const SizedBox(height: 24),
               FilledButton.icon(
-                onPressed: _loadProjects,
+                onPressed: _loadData,
                 icon: const Icon(Icons.refresh),
                 label: const Text('Refresh'),
               ),
@@ -130,48 +189,89 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen> {
         ),
       );
     }
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(
-            'Choose a repository for opencode to work in:',
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            itemCount: _projects.length,
-            itemBuilder: (context, index) {
-              final project = _projects[index];
-              final selected = _selected == project;
-              return ListTile(
-                leading: const Icon(Icons.folder),
-                title: Text(project.displayName),
-                subtitle: Text(project.worktree,
-                    style: const TextStyle(fontSize: 12)),
-                trailing: selected
-                    ? const Icon(Icons.check_circle, color: Colors.green)
-                    : null,
-                selected: selected,
-                onTap: () => setState(() => _selected = project),
-              );
-            },
-          ),
-        ),
-        SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _selected != null ? _continue : null,
-                child: const Text('Continue'),
-              ),
-            ),
-          ),
-        ),
-      ],
+    return ListView.builder(
+      itemCount: _projects.length,
+      itemBuilder: (context, index) {
+        final project = _projects[index];
+        final selected = _selectedProject == project;
+        return ListTile(
+          leading: const Icon(Icons.folder),
+          title: Text(project.displayName),
+          subtitle: Text(project.worktree, style: const TextStyle(fontSize: 12)),
+          trailing: selected
+              ? const Icon(Icons.check_circle, color: Colors.green)
+              : null,
+          selected: selected,
+          onTap: () => setState(() {
+            _selectedProject = project;
+            _selectedSession = null;
+          }),
+        );
+      },
     );
+  }
+
+  Widget _buildSessionList() {
+    if (_sessions.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.history, size: 48),
+              const SizedBox(height: 16),
+              Text('No previous sessions',
+                  style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              const Text(
+                'Sessions from your opencode server\nwill appear here.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: _loadData,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Refresh'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return ListView.builder(
+      itemCount: _sessions.length,
+      itemBuilder: (context, index) {
+        final session = _sessions[index];
+        final selected = _selectedSession == session;
+        return ListTile(
+          leading: const Icon(Icons.chat),
+          title: Text(session.displayName),
+          subtitle: Text(
+            '${session.directory.split('/').last} \u2022 ${_formatDate(session.createdAt)}',
+            style: const TextStyle(fontSize: 12),
+          ),
+          trailing: selected
+              ? const Icon(Icons.check_circle, color: Colors.green)
+              : null,
+          selected: selected,
+          onTap: () => setState(() {
+            _selectedSession = session;
+            _selectedProject = null;
+          }),
+        );
+      },
+    );
+  }
+
+  String _formatDate(int timestamp) {
+    if (timestamp == 0) return '';
+    final date = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
+    final now = DateTime.now();
+    final diff = now.difference(date);
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return '${date.month}/${date.day}';
   }
 }

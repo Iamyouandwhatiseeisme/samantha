@@ -25,7 +25,9 @@ void main() {
     when(() => repository.events).thenAnswer((_) => eventController.stream);
     when(() => repository.disconnect()).thenAnswer((_) async {});
     when(() => repository.getProjectPath()).thenAnswer((_) async => null);
+    when(() => repository.getSessionId()).thenAnswer((_) async => null);
     when(() => repository.setProject(any())).thenReturn(null);
+    when(() => repository.setSession(any(), any())).thenReturn(null);
   });
 
   tearDown(() {

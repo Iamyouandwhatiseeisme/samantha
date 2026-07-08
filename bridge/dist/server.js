@@ -26,8 +26,8 @@ function createBridgeServer(config) {
             res.end(JSON.stringify({ status: "ok" }));
             return;
         }
-        if (req.method === "GET" && req.url === "/projects") {
-            const url = new URL("/project", config.opencodeServeUrl);
+        const proxyGet = (path) => {
+            const url = new URL(path, config.opencodeServeUrl);
             fetchJson(url.href)
                 .then((body) => {
                 res.writeHead(200, { "Content-Type": "application/json" });
@@ -37,6 +37,13 @@ function createBridgeServer(config) {
                 res.writeHead(502, { "Content-Type": "application/json" });
                 res.end(JSON.stringify({ error: err.message }));
             });
+        };
+        if (req.method === "GET" && req.url === "/projects") {
+            proxyGet("/project");
+            return;
+        }
+        if (req.method === "GET" && req.url === "/sessions") {
+            proxyGet("/session");
             return;
         }
         res.writeHead(404);
@@ -49,6 +56,7 @@ function createBridgeServer(config) {
         let opencode = null;
         let currentModel = null;
         let currentProjectPath = null;
+        let currentSessionId = null;
         const teardownOpencode = () => {
             if (opencode) {
                 opencode.stop();
@@ -126,6 +134,9 @@ function createBridgeServer(config) {
                     if (typeof msg.content === "string") {
                         console.log(`[bridge] received prompt: ${msg.content.trim()}`);
                         if (opencode) {
+                            if (currentSessionId && !opencode.currentSessionId) {
+                                opencode.setSessionId(currentSessionId);
+                            }
                             opencode.write(msg.content.trim(), msg.model ?? currentModel ?? undefined);
                         }
                     }
@@ -140,6 +151,25 @@ function createBridgeServer(config) {
                 case "get_models":
                     fetchModels();
                     break;
+                case "set_session": {
+                    const sessionId = msg.session_id;
+                    const sessionPath = msg.path;
+                    if (sessionId) {
+                        currentSessionId = sessionId;
+                        currentProjectPath = sessionPath ?? currentProjectPath;
+                        console.log(`[bridge] session set to: ${currentSessionId}`);
+                        ws.send(JSON.stringify({ type: "session_set", session_id: currentSessionId }));
+                        if (sessionPath) {
+                            config.restartOpencodeServe(sessionPath).then(() => {
+                                console.log("[bridge] server restarted for session, re-fetching models");
+                                fetchModels();
+                            }).catch((err) => {
+                                console.error(`[bridge] failed to restart opencode serve: ${err.message}`);
+                            });
+                        }
+                    }
+                    break;
+                }
                 case "set_project":
                     if (typeof msg.path === "string") {
                         currentProjectPath = msg.path;

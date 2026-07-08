@@ -50,8 +50,11 @@ class ChatCubit extends Cubit<ChatState> {
 
     try {
       await _repository.connect();
+      final sessionId = await _repository.getSessionId();
       final projectPath = await _repository.getProjectPath();
-      if (projectPath != null) {
+      if (sessionId != null && projectPath != null) {
+        _repository.setSession(sessionId, projectPath);
+      } else if (projectPath != null) {
         _repository.setProject(projectPath);
       }
       emit(state.copyWith(

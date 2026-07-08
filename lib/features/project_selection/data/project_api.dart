@@ -20,6 +20,36 @@ class OpenCodeProject {
   }
 }
 
+class OpenCodeSession {
+  final String id;
+  final String title;
+  final String directory;
+  final int createdAt;
+
+  const OpenCodeSession({
+    required this.id,
+    required this.title,
+    required this.directory,
+    required this.createdAt,
+  });
+
+  factory OpenCodeSession.fromJson(Map<String, dynamic> json) {
+    final time = json['time'] as Map<String, dynamic>? ?? {};
+    return OpenCodeSession(
+      id: json['id'] as String? ?? '',
+      title: json['title'] as String? ?? 'Untitled',
+      directory: json['directory'] as String? ?? '',
+      createdAt: (time['created'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  String get displayName {
+    if (title.isNotEmpty && title != 'Untitled') return title;
+    final parts = directory.split('/');
+    return parts.isNotEmpty ? parts.last : 'Session';
+  }
+}
+
 @injectable
 class ProjectApi {
   final Dio _dio;
@@ -32,6 +62,15 @@ class ProjectApi {
     final list = body is List ? body : (body['projects'] as List? ?? []);
     return list
         .map((j) => OpenCodeProject.fromJson(j as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<OpenCodeSession>> getSessions(String host) async {
+    final response = await _dio.get('http://$host:8383/sessions');
+    final body = response.data;
+    final list = body is List ? body : (body['sessions'] as List? ?? []);
+    return list
+        .map((j) => OpenCodeSession.fromJson(j as Map<String, dynamic>))
         .toList();
   }
 }
