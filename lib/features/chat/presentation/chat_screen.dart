@@ -54,39 +54,50 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () => context.router.replace(
-              const ConnectionSettingsRoute(),
-            ),
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildTopBar(context),
+              const Divider(height: 1, thickness: 1),
+              const SizedBox(height: 4),
+              BlocBuilder<ChatCubit, ChatState>(
+                builder: (context, state) {
+                  if (state.errorMessage == null) return const SizedBox.shrink();
+                  return _ErrorBanner(message: state.errorMessage!);
+                },
+              ),
+              Expanded(child: _MessageList(scrollController: _scrollController)),
+              _MessageInput(inputController: _inputController),
+            ],
           ),
-          title: _buildConnectionIndicator(),
-          actions: [
-            _ModelDropdown(),
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: () => context.read<ChatCubit>().connect(),
-            ),
-          ],
-        ),
-        body: Column(
-          children: [
-            BlocBuilder<ChatCubit, ChatState>(
-              builder: (context, state) {
-                if (state.errorMessage == null) return const SizedBox.shrink();
-                return _ErrorBanner(message: state.errorMessage!);
-              },
-            ),
-            Expanded(child: _MessageList(scrollController: _scrollController)),
-            _MessageInput(inputController: _inputController),
-          ],
         ),
       ),
     );
   }
 
-  Widget _buildConnectionIndicator() {
+  Widget _buildTopBar(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () => context.router.replace(
+              const ConnectionSettingsRoute(),
+            ),
+          ),
+          Expanded(child: _buildTitle()),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => context.read<ChatCubit>().connect(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTitle() {
     return BlocBuilder<ChatCubit, ChatState>(
       builder: (context, state) {
         final (icon, label) = switch (state.connectionStatus) {
@@ -103,18 +114,41 @@ class _ChatScreenState extends State<ChatScreen> {
           ChatConnectionStatus.disconnected => Colors.red,
         };
 
-        return Row(
+        final repoName = state.currentProjectPath
+            ?.split('/')
+            .last;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color, size: 12),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                label,
-                style: const TextStyle(fontSize: 16),
-                overflow: TextOverflow.ellipsis,
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: color, size: 12),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    label,
+                    style: const TextStyle(fontSize: 16),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
+            if (repoName != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 1),
+                child: Text(
+                  repoName,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            _ModelDropdown(),
           ],
         );
       },

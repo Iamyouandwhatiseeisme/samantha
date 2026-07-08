@@ -58,7 +58,8 @@ class ChatCubit extends Cubit<ChatState> {
         _repository.setProject(projectPath);
       }
       emit(state.copyWith(
-          connectionStatus: ChatConnectionStatus.connected));
+          connectionStatus: ChatConnectionStatus.connected,
+          currentProjectPath: projectPath));
       _setupEventListeners();
     } catch (e) {
       emit(state.copyWith(

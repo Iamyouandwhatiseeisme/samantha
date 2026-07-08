@@ -9,6 +9,7 @@ class ChatState {
   final String inputText;
   final List<ModelProvider> availableModels;
   final String? selectedModel;
+  final String? currentProjectPath;
 
   const ChatState({
     this.messages = const [],
@@ -17,6 +18,7 @@ class ChatState {
     this.inputText = '',
     this.availableModels = const [],
     this.selectedModel,
+    this.currentProjectPath,
   });
 
   ChatState copyWith({
@@ -28,6 +30,8 @@ class ChatState {
     List<ModelProvider>? availableModels,
     String? selectedModel,
     bool clearSelectedModel = false,
+    String? currentProjectPath,
+    bool clearProjectPath = false,
   }) {
     return ChatState(
       messages: messages ?? this.messages,
@@ -36,6 +40,7 @@ class ChatState {
       inputText: inputText ?? this.inputText,
       availableModels: availableModels ?? this.availableModels,
       selectedModel: clearSelectedModel ? null : (selectedModel ?? this.selectedModel),
+      currentProjectPath: clearProjectPath ? null : (currentProjectPath ?? this.currentProjectPath),
     );
   }
 }
