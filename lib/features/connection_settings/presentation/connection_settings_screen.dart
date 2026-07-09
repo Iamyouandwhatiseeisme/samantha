@@ -2,6 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:samantha/app/router.dart';
+import 'package:samantha/features/chat/data/error_message.dart';
 import 'package:samantha/features/connection_settings/presentation/state/connection_settings_cubit.dart';
 import 'package:samantha/features/connection_settings/presentation/state/connection_settings_state.dart';
 
@@ -148,34 +149,44 @@ class _TestResultWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return switch (state) {
       ConnectionSettingsTestSuccess() => Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.green.shade50,
+            color: colorScheme.primaryContainer.withValues(alpha: 0.4),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.green.shade300),
+            border: Border.all(color: colorScheme.primary.withValues(alpha: 0.4)),
           ),
-          child: const Row(
+          child: Row(
             children: [
-              Icon(Icons.check_circle, color: Colors.green),
-              SizedBox(width: 8),
-              Text('Connection successful'),
+              Icon(Icons.check_circle, size: 20, color: colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Connection successful',
+                style: TextStyle(color: colorScheme.onPrimaryContainer),
+              ),
             ],
           ),
         ),
       ConnectionSettingsTestFailure(:final message) => Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.red.shade50,
+            color: colorScheme.errorContainer.withValues(alpha: 0.4),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.red.shade300),
+            border: Border.all(color: colorScheme.error.withValues(alpha: 0.4)),
           ),
           child: Row(
             children: [
-              const Icon(Icons.error, color: Colors.red),
+              Icon(Icons.error_outline, size: 20, color: colorScheme.error),
               const SizedBox(width: 8),
-              Expanded(child: Text(message)),
+              Expanded(
+                child: Text(
+                  formatErrorMessage(message),
+                  style: TextStyle(color: colorScheme.onErrorContainer),
+                ),
+              ),
             ],
           ),
         ),

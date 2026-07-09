@@ -2,6 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:samantha/app/injection.dart';
 import 'package:samantha/app/router.dart';
+import 'package:samantha/features/chat/data/error_message.dart';
 import 'package:samantha/features/connection_settings/data/connection_settings_repository.dart';
 import 'package:samantha/features/project_selection/data/project_api.dart';
 
@@ -132,18 +133,23 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
   }
 
   Widget _buildError() {
+    final colorScheme = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.red),
+            Icon(Icons.error_outline, size: 48, color: colorScheme.error),
             const SizedBox(height: 16),
             Text('Failed to load data',
                 style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
-            Text(_error!, textAlign: TextAlign.center),
+            Text(
+              formatErrorMessage(_error!),
+              textAlign: TextAlign.center,
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
+            ),
             const SizedBox(height: 24),
             FilledButton.icon(
               onPressed: _loadData,
