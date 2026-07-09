@@ -6,6 +6,7 @@ import 'package:samantha/app/theme_mode_cubit.dart';
 import 'package:samantha/features/chat/domain/entities.dart';
 import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
 import 'package:samantha/features/chat/presentation/state/chat_state.dart';
+import 'package:samantha/features/chat/presentation/timestamp_reveal.dart';
 
 @RoutePage()
 class ChatScreen extends StatefulWidget {
@@ -15,9 +16,10 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final _scrollController = ScrollController();
   final _inputController = TextEditingController();
+  late final _revealController = TimestampRevealController(this);
 
   @override
   void initState() {
@@ -31,6 +33,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void dispose() {
     _scrollController.dispose();
     _inputController.dispose();
+    _revealController.dispose();
     super.dispose();
   }
 
@@ -71,7 +74,16 @@ class _ChatScreenState extends State<ChatScreen> {
                   return _ErrorBanner(message: state.errorMessage!);
                 },
               ),
-              Expanded(child: _MessageList(scrollController: _scrollController)),
+              Expanded(
+                child: GestureDetector(
+                  onHorizontalDragUpdate: _revealController.onPanUpdate,
+                  onHorizontalDragEnd: _revealController.onPanEnd,
+                  child: _MessageList(
+                    scrollController: _scrollController,
+                    revealController: _revealController,
+                  ),
+                ),
+              ),
               _MessageInput(inputController: _inputController),
             ],
           ),
@@ -223,8 +235,12 @@ class _ErrorBanner extends StatelessWidget {
 
 class _MessageList extends StatelessWidget {
   final ScrollController scrollController;
+  final TimestampRevealController revealController;
 
-  const _MessageList({required this.scrollController});
+  const _MessageList({
+    required this.scrollController,
+    required this.revealController,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -241,74 +257,46 @@ class _MessageList extends StatelessWidget {
             itemBuilder: (context, index) {
               final msg = messages[index];
               final isUser = msg.role == ChatRole.user;
+              final bubble = _buildBubble(context, msg, isUser);
 
-              return Align(
-                alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                child: isUser
-                    ? Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            margin: const EdgeInsets.symmetric(vertical: 4.0),
-                            padding: const EdgeInsets.all(12.0),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.primaryContainer,
-                              borderRadius: BorderRadius.circular(12.0),
-                            ),
-                            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-                            child: _ChatMessageContent(
-                              content: msg.content,
-                              thinkingContent: msg.thinkingContent,
-                              isStreaming: msg.isStreaming,
-                              toolResults: msg.toolResults,
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.only(right: 12, bottom: 4),
-                            child: Text(
-                              _formatTime(msg.timestamp),
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ),
-                        ],
-                      )
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(left: 12, bottom: 2),
-                            child: Text(
-                              [
-                                if (msg.duration != null) 'Thought ${msg.duration!.inSeconds}s',
-                                _formatTime(msg.timestamp),
-                              ].join(' \u00B7 '),
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            margin: const EdgeInsets.symmetric(vertical: 4.0),
-                            padding: const EdgeInsets.all(12.0),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12.0),
-                            ),
-                            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-                            child: _ChatMessageContent(
-                              content: msg.content,
-                              thinkingContent: msg.thinkingContent,
-                              isStreaming: msg.isStreaming,
-                              toolResults: msg.toolResults,
-                            ),
-                          ),
-                        ],
+              return AnimatedBuilder(
+                animation: revealController,
+                builder: (context, _) {
+                  final fraction = revealController.revealFraction;
+
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Flexible(
+                        child: Align(
+                          alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                          child: bubble,
+                        ),
                       ),
+                      SizedBox(
+                        width: fraction * 48,
+                        child: fraction > 0.01
+                            ? FadeTransition(
+                                opacity: AlwaysStoppedAnimation(fraction),
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 4, bottom: 4),
+                                  child: Align(
+                                    alignment: Alignment.bottomCenter,
+                                    child: Text(
+                                      _formatTime(msg.timestamp),
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : null,
+                      ),
+                    ],
+                  );
+                },
               );
             },
           ),
@@ -318,6 +306,50 @@ class _MessageList extends StatelessWidget {
             tool: state.currentToolName!,
             status: state.currentToolStatus ?? state.currentToolName!,
           ),
+      ],
+    );
+  }
+
+  Widget _buildBubble(BuildContext context, ChatMessage msg, bool isUser) {
+    final labelParts = <String>[];
+    if (msg.duration != null) {
+      labelParts.add('Thought ${msg.duration!.inSeconds}s');
+    }
+
+    return Column(
+      crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (labelParts.isNotEmpty)
+          Padding(
+            padding: EdgeInsets.only(
+              left: isUser ? 0 : 12,
+              right: isUser ? 12 : 0,
+              bottom: 2,
+            ),
+            child: Text(
+              labelParts.join(' \u00B7 '),
+              style: TextStyle(
+                fontSize: 10,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        Container(
+          margin: const EdgeInsets.symmetric(vertical: 4.0),
+          padding: const EdgeInsets.all(12.0),
+          decoration: BoxDecoration(
+            color: isUser ? Theme.of(context).colorScheme.primaryContainer : null,
+            borderRadius: BorderRadius.circular(12.0),
+          ),
+          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+          child: _ChatMessageContent(
+            content: msg.content,
+            thinkingContent: msg.thinkingContent,
+            isStreaming: msg.isStreaming,
+            toolResults: msg.toolResults,
+          ),
+        ),
       ],
     );
   }
