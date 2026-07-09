@@ -49,6 +49,9 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
         if (state is ConnectionSettingsLoaded) {
           _syncFromState(state);
         }
+        if (state is ConnectionSettingsTestSuccess) {
+          context.router.replace(const ProjectSelectionRoute());
+        }
       },
       builder: (context, state) {
         _syncFromState(state);
@@ -111,14 +114,18 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
                         onPressed: state is ConnectionSettingsTesting
                             ? null
                             : () async {
+                                final host = _hostController.text.trim();
+                                final token = _authTokenController.text.trim();
+                                if (host.isEmpty || token.isEmpty) return;
+
                                 await context
                                     .read<ConnectionSettingsCubit>()
-                                    .save(
-                                      _hostController.text.trim(),
-                                      _authTokenController.text.trim(),
-                                    );
+                                    .save(host, token);
                                 if (!context.mounted) return;
-                                context.router.replace(const ProjectSelectionRoute());
+
+                                context
+                                    .read<ConnectionSettingsCubit>()
+                                    .testConnection(host);
                               },
                         child: const Text('Save & Connect'),
                       ),
