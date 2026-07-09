@@ -142,6 +142,51 @@ export function createBridgeServer(config: BridgeConfig) {
       });
     };
 
+    const formatToolDesc = (tool: string, input: any, status: string): string => {
+      const action = status === "error" ? "\u2717 " : status === "running" ? "" : "\u2713 ";
+      if (!input || typeof input !== "object") return `${action}${tool} (${status})`;
+      switch (tool) {
+        case "bash":
+        case "shell":
+          return action + (typeof input.command === "string" ? input.command : `${tool} (${status})`);
+        case "write":
+        case "edit":
+          return action + (typeof input.filePath === "string" ? `\u270E ${input.filePath}` : `${tool} (${status})`);
+        case "read":
+        case "glob":
+        case "grep": {
+          const p = typeof input.path === "string" ? input.path
+            : typeof input.pattern === "string" ? input.pattern
+            : typeof input.filePath === "string" ? input.filePath : "";
+          return action + (p || `${tool} (${status})`);
+        }
+        case "webfetch":
+          return action + (typeof input.url === "string" ? input.url : `${tool} (${status})`);
+        default:
+          return action + `${tool} (${status})`;
+      }
+    };
+
+    const extractToolContent = (
+      tool: string,
+      input: any,
+      state: any,
+    ): string | undefined => {
+      if (!input) return undefined;
+      switch (tool) {
+        case "write":
+          return typeof input.content === "string" ? input.content
+            : typeof state?.output === "string" ? (state.output as string).slice(0, 500) : undefined;
+        case "edit":
+          return typeof input.newString === "string" ? input.newString : undefined;
+        case "bash":
+        case "shell":
+          return typeof state?.output === "string" ? (state.output as string).slice(0, 500) : undefined;
+        default:
+          return typeof state?.output === "string" ? (state.output as string).slice(0, 500) : undefined;
+      }
+    };
+
     const fetchSessionMessages = () => {
       if (!currentSessionId) return;
       const url = new URL(`/session/${currentSessionId}/message`, config.opencodeServeUrl);
@@ -152,87 +197,34 @@ export function createBridgeServer(config: BridgeConfig) {
             const parts = m.parts ?? [];
             const role = info.role === "user" ? "user" : "assistant";
 
-            const segments: string[] = [];
+            const textSegments: string[] = [];
+            let thinkingContent = "";
+            const toolResults: Array<{ tool: string; description: string; content?: string }> = [];
+
             for (const p of Array.isArray(parts) ? parts : []) {
               if (p.type === "text" && p.text) {
-                segments.push(p.text);
+                textSegments.push(p.text);
+              } else if (p.type === "thinking" && p.text) {
+                thinkingContent += p.text;
               } else if (p.type === "tool") {
                 const toolName = p.tool ?? "tool";
                 const input = p.state?.input;
-                const status = p.state?.status ?? "completed";
-                const formatted = formatToolInput(toolName, input, status);
-                if (formatted) segments.push(formatted);
-                const output = p.state?.output;
-                if (typeof output === "string" && output.trim()) {
-                  const preview = output.length > 800 ? output.slice(0, 800) + "\n..." : output;
-                  segments.push(`\`\`\`\n${preview}\n\`\`\``);
-                }
-                const errMsg = p.state?.error;
-                if (typeof errMsg === "string") {
-                  segments.push(`\`\`\`error\n${errMsg}\n\`\`\``);
-                }
+                const state = p.state;
+                const status = state?.status ?? "completed";
+                const description = formatToolDesc(toolName, input, status);
+                const content = extractToolContent(toolName, input, state);
+                toolResults.push({ tool: toolName, description, content });
               }
             }
 
-            const content = segments.join("\n\n");
-            return { role, content };
+            const content = textSegments.join("\n\n");
+            return { role, content, thinkingContent, toolResults };
           });
           ws.send(JSON.stringify({ type: "session_messages", messages: simplified }));
         })
         .catch((err: Error) => {
           console.error(`[bridge] failed to fetch session messages: ${err.message}`);
         });
-    };
-
-    const formatToolInput = (tool: string, input: any, status: string): string | null => {
-      if (!input || typeof input !== "object") return null;
-      const action = status === "error" ? "\u2717" : status === "running" ? "\u23F3" : "\u2713";
-
-      switch (tool) {
-        case "bash":
-        case "shell":
-          return typeof input.command === "string"
-            ? `\`\`\`sh\n${input.command}\n\`\`\``
-            : null;
-
-        case "write": {
-          const fp = typeof input.filePath === "string" ? input.filePath : "";
-          const content = typeof input.content === "string" ? input.content
-            : typeof input.filePath === "string" ? JSON.stringify(input) : null;
-          if (!fp) return null;
-          const ext = fp.includes(".") ? fp.split(".").pop() ?? "" : "";
-          const preview = content
-            ? content.length > 600 ? content.slice(0, 600) + "\n..." : content
-            : "(empty)";
-          return `${action} **${tool}** \`${fp}\`\n\`\`\`${ext}\n${preview}\n\`\`\``;
-        }
-
-        case "edit": {
-          const fp = typeof input.filePath === "string" ? input.filePath : "";
-          const oldText = typeof input.oldString === "string" ? input.oldString.slice(0, 100) : "";
-          const newText = typeof input.newString === "string" ? input.newString.slice(0, 100) : "";
-          return fp
-            ? `${action} **${tool}** \`${fp}\`\n\`\`\`diff\n- ${oldText}\n+ ${newText}\n\`\`\``
-            : null;
-        }
-
-        case "read":
-        case "glob":
-        case "grep": {
-          const path = typeof input.path === "string" ? input.path
-            : typeof input.pattern === "string" ? input.pattern
-            : typeof input.filePath === "string" ? input.filePath : "";
-          return path ? `${action} **${tool}** \`${path}\`` : null;
-        }
-
-        case "webfetch": {
-          const url = typeof input.url === "string" ? input.url : "";
-          return url ? `${action} **${tool}** ${url}` : null;
-        }
-
-        default:
-          return `${action} **${tool}** \`\`\`json\n${JSON.stringify(input, null, 2)}\n\`\`\``;
-      }
     };
 
     const handleMessage = (raw: Buffer) => {

@@ -270,10 +270,28 @@ class ChatCubit extends Cubit<ChatState> {
     final chatMessages = messages.map((m) {
       final role = m['role'] == 'user' ? ChatRole.user : ChatRole.assistant;
       final content = m['content'] as String? ?? '';
+      final thinkingContent = m['thinkingContent'] as String? ?? '';
+
+      final List<ToolResult> toolResults = [];
+      final rawToolResults = m['toolResults'];
+      if (rawToolResults is List) {
+        for (final tr in rawToolResults) {
+          if (tr is Map) {
+            toolResults.add(ToolResult(
+              tool: tr['tool'] as String? ?? '',
+              description: tr['description'] as String? ?? '',
+              content: tr['content'] as String?,
+            ));
+          }
+        }
+      }
+
       return ChatMessage(
         id: DateTime.now().millisecondsSinceEpoch.toString() + content.hashCode.toString(),
         role: role,
         content: content,
+        thinkingContent: thinkingContent,
+        toolResults: toolResults,
       );
     }).toList();
     emit(state.copyWith(messages: chatMessages));
