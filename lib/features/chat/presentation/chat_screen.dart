@@ -250,7 +250,7 @@ class _MessageList extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: isUser
                         ? Theme.of(context).colorScheme.primaryContainer
-                        : Theme.of(context).colorScheme.surfaceContainerHighest,
+                        : Colors.transparent,
                     borderRadius: BorderRadius.circular(12.0),
                   ),
                   constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
