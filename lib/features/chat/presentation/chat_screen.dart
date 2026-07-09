@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -114,34 +116,24 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           _iconButton(
             icon: Icons.settings,
-            onPressed: () => context.router.replace(
-              const ConnectionSettingsRoute(),
-            ),
+            onPressed: () => context.router.replace(const ConnectionSettingsRoute()),
           ),
           Expanded(child: _buildTitle()),
           BlocBuilder<ThemeModeCubit, ThemeMode>(
             builder: (context, themeMode) {
               return _iconButton(
-                icon: themeMode == ThemeMode.dark
-                    ? Icons.light_mode
-                    : Icons.dark_mode,
+                icon: themeMode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode,
                 onPressed: () => context.read<ThemeModeCubit>().toggle(),
               );
             },
           ),
-          _iconButton(
-            icon: Icons.refresh,
-            onPressed: () => context.read<ChatCubit>().connect(),
-          ),
+          _iconButton(icon: Icons.refresh, onPressed: () => context.read<ChatCubit>().connect()),
         ],
       ),
     );
   }
 
-  Widget _iconButton({
-    required IconData icon,
-    required VoidCallback onPressed,
-  }) {
+  Widget _iconButton({required IconData icon, required VoidCallback onPressed}) {
     return IconButton(
       icon: Icon(icon, size: 20),
       constraints: const BoxConstraints(minWidth: 36, maxWidth: 36, minHeight: 36, maxHeight: 36),
@@ -171,9 +163,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ChatConnectionStatus.disconnected => Colors.red,
         };
 
-        final repoName = titleState.currentProjectPath
-            ?.split('/')
-            .last;
+        final repoName = titleState.currentProjectPath?.split('/').last;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,15 +255,13 @@ class _MessageList extends StatelessWidget {
                         : Theme.of(context).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(12.0),
                   ),
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.75,
+                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+                  child: _ChatMessageContent(
+                    content: msg.content,
+                    thinkingContent: msg.thinkingContent,
+                    isStreaming: msg.isStreaming,
+                    toolResults: msg.toolResults,
                   ),
-            child: _ChatMessageContent(
-              content: msg.content,
-              thinkingContent: msg.thinkingContent,
-              isStreaming: msg.isStreaming,
-              toolResults: msg.toolResults,
-            ),
                 ),
               );
             },
@@ -298,11 +286,10 @@ class _MessageInput extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<ChatCubit, ChatState>(
       builder: (context, state) {
-        final isConnected = state.connectionStatus !=
-            ChatConnectionStatus.disconnected;
+        final isConnected = state.connectionStatus != ChatConnectionStatus.disconnected;
 
         return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 80),
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 80),
           child: Row(
             children: [
               Expanded(
@@ -311,13 +298,10 @@ class _MessageInput extends StatelessWidget {
                   enabled: isConnected,
                   decoration: InputDecoration(
                     hintText: 'Type a message...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
-                  onChanged: (text) =>
-                      context.read<ChatCubit>().updateInput(text),
+                  onChanged: (text) => context.read<ChatCubit>().updateInput(text),
                   onSubmitted: isConnected ? (_) => _send(context) : null,
                 ),
               ),
@@ -380,9 +364,7 @@ class _ChatMessageContent extends StatelessWidget {
           decoration: BoxDecoration(
             color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-            ),
+            border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -390,11 +372,7 @@ class _ChatMessageContent extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(
-                    Icons.psychology,
-                    size: 14,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+                  Icon(Icons.psychology, size: 14, color: colorScheme.onSurfaceVariant),
                   const SizedBox(width: 4),
                   Text(
                     'Thinking',
@@ -428,11 +406,7 @@ class _ChatMessageContent extends StatelessWidget {
           children: [
             const Text('Thinking...'),
             const SizedBox(width: 4),
-            const SizedBox(
-              width: 12,
-              height: 12,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
+            const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2)),
           ],
         ),
       );
@@ -470,10 +444,7 @@ class _ChatMessageContent extends StatelessWidget {
                     child: _CollapsibleCodeBlock(code: seg.text),
                   )
                 else
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 1),
-                    child: Text(seg.text),
-                  ),
+                  Padding(padding: const EdgeInsets.symmetric(vertical: 1), child: Text(seg.text)),
               if (isStreaming)
                 const Padding(
                   padding: EdgeInsets.only(top: 4),
@@ -511,9 +482,7 @@ class _ChatMessageContent extends StatelessWidget {
         final trimmed = parts[i];
         final firstLineEnd = trimmed.indexOf('\n');
         if (firstLineEnd == -1) {
-          segments.add(
-            _ContentSegment(text: '```$trimmed```', isCode: false),
-          );
+          segments.add(_ContentSegment(text: '```$trimmed```', isCode: false));
           continue;
         }
         final lang = trimmed.substring(0, firstLineEnd).trim();
@@ -521,9 +490,7 @@ class _ChatMessageContent extends StatelessWidget {
           final code = trimmed.substring(firstLineEnd + 1);
           segments.add(_ContentSegment(text: code, isCode: true));
         } else {
-          segments.add(
-            _ContentSegment(text: '```$trimmed```', isCode: false),
-          );
+          segments.add(_ContentSegment(text: '```$trimmed```', isCode: false));
         }
       } else {
         if (parts[i].isNotEmpty) {
@@ -607,8 +574,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                 ),
               ),
             ),
-            crossFadeState:
-                _expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            crossFadeState: _expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
             duration: const Duration(milliseconds: 200),
           ),
         ],
@@ -647,20 +613,21 @@ class _ModelDropdown extends StatelessWidget {
         final items = <DropdownMenuItem<String>>[];
         for (final provider in dropdownState.availableModels) {
           for (final model in provider.models) {
-            items.add(DropdownMenuItem(
-              value: model.qualifiedId,
-              child: Text(
-                '${model.displayName} (${provider.name})',
-                style: const TextStyle(fontSize: 13),
-                overflow: TextOverflow.ellipsis,
+            items.add(
+              DropdownMenuItem(
+                value: model.qualifiedId,
+                child: Text(
+                  '${model.displayName} (${provider.name})',
+                  style: const TextStyle(fontSize: 13),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ));
+            );
           }
         }
 
         final selected = dropdownState.selectedModel;
-        final hasValidSelection =
-            selected != null && items.any((i) => i.value == selected);
+        final hasValidSelection = selected != null && items.any((i) => i.value == selected);
 
         final hintText = items.isNotEmpty
             ? (items.first.child as Text).data ?? 'Select model'
@@ -677,7 +644,11 @@ class _ModelDropdown extends StatelessWidget {
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: hasValidSelection ? selected : null,
-              hint: Text(hintText, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
+              hint: Text(
+                hintText,
+                style: const TextStyle(fontSize: 13),
+                overflow: TextOverflow.ellipsis,
+              ),
               isDense: true,
               isExpanded: true,
               items: items,
@@ -692,6 +663,13 @@ class _ModelDropdown extends StatelessWidget {
       },
     );
   }
+}
+
+class _TodoItem {
+  final String content;
+  final String status;
+  final String priority;
+  const _TodoItem({required this.content, required this.status, this.priority = 'medium'});
 }
 
 class _ToolResultChip extends StatefulWidget {
@@ -709,6 +687,7 @@ class _ToolResultChipState extends State<_ToolResultChip> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final hasContent = widget.result.content != null && widget.result.content!.isNotEmpty;
+    final isTodo = widget.result.tool == 'todowrite';
 
     return Padding(
       padding: const EdgeInsets.only(top: 6),
@@ -759,39 +738,180 @@ class _ToolResultChipState extends State<_ToolResultChip> {
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.description, size: 14, color: colorScheme.onSurfaceVariant),
-                      const SizedBox(width: 4),
-                      Text(
-                        widget.result.tool,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  SelectableText(
-                    widget.result.content!,
-                    style: TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 12,
-                      color: colorScheme.onSurface,
-                    ),
-                  ),
-                ],
-              ),
+              child: isTodo
+                  ? _TodoContent(jsonStr: widget.result.content!)
+                  : _ToolResultRawContent(tool: widget.result.tool, content: widget.result.content!),
             ),
         ],
       ),
     );
+  }
+
+  List<_TodoItem> _parseTodos(String jsonStr) {
+    try {
+      final decoded = jsonDecode(jsonStr);
+      if (decoded is List) {
+        return decoded
+            .whereType<Map<String, dynamic>>()
+            .map(
+              (m) => _TodoItem(
+                content: m['content'] as String? ?? '',
+                status: m['status'] as String? ?? 'pending',
+                priority: m['priority'] as String? ?? 'medium',
+              ),
+            )
+            .toList();
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+}
+
+class _ToolResultRawContent extends StatelessWidget {
+  final String tool;
+  final String content;
+  const _ToolResultRawContent({required this.tool, required this.content});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.description, size: 14, color: colorScheme.onSurfaceVariant),
+            const SizedBox(width: 4),
+            Text(
+              tool,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        SelectableText(
+          content,
+          style: TextStyle(fontFamily: 'monospace', fontSize: 12, color: colorScheme.onSurface),
+        ),
+      ],
+    );
+  }
+}
+
+class _TodoContent extends StatelessWidget {
+  final String jsonStr;
+  const _TodoContent({required this.jsonStr});
+
+  List<_TodoItem> _parseTodos() {
+    try {
+      final decoded = jsonDecode(jsonStr);
+      if (decoded is List) {
+        return decoded
+            .whereType<Map<String, dynamic>>()
+            .map(
+              (m) => _TodoItem(
+                content: m['content'] as String? ?? '',
+                status: m['status'] as String? ?? 'pending',
+                priority: m['priority'] as String? ?? 'medium',
+              ),
+            )
+            .toList();
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final todos = _parseTodos();
+    if (todos.isEmpty) {
+      return _ToolResultRawContent(tool: 'todowrite', content: jsonStr);
+    }
+
+    final doneCount = todos.where((t) => t.status == 'completed').length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.checklist, size: 14, color: colorScheme.primary),
+            const SizedBox(width: 4),
+            Text(
+              'Todo list ($doneCount/${todos.length} done)',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ...todos.map(
+          (todo) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 1),
+                  child: SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: _TodoCheckbox(status: todo.status),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    todo.content,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: todo.status == 'completed'
+                          ? colorScheme.onSurfaceVariant.withValues(alpha: 0.6)
+                          : colorScheme.onSurface,
+                      decoration: todo.status == 'completed' ? TextDecoration.lineThrough : null,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TodoCheckbox extends StatelessWidget {
+  final String status;
+  const _TodoCheckbox({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    switch (status) {
+      case 'completed':
+        return Icon(Icons.check_circle, size: 18, color: colorScheme.primary);
+      case 'in_progress':
+        return Icon(Icons.pending, size: 18, color: colorScheme.tertiary);
+      case 'cancelled':
+        return Icon(Icons.cancel, size: 18, color: colorScheme.error);
+      default:
+        return Icon(Icons.radio_button_unchecked, size: 18, color: colorScheme.onSurfaceVariant);
+    }
   }
 }
 
@@ -812,21 +932,14 @@ class _ToolStatusBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
+          const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
           const SizedBox(width: 8),
           Icon(Icons.build, size: 14, color: colorScheme.onSecondaryContainer),
           const SizedBox(width: 4),
           Expanded(
             child: Text(
               status,
-              style: TextStyle(
-                fontSize: 12,
-                color: colorScheme.onSecondaryContainer,
-              ),
+              style: TextStyle(fontSize: 12, color: colorScheme.onSecondaryContainer),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
