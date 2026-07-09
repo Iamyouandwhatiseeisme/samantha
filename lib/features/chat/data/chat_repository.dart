@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:injectable/injectable.dart';
 import 'package:samantha/features/chat/data/chat_socket_client.dart';
+import 'package:samantha/features/chat/domain/entities.dart';
 import 'package:samantha/features/connection_settings/data/connection_settings_repository.dart';
 
 @lazySingleton
@@ -48,5 +50,28 @@ class ChatRepository {
 
   Future<void> disconnect() async {
     _socketClient.disconnect();
+  }
+
+  ToolContent? parseToolContent(String tool, String? rawContent) {
+    if (rawContent == null || rawContent.isEmpty) return null;
+
+    if (tool == 'todowrite') {
+      try {
+        final decoded = jsonDecode(rawContent);
+        if (decoded is List) {
+          final todos = decoded
+              .whereType<Map<String, dynamic>>()
+              .map((m) => TodoItem(
+                    content: m['content'] as String? ?? '',
+                    status: m['status'] as String? ?? 'pending',
+                    priority: m['priority'] as String? ?? 'medium',
+                  ))
+              .toList();
+          if (todos.isNotEmpty) return TodoToolContent(todos);
+        }
+      } catch (_) {}
+    }
+
+    return RawToolContent(rawContent);
   }
 }

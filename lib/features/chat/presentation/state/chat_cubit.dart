@@ -188,6 +188,7 @@ class ChatCubit extends Cubit<ChatState> {
 
   void _handleTool(String tool, String status, String description, {String? content}) {
     if (status == 'completed' || status == 'error') {
+      final parsedContent = _repository.parseToolContent(tool, content);
       final messages = List<ChatMessage>.from(state.messages);
       if (messages.isNotEmpty &&
           messages.last.role == ChatRole.assistant &&
@@ -196,14 +197,14 @@ class ChatCubit extends Cubit<ChatState> {
         messages.add(last.copyWith(
           toolResults: [
             ...last.toolResults,
-            ToolResult(tool: tool, description: description, content: content),
+            ToolResult(tool: tool, description: description, content: parsedContent),
           ],
         ));
       } else {
         messages.add(ChatMessage(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           role: ChatRole.assistant,
-          toolResults: [ToolResult(tool: tool, description: description, content: content)],
+          toolResults: [ToolResult(tool: tool, description: description, content: parsedContent)],
         ));
       }
       emit(state.copyWith(
@@ -277,10 +278,13 @@ class ChatCubit extends Cubit<ChatState> {
       if (rawToolResults is List) {
         for (final tr in rawToolResults) {
           if (tr is Map) {
+            final tool = tr['tool'] as String? ?? '';
+            final description = tr['description'] as String? ?? '';
+            final rawContent = tr['content'] as String?;
             toolResults.add(ToolResult(
-              tool: tr['tool'] as String? ?? '',
-              description: tr['description'] as String? ?? '',
-              content: tr['content'] as String?,
+              tool: tool,
+              description: description,
+              content: _repository.parseToolContent(tool, rawContent),
             ));
           }
         }

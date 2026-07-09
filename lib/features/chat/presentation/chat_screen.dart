@@ -677,9 +677,7 @@ class _ToolResultChipState extends State<_ToolResultChip> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final hasContent = widget.result.content != null && widget.result.content!.isNotEmpty;
-    final isTodo = widget.result.tool == 'todowrite';
-    final todos = isTodo ? widget.result.parsedTodos : null;
+    final hasContent = widget.result.content != null;
 
     return Padding(
       padding: const EdgeInsets.only(top: 6),
@@ -730,9 +728,13 @@ class _ToolResultChipState extends State<_ToolResultChip> {
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
               ),
-              child: todos != null && todos.isNotEmpty
-                  ? _TodoContent(todos: todos)
-                  : _ToolResultRawContent(tool: widget.result.tool, content: widget.result.content!),
+              child: switch (widget.result.content!) {
+                TodoToolContent(todos: final todos) => _TodoContent(todos: todos),
+                RawToolContent(content: final c) => _ToolResultRawContent(
+                  tool: widget.result.tool,
+                  content: c,
+                ),
+              },
             ),
         ],
       ),
@@ -813,11 +815,7 @@ class _TodoContent extends StatelessWidget {
               children: [
                 Padding(
                   padding: const EdgeInsets.only(top: 1),
-                  child: SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: _TodoCheckbox(status: todo.status),
-                  ),
+                  child: SizedBox(width: 18, height: 18, child: _TodoCheckbox(status: todo.status)),
                 ),
                 const SizedBox(width: 8),
                 Flexible(
@@ -826,9 +824,8 @@ class _TodoContent extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       color: todo.status == 'completed'
-                          ? colorScheme.onSurfaceVariant.withValues(alpha: 0.6)
+                          ? colorScheme.onSurfaceVariant.withValues(alpha: 0.9)
                           : colorScheme.onSurface,
-                      decoration: todo.status == 'completed' ? TextDecoration.lineThrough : null,
                     ),
                   ),
                 ),
