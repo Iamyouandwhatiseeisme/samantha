@@ -6,6 +6,7 @@ class ChatMessage {
   final bool isStreaming;
   final List<ToolResult> toolResults;
   final Duration? duration;
+  final DateTime timestamp;
 
   ChatMessage({
     required this.id,
@@ -15,7 +16,8 @@ class ChatMessage {
     this.isStreaming = false,
     this.toolResults = const [],
     this.duration,
-  });
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
 
   ChatMessage copyWith({
     String? id,
@@ -25,6 +27,7 @@ class ChatMessage {
     bool? isStreaming,
     List<ToolResult>? toolResults,
     Duration? duration,
+    DateTime? timestamp,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -34,6 +37,7 @@ class ChatMessage {
       isStreaming: isStreaming ?? this.isStreaming,
       toolResults: toolResults ?? this.toolResults,
       duration: duration ?? this.duration,
+      timestamp: timestamp ?? this.timestamp,
     );
   }
 }

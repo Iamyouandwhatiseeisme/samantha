@@ -295,6 +295,14 @@ class ChatCubit extends Cubit<ChatState> {
       final durationMs = m['duration'] as int?;
       final duration = durationMs != null ? Duration(milliseconds: durationMs) : null;
 
+      final rawTs = m['timestamp'];
+      DateTime? timestamp;
+      if (rawTs is String) {
+        timestamp = DateTime.tryParse(rawTs);
+      } else if (rawTs is int) {
+        timestamp = DateTime.fromMillisecondsSinceEpoch(rawTs);
+      }
+
       return ChatMessage(
         id: DateTime.now().millisecondsSinceEpoch.toString() + content.hashCode.toString(),
         role: role,
@@ -302,6 +310,7 @@ class ChatCubit extends Cubit<ChatState> {
         thinkingContent: thinkingContent,
         toolResults: toolResults,
         duration: duration,
+        timestamp: timestamp,
       );
     }).toList();
     emit(state.copyWith(messages: chatMessages));

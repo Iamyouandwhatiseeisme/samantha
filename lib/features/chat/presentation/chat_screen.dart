@@ -245,36 +245,54 @@ class _MessageList extends StatelessWidget {
               return Align(
                 alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
                 child: isUser
-                    ? Container(
-                        margin: const EdgeInsets.symmetric(vertical: 4.0),
-                        padding: const EdgeInsets.all(12.0),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(12.0),
-                        ),
-                        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-                        child: _ChatMessageContent(
-                          content: msg.content,
-                          thinkingContent: msg.thinkingContent,
-                          isStreaming: msg.isStreaming,
-                          toolResults: msg.toolResults,
-                        ),
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            margin: const EdgeInsets.symmetric(vertical: 4.0),
+                            padding: const EdgeInsets.all(12.0),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(12.0),
+                            ),
+                            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+                            child: _ChatMessageContent(
+                              content: msg.content,
+                              thinkingContent: msg.thinkingContent,
+                              isStreaming: msg.isStreaming,
+                              toolResults: msg.toolResults,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(right: 12, bottom: 4),
+                            child: Text(
+                              _formatTime(msg.timestamp),
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ],
                       )
                     : Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (msg.duration != null)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 12, bottom: 2),
-                              child: Text(
-                                'Thought ${msg.duration!.inSeconds}s',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                ),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 12, bottom: 2),
+                            child: Text(
+                              [
+                                if (msg.duration != null) 'Thought ${msg.duration!.inSeconds}s',
+                                _formatTime(msg.timestamp),
+                              ].join(' \u00B7 '),
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
                             ),
+                          ),
                           Container(
                             margin: const EdgeInsets.symmetric(vertical: 4.0),
                             padding: const EdgeInsets.all(12.0),
@@ -302,6 +320,12 @@ class _MessageList extends StatelessWidget {
           ),
       ],
     );
+  }
+
+  String _formatTime(DateTime dt) {
+    final h = dt.hour.toString().padLeft(2, '0');
+    final m = dt.minute.toString().padLeft(2, '0');
+    return '$h:$m';
   }
 }
 

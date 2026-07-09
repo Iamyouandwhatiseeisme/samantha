@@ -228,7 +228,8 @@ function createBridgeServer(config) {
                         }
                     }
                     const content = textSegments.join("\n\n");
-                    return { role, content, thinkingContent, toolResults, duration };
+                    const timestamp = info.created ?? info.timestamp ?? info.time;
+                    return { role, content, thinkingContent, toolResults, duration, timestamp };
                 });
                 ws.send(JSON.stringify({ type: "session_messages", messages: simplified }));
             })
