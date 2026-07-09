@@ -23,6 +23,7 @@ export class OpencodeProcess extends EventEmitter {
   private stopping = false;
   sessionId: string | null = null;
   private readonly serveUrl: string;
+  private _durationMs?: number;
 
   constructor(serveUrl: string) {
     super();
@@ -108,8 +109,9 @@ export class OpencodeProcess extends EventEmitter {
       }
       this.process = null;
       if (!this.stopping) {
-        this.emit("exit", 0);
+        this.emit("exit", this._durationMs);
       }
+      this._durationMs = undefined;
     });
   }
 
@@ -177,6 +179,19 @@ export class OpencodeProcess extends EventEmitter {
       }
 
       case "step_finish":
+        console.log(`[bridge:opencode] step_finish full:`, JSON.stringify(msg));
+        if (typeof msg.duration_ms === "number") {
+          this._durationMs = msg.duration_ms;
+        } else if (typeof msg.durationMs === "number") {
+          this._durationMs = msg.durationMs;
+        } else if (msg.usage && typeof msg.usage === "object") {
+          const usage = msg.usage as Record<string, unknown>;
+          if (typeof usage.duration_ms === "number") {
+            this._durationMs = usage.duration_ms as number;
+          } else if (typeof usage.total_duration_ms === "number") {
+            this._durationMs = usage.total_duration_ms as number;
+          }
+        }
         break;
 
       case "error":
@@ -184,7 +199,7 @@ export class OpencodeProcess extends EventEmitter {
         break;
 
       default:
-        console.log(`[bridge:opencode] unknown msg type: ${msg.type}`);
+        console.log(`[bridge:opencode] unknown msg type: ${msg.type}`, JSON.stringify(msg));
         break;
     }
   }

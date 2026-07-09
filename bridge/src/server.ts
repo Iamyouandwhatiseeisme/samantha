@@ -1,6 +1,10 @@
-import { createServer, IncomingMessage, ServerResponse } from "http";
-import { get as httpGet } from "http";
-import { WebSocketServer, WebSocket } from "ws";
+import {
+  createServer,
+  get as httpGet,
+  IncomingMessage,
+  ServerResponse,
+} from "http";
+import { WebSocket, WebSocketServer } from "ws";
 import { OpencodeProcess } from "./opencode";
 
 interface BridgeConfig {
@@ -98,17 +102,23 @@ export function createBridgeServer(config: BridgeConfig) {
 
       opencode.on("permission", (data: any) => {
         if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({
-            type: "permission_request",
-            id: data.id,
-            title: data.title,
-          }));
+          ws.send(
+            JSON.stringify({
+              type: "permission_request",
+              id: data.id,
+              title: data.title,
+            }),
+          );
         }
       });
 
-      opencode.on("exit", (_code: number | null) => {
-        if (ws.readyState === WebSocket.OPEN && opencode && !opencode.manualStop) {
-          ws.send(JSON.stringify({ type: "done" }));
+      opencode.on("exit", (durationMs: number | undefined) => {
+        if (
+          ws.readyState === WebSocket.OPEN &&
+          opencode &&
+          !opencode.manualStop
+        ) {
+          ws.send(JSON.stringify({ type: "done", duration_ms: durationMs }));
         }
       });
 
@@ -142,26 +152,50 @@ export function createBridgeServer(config: BridgeConfig) {
       });
     };
 
-    const formatToolDesc = (tool: string, input: any, status: string): string => {
-      const action = status === "error" ? "\u2717 " : status === "running" ? "" : "\u2713 ";
-      if (!input || typeof input !== "object") return `${action}${tool} (${status})`;
+    const formatToolDesc = (
+      tool: string,
+      input: any,
+      status: string,
+    ): string => {
+      const action =
+        status === "error" ? "\u2717 " : status === "running" ? "" : "\u2713 ";
+      if (!input || typeof input !== "object")
+        return `${action}${tool} (${status})`;
       switch (tool) {
         case "bash":
         case "shell":
-          return action + (typeof input.command === "string" ? input.command : `${tool} (${status})`);
+          return (
+            action +
+            (typeof input.command === "string"
+              ? input.command
+              : `${tool} (${status})`)
+          );
         case "write":
         case "edit":
-          return action + (typeof input.filePath === "string" ? `\u270E ${input.filePath}` : `${tool} (${status})`);
+          return (
+            action +
+            (typeof input.filePath === "string"
+              ? `\u270E ${input.filePath}`
+              : `${tool} (${status})`)
+          );
         case "read":
         case "glob":
         case "grep": {
-          const p = typeof input.path === "string" ? input.path
-            : typeof input.pattern === "string" ? input.pattern
-            : typeof input.filePath === "string" ? input.filePath : "";
+          const p =
+            typeof input.path === "string"
+              ? input.path
+              : typeof input.pattern === "string"
+                ? input.pattern
+                : typeof input.filePath === "string"
+                  ? input.filePath
+                  : "";
           return action + (p || `${tool} (${status})`);
         }
         case "webfetch":
-          return action + (typeof input.url === "string" ? input.url : `${tool} (${status})`);
+          return (
+            action +
+            (typeof input.url === "string" ? input.url : `${tool} (${status})`)
+          );
         default:
           return action + `${tool} (${status})`;
       }
@@ -175,55 +209,91 @@ export function createBridgeServer(config: BridgeConfig) {
       if (!input) return undefined;
       switch (tool) {
         case "write":
-          return typeof input.content === "string" ? input.content
-            : typeof state?.output === "string" ? (state.output as string).slice(0, 500) : undefined;
+          return typeof input.content === "string"
+            ? input.content
+            : typeof state?.output === "string"
+              ? (state.output as string).slice(0, 500)
+              : undefined;
         case "edit":
-          return typeof input.newString === "string" ? input.newString : undefined;
+          return typeof input.newString === "string"
+            ? input.newString
+            : undefined;
         case "bash":
         case "shell":
-          return typeof state?.output === "string" ? (state.output as string).slice(0, 500) : undefined;
+          return typeof state?.output === "string"
+            ? (state.output as string).slice(0, 500)
+            : undefined;
         default:
-          return typeof state?.output === "string" ? (state.output as string).slice(0, 500) : undefined;
+          return typeof state?.output === "string"
+            ? (state.output as string).slice(0, 500)
+            : undefined;
       }
     };
 
     const fetchSessionMessages = () => {
       if (!currentSessionId) return;
-      const url = new URL(`/session/${currentSessionId}/message`, config.opencodeServeUrl);
+      const url = new URL(
+        `/session/${currentSessionId}/message`,
+        config.opencodeServeUrl,
+      );
       fetchJson(url.href)
         .then((messages: any) => {
-          const simplified = (Array.isArray(messages) ? messages : []).map((m: any) => {
-            const info = m.info ?? {};
-            const parts = m.parts ?? [];
-            const role = info.role === "user" ? "user" : "assistant";
+          const simplified = (Array.isArray(messages) ? messages : []).map(
+            (m: any, i: number) => {
+              const info = m.info ?? {};
 
-            const textSegments: string[] = [];
-            let thinkingContent = "";
-            const toolResults: Array<{ tool: string; description: string; content?: string }> = [];
+              const parts = m.parts ?? [];
+              const role = info.role === "user" ? "user" : "assistant";
+              const duration =
+                (typeof info.duration_ms === "number"
+                  ? info.duration_ms
+                  : undefined) ??
+                (typeof info.durationMs === "number"
+                  ? info.durationMs
+                  : undefined) ??
+                (info.usage && typeof info.usage.duration_ms === "number"
+                  ? info.usage.duration_ms
+                  : undefined) ??
+                (info.usage && typeof info.usage.total_duration_ms === "number"
+                  ? info.usage.total_duration_ms
+                  : undefined);
 
-            for (const p of Array.isArray(parts) ? parts : []) {
-              if (p.type === "text" && p.text) {
-                textSegments.push(p.text);
-              } else if (p.type === "thinking" && p.text) {
-                thinkingContent += p.text;
-              } else if (p.type === "tool") {
-                const toolName = p.tool ?? "tool";
-                const input = p.state?.input;
-                const state = p.state;
-                const status = state?.status ?? "completed";
-                const description = formatToolDesc(toolName, input, status);
-                const content = extractToolContent(toolName, input, state);
-                toolResults.push({ tool: toolName, description, content });
+              const textSegments: string[] = [];
+              let thinkingContent = "";
+              const toolResults: Array<{
+                tool: string;
+                description: string;
+                content?: string;
+              }> = [];
+
+              for (const p of Array.isArray(parts) ? parts : []) {
+                if (p.type === "text" && p.text) {
+                  textSegments.push(p.text);
+                } else if (p.type === "thinking" && p.text) {
+                  thinkingContent += p.text;
+                } else if (p.type === "tool") {
+                  const toolName = p.tool ?? "tool";
+                  const input = p.state?.input;
+                  const state = p.state;
+                  const status = state?.status ?? "completed";
+                  const description = formatToolDesc(toolName, input, status);
+                  const content = extractToolContent(toolName, input, state);
+                  toolResults.push({ tool: toolName, description, content });
+                }
               }
-            }
 
-            const content = textSegments.join("\n\n");
-            return { role, content, thinkingContent, toolResults };
-          });
-          ws.send(JSON.stringify({ type: "session_messages", messages: simplified }));
+              const content = textSegments.join("\n\n");
+              return { role, content, thinkingContent, toolResults, duration };
+            },
+          );
+          ws.send(
+            JSON.stringify({ type: "session_messages", messages: simplified }),
+          );
         })
         .catch((err: Error) => {
-          console.error(`[bridge] failed to fetch session messages: ${err.message}`);
+          console.error(
+            `[bridge] failed to fetch session messages: ${err.message}`,
+          );
         });
     };
 
@@ -232,7 +302,9 @@ export function createBridgeServer(config: BridgeConfig) {
       try {
         msg = JSON.parse(raw.toString());
       } catch {
-        ws.send(JSON.stringify({ type: "error", message: "Invalid message format" }));
+        ws.send(
+          JSON.stringify({ type: "error", message: "Invalid message format" }),
+        );
         return;
       }
 
@@ -245,7 +317,12 @@ export function createBridgeServer(config: BridgeConfig) {
         } else {
           console.log(`[bridge] auth failed`);
           if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: "auth_failed", message: "Authentication failed" }));
+            ws.send(
+              JSON.stringify({
+                type: "auth_failed",
+                message: "Authentication failed",
+              }),
+            );
           }
           ws.close();
         }
@@ -271,7 +348,9 @@ export function createBridgeServer(config: BridgeConfig) {
 
         case "permission_response":
           if (typeof msg.id === "string" && typeof msg.response === "string") {
-            console.log(`[bridge] permission response: ${msg.id} → ${msg.response}`);
+            console.log(
+              `[bridge] permission response: ${msg.id} → ${msg.response}`,
+            );
             if (opencode) {
               opencode.reply(msg.id, msg.response as "allow" | "deny");
             }
@@ -297,7 +376,12 @@ export function createBridgeServer(config: BridgeConfig) {
             currentSessionId = sessionId;
             currentProjectPath = sessionPath ?? currentProjectPath;
             console.log(`[bridge] session set to: ${currentSessionId}`);
-            ws.send(JSON.stringify({ type: "session_set", session_id: currentSessionId }));
+            ws.send(
+              JSON.stringify({
+                type: "session_set",
+                session_id: currentSessionId,
+              }),
+            );
             fetchModels();
             fetchSessionMessages();
           }
@@ -308,11 +392,12 @@ export function createBridgeServer(config: BridgeConfig) {
           if (typeof msg.path === "string") {
             currentProjectPath = msg.path;
             console.log(`[bridge] project set to: ${currentProjectPath}`);
-            ws.send(JSON.stringify({ type: "project_set", path: currentProjectPath }));
+            ws.send(
+              JSON.stringify({ type: "project_set", path: currentProjectPath }),
+            );
             fetchModels();
           }
           break;
-
       }
     };
 

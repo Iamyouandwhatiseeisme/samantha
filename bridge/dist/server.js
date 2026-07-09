@@ -2,11 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createBridgeServer = createBridgeServer;
 const http_1 = require("http");
-const http_2 = require("http");
 const ws_1 = require("ws");
 const opencode_1 = require("./opencode");
 const fetchJson = (url) => new Promise((resolve, reject) => {
-    (0, http_2.get)(url, (res) => {
+    (0, http_1.get)(url, (res) => {
         let data = "";
         res.on("data", (chunk) => (data += chunk));
         res.on("end", () => {
@@ -89,9 +88,11 @@ function createBridgeServer(config) {
                     }));
                 }
             });
-            opencode.on("exit", (_code) => {
-                if (ws.readyState === ws_1.WebSocket.OPEN && opencode && !opencode.manualStop) {
-                    ws.send(JSON.stringify({ type: "done" }));
+            opencode.on("exit", (durationMs) => {
+                if (ws.readyState === ws_1.WebSocket.OPEN &&
+                    opencode &&
+                    !opencode.manualStop) {
+                    ws.send(JSON.stringify({ type: "done", duration_ms: durationMs }));
                 }
             });
             opencode.on("error", (err) => {
@@ -102,7 +103,7 @@ function createBridgeServer(config) {
         };
         const fetchModels = (retries = 3, delay = 1000) => {
             const url = new URL("/config/providers", config.opencodeServeUrl);
-            (0, http_2.get)(url.href, (res) => {
+            (0, http_1.get)(url.href, (res) => {
                 let data = "";
                 res.on("data", (chunk) => (data += chunk));
                 res.on("end", () => {
@@ -130,20 +131,31 @@ function createBridgeServer(config) {
             switch (tool) {
                 case "bash":
                 case "shell":
-                    return action + (typeof input.command === "string" ? input.command : `${tool} (${status})`);
+                    return (action +
+                        (typeof input.command === "string"
+                            ? input.command
+                            : `${tool} (${status})`));
                 case "write":
                 case "edit":
-                    return action + (typeof input.filePath === "string" ? `\u270E ${input.filePath}` : `${tool} (${status})`);
+                    return (action +
+                        (typeof input.filePath === "string"
+                            ? `\u270E ${input.filePath}`
+                            : `${tool} (${status})`));
                 case "read":
                 case "glob":
                 case "grep": {
-                    const p = typeof input.path === "string" ? input.path
-                        : typeof input.pattern === "string" ? input.pattern
-                            : typeof input.filePath === "string" ? input.filePath : "";
+                    const p = typeof input.path === "string"
+                        ? input.path
+                        : typeof input.pattern === "string"
+                            ? input.pattern
+                            : typeof input.filePath === "string"
+                                ? input.filePath
+                                : "";
                     return action + (p || `${tool} (${status})`);
                 }
                 case "webfetch":
-                    return action + (typeof input.url === "string" ? input.url : `${tool} (${status})`);
+                    return (action +
+                        (typeof input.url === "string" ? input.url : `${tool} (${status})`));
                 default:
                     return action + `${tool} (${status})`;
             }
@@ -153,15 +165,24 @@ function createBridgeServer(config) {
                 return undefined;
             switch (tool) {
                 case "write":
-                    return typeof input.content === "string" ? input.content
-                        : typeof state?.output === "string" ? state.output.slice(0, 500) : undefined;
+                    return typeof input.content === "string"
+                        ? input.content
+                        : typeof state?.output === "string"
+                            ? state.output.slice(0, 500)
+                            : undefined;
                 case "edit":
-                    return typeof input.newString === "string" ? input.newString : undefined;
+                    return typeof input.newString === "string"
+                        ? input.newString
+                        : undefined;
                 case "bash":
                 case "shell":
-                    return typeof state?.output === "string" ? state.output.slice(0, 500) : undefined;
+                    return typeof state?.output === "string"
+                        ? state.output.slice(0, 500)
+                        : undefined;
                 default:
-                    return typeof state?.output === "string" ? state.output.slice(0, 500) : undefined;
+                    return typeof state?.output === "string"
+                        ? state.output.slice(0, 500)
+                        : undefined;
             }
         };
         const fetchSessionMessages = () => {
@@ -170,10 +191,22 @@ function createBridgeServer(config) {
             const url = new URL(`/session/${currentSessionId}/message`, config.opencodeServeUrl);
             fetchJson(url.href)
                 .then((messages) => {
-                const simplified = (Array.isArray(messages) ? messages : []).map((m) => {
+                const simplified = (Array.isArray(messages) ? messages : []).map((m, i) => {
                     const info = m.info ?? {};
                     const parts = m.parts ?? [];
                     const role = info.role === "user" ? "user" : "assistant";
+                    const duration = (typeof info.duration_ms === "number"
+                        ? info.duration_ms
+                        : undefined) ??
+                        (typeof info.durationMs === "number"
+                            ? info.durationMs
+                            : undefined) ??
+                        (info.usage && typeof info.usage.duration_ms === "number"
+                            ? info.usage.duration_ms
+                            : undefined) ??
+                        (info.usage && typeof info.usage.total_duration_ms === "number"
+                            ? info.usage.total_duration_ms
+                            : undefined);
                     const textSegments = [];
                     let thinkingContent = "";
                     const toolResults = [];
@@ -195,7 +228,7 @@ function createBridgeServer(config) {
                         }
                     }
                     const content = textSegments.join("\n\n");
-                    return { role, content, thinkingContent, toolResults };
+                    return { role, content, thinkingContent, toolResults, duration };
                 });
                 ws.send(JSON.stringify({ type: "session_messages", messages: simplified }));
             })
@@ -222,7 +255,10 @@ function createBridgeServer(config) {
                 else {
                     console.log(`[bridge] auth failed`);
                     if (ws.readyState === ws_1.WebSocket.OPEN) {
-                        ws.send(JSON.stringify({ type: "auth_failed", message: "Authentication failed" }));
+                        ws.send(JSON.stringify({
+                            type: "auth_failed",
+                            message: "Authentication failed",
+                        }));
                     }
                     ws.close();
                 }
@@ -265,7 +301,10 @@ function createBridgeServer(config) {
                         currentSessionId = sessionId;
                         currentProjectPath = sessionPath ?? currentProjectPath;
                         console.log(`[bridge] session set to: ${currentSessionId}`);
-                        ws.send(JSON.stringify({ type: "session_set", session_id: currentSessionId }));
+                        ws.send(JSON.stringify({
+                            type: "session_set",
+                            session_id: currentSessionId,
+                        }));
                         fetchModels();
                         fetchSessionMessages();
                     }

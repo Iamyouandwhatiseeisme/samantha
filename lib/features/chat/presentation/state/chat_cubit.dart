@@ -81,8 +81,8 @@ class ChatCubit extends Cubit<ChatState> {
         switch (event) {
           case TokenEvent(:final content):
             _handleToken(content);
-          case DoneEvent():
-            _handleDone();
+          case DoneEvent(durationMs: final durationMs):
+            _handleDone(durationMs);
           case ErrorEvent(:final message):
             emit(state.copyWith(errorMessage: message));
           case AuthFailedEvent(:final message):
@@ -165,13 +165,15 @@ class ChatCubit extends Cubit<ChatState> {
     ));
   }
 
-  void _handleDone() {
+  void _handleDone(int? durationMs) {
+    final duration = durationMs != null ? Duration(milliseconds: durationMs) : null;
+
     final messages = List<ChatMessage>.from(state.messages);
     if (messages.isNotEmpty &&
         messages.last.role == ChatRole.assistant &&
         messages.last.isStreaming) {
       final last = messages.removeLast();
-      messages.add(last.copyWith(isStreaming: false));
+      messages.add(last.copyWith(isStreaming: false, duration: duration));
     }
 
     emit(state.copyWith(
@@ -290,12 +292,16 @@ class ChatCubit extends Cubit<ChatState> {
         }
       }
 
+      final durationMs = m['duration'] as int?;
+      final duration = durationMs != null ? Duration(milliseconds: durationMs) : null;
+
       return ChatMessage(
         id: DateTime.now().millisecondsSinceEpoch.toString() + content.hashCode.toString(),
         role: role,
         content: content,
         thinkingContent: thinkingContent,
         toolResults: toolResults,
+        duration: duration,
       );
     }).toList();
     emit(state.copyWith(messages: chatMessages));

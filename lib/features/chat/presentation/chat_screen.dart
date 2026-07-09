@@ -244,23 +244,53 @@ class _MessageList extends StatelessWidget {
 
               return Align(
                 alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                child: Container(
-                  margin: const EdgeInsets.symmetric(vertical: 4.0),
-                  padding: const EdgeInsets.all(12.0),
-                  decoration: BoxDecoration(
-                    color: isUser
-                        ? Theme.of(context).colorScheme.primaryContainer
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12.0),
-                  ),
-                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-                  child: _ChatMessageContent(
-                    content: msg.content,
-                    thinkingContent: msg.thinkingContent,
-                    isStreaming: msg.isStreaming,
-                    toolResults: msg.toolResults,
-                  ),
-                ),
+                child: isUser
+                    ? Container(
+                        margin: const EdgeInsets.symmetric(vertical: 4.0),
+                        padding: const EdgeInsets.all(12.0),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(12.0),
+                        ),
+                        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+                        child: _ChatMessageContent(
+                          content: msg.content,
+                          thinkingContent: msg.thinkingContent,
+                          isStreaming: msg.isStreaming,
+                          toolResults: msg.toolResults,
+                        ),
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (msg.duration != null)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 12, bottom: 2),
+                              child: Text(
+                                'Thought ${msg.duration!.inSeconds}s',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          Container(
+                            margin: const EdgeInsets.symmetric(vertical: 4.0),
+                            padding: const EdgeInsets.all(12.0),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12.0),
+                            ),
+                            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+                            child: _ChatMessageContent(
+                              content: msg.content,
+                              thinkingContent: msg.thinkingContent,
+                              isStreaming: msg.isStreaming,
+                              toolResults: msg.toolResults,
+                            ),
+                          ),
+                        ],
+                      ),
               );
             },
           ),

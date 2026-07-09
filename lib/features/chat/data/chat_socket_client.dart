@@ -10,7 +10,10 @@ class TokenEvent extends ChatEvent {
   TokenEvent(this.content);
 }
 
-class DoneEvent extends ChatEvent {}
+class DoneEvent extends ChatEvent {
+  final int? durationMs;
+  DoneEvent({this.durationMs});
+}
 
 class ErrorEvent extends ChatEvent {
   final String message;
@@ -104,7 +107,9 @@ class ChatSocketClient {
             case 'token':
               _eventController.add(TokenEvent(parsed['content'] ?? ''));
             case 'done':
-              _eventController.add(DoneEvent());
+              _eventController.add(DoneEvent(
+                durationMs: parsed['duration_ms'] as int?,
+              ));
             case 'auth_failed':
               _channel = null;
               _eventController
