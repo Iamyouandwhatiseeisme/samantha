@@ -31,6 +31,7 @@ class TimestampRevealController extends ChangeNotifier {
 
   void onPanEnd(DragEndDetails details) {
     _isDragging = false;
+    _controller.value = (-_dragOffset / _maxReveal).clamp(0.0, 1.0);
     _dragOffset = 0;
     _controller.reverse();
   }

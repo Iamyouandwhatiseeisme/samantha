@@ -264,35 +264,31 @@ class _MessageList extends StatelessWidget {
                 builder: (context, _) {
                   final fraction = revealController.revealFraction;
 
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                  return Stack(
+                    clipBehavior: Clip.none,
                     children: [
-                      Flexible(
-                        child: Align(
-                          alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                      Align(
+                        alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            right: fraction * 48,
+                          ),
                           child: bubble,
                         ),
                       ),
-                      SizedBox(
-                        width: fraction * 48,
-                        child: fraction > 0.01
-                            ? FadeTransition(
-                                opacity: AlwaysStoppedAnimation(fraction),
-                                child: Padding(
-                                  padding: const EdgeInsets.only(left: 4, bottom: 4),
-                                  child: Align(
-                                    alignment: Alignment.bottomCenter,
-                                    child: Text(
-                                      _formatTime(msg.timestamp),
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              )
-                            : null,
+                      Positioned(
+                        right: (fraction - 1) * 48,
+                        bottom: 4,
+                        child: Opacity(
+                          opacity: fraction,
+                          child: Text(
+                            _formatTime(msg.timestamp),
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   );
