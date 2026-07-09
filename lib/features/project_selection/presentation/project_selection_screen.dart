@@ -30,7 +30,7 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 2, vsync: this)..addListener(() => setState(() {}));
     _loadData();
   }
 
@@ -41,7 +41,10 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
   }
 
   Future<void> _loadData() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
 
     try {
       final host = await _repository.getHost();
@@ -51,10 +54,7 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
         return;
       }
 
-      final results = await Future.wait([
-        _api.getProjects(host),
-        _api.getSessions(host),
-      ]);
+      final results = await Future.wait([_api.getProjects(host), _api.getSessions(host)]);
 
       if (!mounted) return;
       setState(() {
@@ -64,7 +64,10 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _error = e.toString(); _loading = false; });
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
     }
   }
 
@@ -86,9 +89,10 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('OpenCode'),
+        title: const Text('Samantha'),
         bottom: TabBar(
           controller: _tabController,
+          indicatorSize: TabBarIndicatorSize.tab,
           tabs: const [
             Tab(icon: Icon(Icons.folder), text: 'Repository'),
             Tab(icon: Icon(Icons.history), text: 'Session'),
@@ -98,37 +102,40 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? _buildError()
-              : Column(
-                  children: [
-                    Expanded(
-                      child: TabBarView(
-                        controller: _tabController,
-                        children: [
-                          _buildProjectList(),
-                          _buildSessionList(),
-                        ],
-                      ),
-                    ),
-                    SafeArea(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: (_tabController.index == 0 && _selectedProject != null) ||
-                                    (_tabController.index == 1 && _selectedSession != null)
-                                ? _continue
-                                : null,
-                            child: Text(
-                              _tabController.index == 0 ? 'New Session' : 'Continue Session',
+          ? _buildError()
+          : Column(
+              children: [
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [_buildProjectList(), _buildSessionList()],
+                  ),
+                ),
+                AnimatedOpacity(
+                  duration: const Duration(milliseconds: 250),
+                  opacity: _tabController.index == 0 ? 1.0 : 0.0,
+                  child: AnimatedSlide(
+                    duration: const Duration(milliseconds: 250),
+                    offset: _tabController.index == 0 ? Offset.zero : const Offset(0, 1),
+                    child: IgnorePointer(
+                      ignoring: _tabController.index != 0,
+                      child: SafeArea(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: _selectedProject != null ? _continue : null,
+                              child: const Text('New Session'),
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ],
+                  ),
                 ),
+              ],
+            ),
     );
   }
 
@@ -142,8 +149,7 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
           children: [
             Icon(Icons.error_outline, size: 48, color: colorScheme.error),
             const SizedBox(height: 16),
-            Text('Failed to load data',
-                style: Theme.of(context).textTheme.titleMedium),
+            Text('Failed to load data', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             Text(
               formatErrorMessage(_error!),
@@ -177,8 +183,7 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
             children: [
               const Icon(Icons.folder_off, size: 48),
               const SizedBox(height: 16),
-              Text('No repositories found',
-                  style: Theme.of(context).textTheme.titleMedium),
+              Text('No repositories found', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               const Text(
                 'Make sure opencode is running and has discovered\nyour git repositories.',
@@ -204,9 +209,7 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
           leading: const Icon(Icons.folder),
           title: Text(project.displayName),
           subtitle: Text(project.worktree, style: const TextStyle(fontSize: 12)),
-          trailing: selected
-              ? const Icon(Icons.check_circle, color: Colors.green)
-              : null,
+          trailing: selected ? const Icon(Icons.check_circle, color: Colors.green) : null,
           selected: selected,
           onTap: () => setState(() {
             _selectedProject = project;
@@ -227,8 +230,7 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
             children: [
               const Icon(Icons.history, size: 48),
               const SizedBox(height: 16),
-              Text('No previous sessions',
-                  style: Theme.of(context).textTheme.titleMedium),
+              Text('No previous sessions', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               const Text(
                 'Sessions from your opencode server\nwill appear here.',
@@ -257,14 +259,13 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
             '${session.directory.split('/').last} \u2022 ${_formatDate(session.createdAt)}',
             style: const TextStyle(fontSize: 12),
           ),
-          trailing: selected
-              ? const Icon(Icons.check_circle, color: Colors.green)
-              : null,
+          trailing: selected ? const Icon(Icons.check_circle, color: Colors.green) : null,
           selected: selected,
-          onTap: () => setState(() {
+          onTap: () {
             _selectedSession = session;
             _selectedProject = null;
-          }),
+            _continue();
+          },
         );
       },
     );
