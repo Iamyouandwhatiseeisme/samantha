@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -665,13 +663,6 @@ class _ModelDropdown extends StatelessWidget {
   }
 }
 
-class _TodoItem {
-  final String content;
-  final String status;
-  final String priority;
-  const _TodoItem({required this.content, required this.status, this.priority = 'medium'});
-}
-
 class _ToolResultChip extends StatefulWidget {
   final ToolResult result;
   const _ToolResultChip({required this.result});
@@ -688,6 +679,7 @@ class _ToolResultChipState extends State<_ToolResultChip> {
     final colorScheme = Theme.of(context).colorScheme;
     final hasContent = widget.result.content != null && widget.result.content!.isNotEmpty;
     final isTodo = widget.result.tool == 'todowrite';
+    final todos = isTodo ? widget.result.parsedTodos : null;
 
     return Padding(
       padding: const EdgeInsets.only(top: 6),
@@ -738,34 +730,13 @@ class _ToolResultChipState extends State<_ToolResultChip> {
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
               ),
-              child: isTodo
-                  ? _TodoContent(jsonStr: widget.result.content!)
+              child: todos != null && todos.isNotEmpty
+                  ? _TodoContent(todos: todos)
                   : _ToolResultRawContent(tool: widget.result.tool, content: widget.result.content!),
             ),
         ],
       ),
     );
-  }
-
-  List<_TodoItem> _parseTodos(String jsonStr) {
-    try {
-      final decoded = jsonDecode(jsonStr);
-      if (decoded is List) {
-        return decoded
-            .whereType<Map<String, dynamic>>()
-            .map(
-              (m) => _TodoItem(
-                content: m['content'] as String? ?? '',
-                status: m['status'] as String? ?? 'pending',
-                priority: m['priority'] as String? ?? 'medium',
-              ),
-            )
-            .toList();
-      }
-      return [];
-    } catch (_) {
-      return [];
-    }
   }
 }
 
@@ -806,37 +777,12 @@ class _ToolResultRawContent extends StatelessWidget {
 }
 
 class _TodoContent extends StatelessWidget {
-  final String jsonStr;
-  const _TodoContent({required this.jsonStr});
-
-  List<_TodoItem> _parseTodos() {
-    try {
-      final decoded = jsonDecode(jsonStr);
-      if (decoded is List) {
-        return decoded
-            .whereType<Map<String, dynamic>>()
-            .map(
-              (m) => _TodoItem(
-                content: m['content'] as String? ?? '',
-                status: m['status'] as String? ?? 'pending',
-                priority: m['priority'] as String? ?? 'medium',
-              ),
-            )
-            .toList();
-      }
-      return [];
-    } catch (_) {
-      return [];
-    }
-  }
+  final List<TodoItem> todos;
+  const _TodoContent({required this.todos});
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final todos = _parseTodos();
-    if (todos.isEmpty) {
-      return _ToolResultRawContent(tool: 'todowrite', content: jsonStr);
-    }
 
     final doneCount = todos.where((t) => t.status == 'completed').length;
 

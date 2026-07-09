@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class ChatMessage {
   final String id;
   final ChatRole role;
@@ -42,6 +44,37 @@ class ToolResult {
     required this.tool,
     required this.description,
     this.content,
+  });
+
+  List<TodoItem> get parsedTodos {
+    if (tool != 'todowrite' || content == null || content!.isEmpty) return [];
+    try {
+      final decoded = jsonDecode(content!);
+      if (decoded is List) {
+        return decoded
+            .whereType<Map<String, dynamic>>()
+            .map((m) => TodoItem(
+                  content: m['content'] as String? ?? '',
+                  status: m['status'] as String? ?? 'pending',
+                  priority: m['priority'] as String? ?? 'medium',
+                ))
+            .toList();
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+}
+
+class TodoItem {
+  final String content;
+  final String status;
+  final String priority;
+  const TodoItem({
+    required this.content,
+    required this.status,
+    this.priority = 'medium',
   });
 }
 
