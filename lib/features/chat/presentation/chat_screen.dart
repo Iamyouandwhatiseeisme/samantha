@@ -86,6 +86,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           child: Column(
             children: [
               _buildTopBar(context),
+              SizedBox(height: 16),
               const Divider(height: 1, thickness: 1),
               const SizedBox(height: 4),
               BlocBuilder<ChatCubit, ChatState>(
@@ -145,10 +146,14 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       child: Row(
         children: [
           _iconButton(
-            icon: Icons.settings,
-            onPressed: () => context.router.replace(const ConnectionSettingsRoute()),
+            icon: Icons.arrow_back,
+            onPressed: () => context.router.replace(const ProjectSelectionRoute()),
           ),
-          Expanded(child: _buildTitle()),
+          SizedBox(width: 8),
+          const Expanded(child: _ModelTextField()),
+          SizedBox(width: 8),
+          const _StatusDot(),
+          const SizedBox(width: 8),
           BlocBuilder<ThemeModeCubit, ThemeMode>(
             builder: (context, themeMode) {
               return _iconButton(
@@ -171,63 +176,55 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       onPressed: onPressed,
     );
   }
+}
 
-  Widget _buildTitle() {
+class _TitleState {
+  final ChatConnectionStatus connectionStatus;
+  final String? currentProjectPath;
+  const _TitleState({required this.connectionStatus, this.currentProjectPath});
+}
+
+class _StatusDot extends StatelessWidget {
+  const _StatusDot();
+
+  @override
+  Widget build(BuildContext context) {
     return BlocSelector<ChatCubit, ChatState, _TitleState>(
       selector: (state) => _TitleState(
         connectionStatus: state.connectionStatus,
         currentProjectPath: state.currentProjectPath,
       ),
       builder: (context, titleState) {
-        final (icon, label) = switch (titleState.connectionStatus) {
-          ChatConnectionStatus.connected => (Icons.circle, 'Connected'),
-          ChatConnectionStatus.streaming => (Icons.circle, 'Streaming'),
-          ChatConnectionStatus.connecting => (Icons.sync, 'Connecting...'),
-          ChatConnectionStatus.disconnected => (Icons.cloud_off, 'Disconnected'),
-        };
-
-        Color color = switch (titleState.connectionStatus) {
-          ChatConnectionStatus.connected => Colors.green,
-          ChatConnectionStatus.streaming => Colors.blue,
-          ChatConnectionStatus.connecting => Colors.orange,
-          ChatConnectionStatus.disconnected => Colors.red,
+        final (icon, color) = switch (titleState.connectionStatus) {
+          ChatConnectionStatus.connected => (Icons.circle, Colors.green),
+          ChatConnectionStatus.streaming => (Icons.circle, Colors.blue),
+          ChatConnectionStatus.connecting => (Icons.sync, Colors.orange),
+          ChatConnectionStatus.disconnected => (Icons.cloud_off, Colors.red),
         };
 
         final repoName = titleState.currentProjectPath?.split('/').last;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, color: color, size: 12),
+        return Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: color, size: 12),
+              if (repoName != null) ...[
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
-                    label,
-                    style: const TextStyle(fontSize: 16),
+                    repoName,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
-            ),
-            if (repoName != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 1),
-                child: Text(
-                  repoName,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            const SizedBox(height: 8),
-            const _ModelTextField(),
-          ],
+            ],
+          ),
         );
       },
     );
@@ -255,10 +252,7 @@ class _ErrorBanner extends StatelessWidget {
           Expanded(
             child: Text(
               formatErrorMessage(message),
-              style: TextStyle(
-                fontSize: 13,
-                color: colorScheme.onErrorContainer,
-              ),
+              style: TextStyle(fontSize: 13, color: colorScheme.onErrorContainer),
             ),
           ),
           TextButton(
@@ -279,10 +273,7 @@ class _MessageList extends StatelessWidget {
   final ScrollController scrollController;
   final AnimationController revealController;
 
-  const _MessageList({
-    required this.scrollController,
-    required this.revealController,
-  });
+  const _MessageList({required this.scrollController, required this.revealController});
 
   @override
   Widget build(BuildContext context) {
@@ -312,9 +303,7 @@ class _MessageList extends StatelessWidget {
                       Align(
                         alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
                         child: Padding(
-                          padding: EdgeInsets.only(
-                            right: fraction * 48,
-                          ),
+                          padding: EdgeInsets.only(right: fraction * 48),
                           child: bubble,
                         ),
                       ),
@@ -360,17 +349,10 @@ class _MessageList extends StatelessWidget {
       children: [
         if (labelParts.isNotEmpty)
           Padding(
-            padding: EdgeInsets.only(
-              left: isUser ? 0 : 12,
-              right: isUser ? 12 : 0,
-              bottom: 2,
-            ),
+            padding: EdgeInsets.only(left: isUser ? 0 : 12, right: isUser ? 12 : 0, bottom: 2),
             child: Text(
               labelParts.join(' \u00B7 '),
-              style: TextStyle(
-                fontSize: 10,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+              style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           ),
         Container(
@@ -705,12 +687,6 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
   }
 }
 
-class _TitleState {
-  final ChatConnectionStatus connectionStatus;
-  final String? currentProjectPath;
-  const _TitleState({required this.connectionStatus, this.currentProjectPath});
-}
-
 class _ModelDropdownState {
   final List<ModelProvider> availableModels;
   final String? selectedModel;
@@ -765,6 +741,12 @@ class _ModelTextFieldState extends State<_ModelTextField> {
     _dismissedBySelection = false;
   }
 
+  void _dismiss() {
+    _focusNode.unfocus();
+    _removeOverlay();
+    _restoreSelectedText();
+  }
+
   void _removeOverlay() {
     _overlayEntry?.remove();
     _overlayEntry?.dispose();
@@ -797,14 +779,8 @@ class _ModelTextFieldState extends State<_ModelTextField> {
                   final model = models[index];
                   return ListTile(
                     dense: true,
-                    title: Text(
-                      model.displayName,
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                    subtitle: Text(
-                      model.providerName,
-                      style: const TextStyle(fontSize: 11),
-                    ),
+                    title: Text(model.displayName, style: const TextStyle(fontSize: 13)),
+                    subtitle: Text(model.providerName, style: const TextStyle(fontSize: 11)),
                     onTap: () {
                       _dismissedBySelection = true;
                       _lastSelectedQualifier = model.qualifiedId;
@@ -861,26 +837,29 @@ class _ModelTextFieldState extends State<_ModelTextField> {
         return CompositedTransformTarget(
           link: _layerLink,
           child: Container(
-            margin: const EdgeInsets.only(bottom: 6),
+            height: 32,
+            alignment: Alignment.center,
             decoration: BoxDecoration(
-              border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5)),
-              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+              ),
+              borderRadius: BorderRadius.circular(8),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: TextField(
               controller: _controller,
               focusNode: _focusNode,
-              style: const TextStyle(fontSize: 13),
+              textAlignVertical: TextAlignVertical.center,
+              style: const TextStyle(fontSize: 12),
               decoration: InputDecoration(
                 border: InputBorder.none,
                 isDense: true,
-                isCollapsed: true,
                 hintText: 'Search models...',
                 hintStyle: TextStyle(
-                  fontSize: 13,
+                  fontSize: 12,
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                contentPadding: EdgeInsets.zero,
                 suffixIcon: GestureDetector(
                   onTap: () => _focusNode.requestFocus(),
                   child: const Icon(Icons.arrow_drop_down, size: 20),
@@ -890,19 +869,28 @@ class _ModelTextFieldState extends State<_ModelTextField> {
                 final query = _controller.text.toLowerCase();
                 final filtered = query.isEmpty
                     ? allModels
-                    : allModels.where((m) =>
-                        m.displayName.toLowerCase().contains(query) ||
-                        m.providerName.toLowerCase().contains(query)).toList();
+                    : allModels
+                          .where(
+                            (m) =>
+                                m.displayName.toLowerCase().contains(query) ||
+                                m.providerName.toLowerCase().contains(query),
+                          )
+                          .toList();
                 _showOverlay(filtered);
               },
+              onTapOutside: (_) => _dismiss(),
               onChanged: (value) {
                 _dismissedBySelection = false;
                 final query = value.toLowerCase();
                 final filtered = query.isEmpty
                     ? allModels
-                    : allModels.where((m) =>
-                        m.displayName.toLowerCase().contains(query) ||
-                        m.providerName.toLowerCase().contains(query)).toList();
+                    : allModels
+                          .where(
+                            (m) =>
+                                m.displayName.toLowerCase().contains(query) ||
+                                m.providerName.toLowerCase().contains(query),
+                          )
+                          .toList();
                 _showOverlay(filtered);
               },
             ),
