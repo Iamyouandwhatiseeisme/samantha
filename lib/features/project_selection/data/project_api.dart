@@ -25,12 +25,14 @@ class OpenCodeSession {
   final String title;
   final String directory;
   final int createdAt;
+  final double contextPercent;
 
   const OpenCodeSession({
     required this.id,
     required this.title,
     required this.directory,
     required this.createdAt,
+    this.contextPercent = 0,
   });
 
   factory OpenCodeSession.fromJson(Map<String, dynamic> json) {
@@ -40,6 +42,7 @@ class OpenCodeSession {
       title: json['title'] as String? ?? 'Untitled',
       directory: json['directory'] as String? ?? '',
       createdAt: (time['created'] as num?)?.toInt() ?? 0,
+      contextPercent: (json['contextPercent'] as num?)?.toDouble() ?? 0,
     );
   }
 
@@ -47,6 +50,12 @@ class OpenCodeSession {
     if (title.isNotEmpty && title != 'Untitled') return title;
     final parts = directory.split('/');
     return parts.isNotEmpty ? parts.last : 'Session';
+  }
+
+  String get contextPercentStr {
+    if (contextPercent <= 0) return '0%';
+    if (contextPercent < 0.1) return '<0.1%';
+    return '${contextPercent.toStringAsFixed(1)}%';
   }
 }
 

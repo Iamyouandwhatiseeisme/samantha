@@ -54,7 +54,36 @@ export function createBridgeServer(config: BridgeConfig) {
       return;
     }
     if (req.method === "GET" && req.url === "/sessions") {
-      proxyGet("/session");
+      const url = new URL("/session", config.opencodeServeUrl);
+      fetchJson(url.href)
+        .then((sessions: any) => {
+          const list = Array.isArray(sessions) ? sessions : [];
+          const enriched = list.map((s: any) => {
+            const tokens = s.tokens ?? {};
+            const model = s.model ?? {};
+            const modelId: string = (model.id ?? "").toLowerCase();
+            const inputTokens: number = tokens.input ?? 0;
+
+            let contextWindow = 200000;
+            if (modelId.includes("claude")) contextWindow = 200000;
+            else if (modelId.includes("gpt-4")) contextWindow = 128000;
+            else if (modelId.includes("gpt-3.5")) contextWindow = 16000;
+            else if (modelId.includes("gemini-2")) contextWindow = 1048576;
+            else if (modelId.includes("gemini")) contextWindow = 32768;
+
+            const pct = inputTokens > 0
+              ? Math.min((inputTokens / contextWindow) * 100, 100)
+              : 0;
+
+            return { ...s, contextTokens: inputTokens, contextPercent: Math.round(pct * 10) / 10 };
+          });
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify(enriched));
+        })
+        .catch((err) => {
+          res.writeHead(502, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: err.message }));
+        });
       return;
     }
     res.writeHead(404);

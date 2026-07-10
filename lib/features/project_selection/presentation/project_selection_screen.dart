@@ -4,7 +4,6 @@ import 'package:samantha/app/injection.dart';
 import 'package:samantha/app/router.dart';
 import 'package:samantha/features/chat/data/error_message.dart';
 import 'package:samantha/features/connection_settings/data/connection_settings_repository.dart';
-import 'package:samantha/common/extensions/date_time_x.dart';
 import 'package:samantha/features/project_selection/data/project_api.dart';
 
 @RoutePage()
@@ -329,7 +328,7 @@ class _SessionListView extends StatelessWidget {
           leading: const Icon(Icons.chat),
           title: Text(session.displayName),
           subtitle: Text(
-            '${session.directory.split('/').last} \u2022 ${DateTime.fromMillisecondsSinceEpoch(session.createdAt * 1000).toRelative()}',
+            '${session.directory.split('/').last} \u2022 ${session.contextPercentStr} context',
             style: const TextStyle(fontSize: 12),
           ),
           trailing: selected ? const Icon(Icons.check_circle, color: Colors.green) : null,
