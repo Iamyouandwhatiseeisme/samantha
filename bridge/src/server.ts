@@ -55,7 +55,72 @@ export function createBridgeServer(config: BridgeConfig) {
       return;
     }
     if (req.method === "GET" && req.url === "/sessions") {
-      proxyGet("/session");
+      const modelsUrl = new URL("/config/providers", config.opencodeServeUrl);
+      httpGet(modelsUrl.href, (modelsRes) => {
+        let modelsData = "";
+        modelsRes.on("data", (chunk: string) => (modelsData += chunk));
+        modelsRes.on("end", () => {
+          let modelCtxMap: Record<string, number> = {};
+          try {
+            const parsed = JSON.parse(modelsData);
+            const providers: any[] = parsed.providers ?? parsed ?? [];
+            for (const p of providers) {
+              for (const [_, model] of Object.entries(p.models ?? {})) {
+                const m = model as any;
+                if (m.id && m.limit?.context) {
+                  modelCtxMap[m.id] = m.limit.context;
+                }
+              }
+            }
+          } catch { /* use empty map */ }
+
+          const sessionsUrl = new URL("/session", config.opencodeServeUrl);
+          httpGet(sessionsUrl.href, (sessionsRes) => {
+            let sessionsData = "";
+            sessionsRes.on("data", (chunk: string) => (sessionsData += chunk));
+            sessionsRes.on("end", () => {
+              try {
+                const sessions = JSON.parse(sessionsData);
+                const list = Array.isArray(sessions) ? sessions : [];
+                const enriched = list.map((s: any, i: number) => {
+                  const tokens = s.tokens ?? {};
+                  const inputTokens: number = tokens.input ?? 0;
+                  const cost: number = s.cost ?? 0;
+                  const modelId = s.model?.id;
+                  const ctxWin = modelCtxMap[modelId] ?? 200000;
+
+                  const ctxPct = inputTokens > 0
+                    ? Math.round((inputTokens / ctxWin) * 1000) / 10
+                    : 0;
+
+                  if (i === 0) {
+                    console.log(
+                      `[bridge:sessions] session[0]: id=${s.id}, title=${s.title}`,
+                      `model=${modelId}, ctxWindow=${ctxWin} (fromAPI=${!!modelCtxMap[modelId]})`,
+                      `input=${inputTokens}, output=${tokens.output ?? 0}, reasoning=${tokens.reasoning ?? 0}`,
+                      `cache.read=${tokens.cache?.read ?? 0}, cache.write=${tokens.cache?.write ?? 0}`,
+                      `cost=${cost}, contextPct=${ctxPct}%`,
+                    );
+                  }
+
+                  return { ...s, inputTokens, cost, contextPercent: ctxPct };
+                });
+                res.writeHead(200, { "Content-Type": "application/json" });
+                res.end(JSON.stringify(enriched));
+              } catch (err: any) {
+                res.writeHead(502, { "Content-Type": "application/json" });
+                res.end(JSON.stringify({ error: err.message }));
+              }
+            });
+          }).on("error", (err) => {
+            res.writeHead(502, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: err.message }));
+          });
+        });
+      }).on("error", (err) => {
+        res.writeHead(502, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: err.message }));
+      });
       return;
     }
     res.writeHead(404);
