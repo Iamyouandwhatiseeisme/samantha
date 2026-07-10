@@ -136,6 +136,65 @@ void main() {
     );
 
     blocTest<ChatCubit, ChatState>(
+      'accumulates thinking deltas and sums the duration of each reasoning block',
+      setUp: () {
+        when(() => repository.connect()).thenAnswer((_) async {});
+        when(() => repository.isConnected).thenReturn(true);
+      },
+      build: () => ChatCubit(repository),
+      act: (cubit) async {
+        await cubit.connect();
+        // A turn with a tool call produces one reasoning block per step.
+        eventController.add(ThinkingEvent('Let me '));
+        await Future.delayed(Duration.zero);
+        eventController.add(ThinkingEvent('check.'));
+        await Future.delayed(Duration.zero);
+        eventController.add(ThinkingEndEvent(300));
+        await Future.delayed(Duration.zero);
+        eventController.add(ThinkingEvent('Got it.'));
+        await Future.delayed(Duration.zero);
+        eventController.add(ThinkingEndEvent(200));
+        await Future.delayed(Duration.zero);
+        eventController.add(TokenEvent('The answer.'));
+        await Future.delayed(Duration.zero);
+        eventController.add(DoneEvent(durationMs: 5000));
+        await Future.delayed(Duration.zero);
+      },
+      wait: const Duration(milliseconds: 100),
+      verify: (cubit) {
+        final message = cubit.state.messages.last;
+        expect(message.thinkingContent, 'Let me check.\n\nGot it.\n\n');
+        expect(message.thinkingDuration, const Duration(milliseconds: 500));
+        expect(message.content, 'The answer.');
+        // The turn's own duration stays separate from time spent reasoning.
+        expect(message.duration, const Duration(seconds: 5));
+        expect(message.isStreaming, isFalse);
+      },
+    );
+
+    blocTest<ChatCubit, ChatState>(
+      'ThinkingEndEvent without a duration leaves thinkingDuration unset',
+      setUp: () {
+        when(() => repository.connect()).thenAnswer((_) async {});
+        when(() => repository.isConnected).thenReturn(true);
+      },
+      build: () => ChatCubit(repository),
+      act: (cubit) async {
+        await cubit.connect();
+        eventController.add(ThinkingEvent('Hmm.'));
+        await Future.delayed(Duration.zero);
+        eventController.add(ThinkingEndEvent(null));
+        await Future.delayed(Duration.zero);
+      },
+      wait: const Duration(milliseconds: 100),
+      verify: (cubit) {
+        final message = cubit.state.messages.last;
+        expect(message.thinkingContent, 'Hmm.\n\n');
+        expect(message.thinkingDuration, isNull);
+      },
+    );
+
+    blocTest<ChatCubit, ChatState>(
       'DoneEvent finalizes streaming and returns to connected',
       setUp: () {
         when(() => repository.connect()).thenAnswer((_) async {});
