@@ -26,6 +26,7 @@ export class OpencodeProcess extends EventEmitter {
   private _durationMs?: number;
   private _inputTokens?: number;
   private _outputTokens?: number;
+  private _cost?: number;
 
   constructor(serveUrl: string) {
     super();
@@ -111,11 +112,12 @@ export class OpencodeProcess extends EventEmitter {
       }
       this.process = null;
       if (!this.stopping) {
-        this.emit("exit", this._durationMs, this._inputTokens, this._outputTokens);
+        this.emit("exit", this._durationMs, this._inputTokens, this._outputTokens, this._cost);
       }
       this._durationMs = undefined;
       this._inputTokens = undefined;
       this._outputTokens = undefined;
+      this._cost = undefined;
     });
   }
 
@@ -196,14 +198,20 @@ export class OpencodeProcess extends EventEmitter {
             this._durationMs = usage.total_duration_ms as number;
           }
         }
-        if (msg.usage && typeof msg.usage === "object") {
-          const usage = msg.usage as Record<string, unknown>;
-          if (typeof usage.input_tokens === "number") {
-            this._inputTokens = usage.input_tokens as number;
+        const part = msg.part as Record<string, unknown> | undefined;
+        if (part && part.tokens && typeof part.tokens === "object") {
+          const tokens = part.tokens as Record<string, unknown>;
+          if (typeof tokens.input === "number") {
+            this._inputTokens = tokens.input as number;
           }
-          if (typeof usage.output_tokens === "number") {
-            this._outputTokens = usage.output_tokens as number;
+          if (typeof tokens.output === "number") {
+            this._outputTokens = tokens.output as number;
           }
+          console.log(`[bridge:opencode] tokens extracted: input=${this._inputTokens}, output=${this._outputTokens}`);
+        }
+        if (part && typeof part.cost === "number") {
+          this._cost = part.cost as number;
+          console.log(`[bridge:opencode] cost extracted: ${this._cost}`);
         }
         break;
 

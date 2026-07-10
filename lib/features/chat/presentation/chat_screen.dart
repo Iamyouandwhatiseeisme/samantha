@@ -349,6 +349,9 @@ class _MessageList extends StatelessWidget {
         footerParts.add('${_formatTokenCount(total)} tokens');
       }
     }
+    if (msg.cost != null && msg.cost! > 0) {
+      footerParts.add('\$${msg.cost!.toStringAsFixed(4)}');
+    }
     if (msg.duration != null && msg.duration!.inSeconds > 0) {
       footerParts.add(_formatDuration(msg.duration!));
     }

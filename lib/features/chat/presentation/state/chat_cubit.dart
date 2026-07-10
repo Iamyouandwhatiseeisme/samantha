@@ -81,8 +81,8 @@ class ChatCubit extends Cubit<ChatState> {
         switch (event) {
           case TokenEvent(:final content):
             _handleToken(content);
-          case DoneEvent(durationMs: final durationMs, inputTokens: final input, outputTokens: final output):
-            _handleDone(durationMs, input, output);
+          case DoneEvent(durationMs: final durationMs, inputTokens: final input, outputTokens: final output, cost: final cost):
+            _handleDone(durationMs, input, output, cost);
           case ErrorEvent(:final message):
             emit(state.copyWith(errorMessage: message));
           case AuthFailedEvent(:final message):
@@ -165,7 +165,7 @@ class ChatCubit extends Cubit<ChatState> {
     ));
   }
 
-  void _handleDone(int? durationMs, int? inputTokens, int? outputTokens) {
+  void _handleDone(int? durationMs, int? inputTokens, int? outputTokens, double? cost) {
     final duration = durationMs != null ? Duration(milliseconds: durationMs) : null;
 
     final messages = List<ChatMessage>.from(state.messages);
@@ -178,6 +178,7 @@ class ChatCubit extends Cubit<ChatState> {
         duration: duration,
         inputTokens: inputTokens,
         outputTokens: outputTokens,
+        cost: cost,
       ));
     }
 
@@ -302,6 +303,7 @@ class ChatCubit extends Cubit<ChatState> {
 
       final inputTokens = m['inputTokens'] as int?;
       final outputTokens = m['outputTokens'] as int?;
+      final cost = (m['cost'] as num?)?.toDouble();
 
       final rawTs = m['timestamp'];
       DateTime? timestamp;
@@ -320,6 +322,7 @@ class ChatCubit extends Cubit<ChatState> {
         duration: duration,
         inputTokens: inputTokens,
         outputTokens: outputTokens,
+        cost: cost,
         timestamp: timestamp,
       );
     }).toList();

@@ -112,13 +112,13 @@ export function createBridgeServer(config: BridgeConfig) {
         }
       });
 
-      opencode.on("exit", (durationMs: number | undefined, inputTokens?: number, outputTokens?: number) => {
+      opencode.on("exit", (durationMs: number | undefined, inputTokens?: number, outputTokens?: number, cost?: number) => {
         if (
           ws.readyState === WebSocket.OPEN &&
           opencode &&
           !opencode.manualStop
         ) {
-          ws.send(JSON.stringify({ type: "done", duration_ms: durationMs, input_tokens: inputTokens, output_tokens: outputTokens }));
+          ws.send(JSON.stringify({ type: "done", duration_ms: durationMs, input_tokens: inputTokens, output_tokens: outputTokens, cost: cost }));
         }
       });
 
@@ -260,12 +260,34 @@ export function createBridgeServer(config: BridgeConfig) {
 
               let inputTokens: number | undefined;
               let outputTokens: number | undefined;
-              if (info.usage && typeof info.usage === "object") {
-                if (typeof info.usage.input_tokens === "number") {
-                  inputTokens = info.usage.input_tokens;
+              const tokensObj =
+                info.usage as Record<string, unknown> | undefined;
+              const altTokens =
+                info.tokens as Record<string, unknown> | undefined;
+              const msgTokens =
+                m.tokens as Record<string, unknown> | undefined;
+              if (tokensObj && typeof tokensObj === "object") {
+                if (typeof tokensObj.input_tokens === "number") {
+                  inputTokens = tokensObj.input_tokens as number;
                 }
-                if (typeof info.usage.output_tokens === "number") {
-                  outputTokens = info.usage.output_tokens;
+                if (typeof tokensObj.output_tokens === "number") {
+                  outputTokens = tokensObj.output_tokens as number;
+                }
+              }
+              if (inputTokens === undefined && altTokens && typeof altTokens === "object") {
+                if (typeof altTokens.input === "number") {
+                  inputTokens = altTokens.input as number;
+                }
+                if (typeof altTokens.output === "number") {
+                  outputTokens = altTokens.output as number;
+                }
+              }
+              if (inputTokens === undefined && msgTokens && typeof msgTokens === "object") {
+                if (typeof msgTokens.input === "number") {
+                  inputTokens = msgTokens.input as number;
+                }
+                if (typeof msgTokens.output === "number") {
+                  outputTokens = msgTokens.output as number;
                 }
               }
 
@@ -295,7 +317,8 @@ export function createBridgeServer(config: BridgeConfig) {
 
               const content = textSegments.join("\n\n");
               const timestamp = info.created ?? info.timestamp ?? info.time;
-              return { role, content, thinkingContent, toolResults, duration, inputTokens, outputTokens, timestamp };
+              const cost = typeof info.cost === "number" ? info.cost : (typeof m.cost === "number" ? m.cost : undefined);
+              return { role, content, thinkingContent, toolResults, duration, inputTokens, outputTokens, cost, timestamp };
             },
           );
           ws.send(

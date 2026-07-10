@@ -11,6 +11,7 @@ class OpencodeProcess extends events_1.EventEmitter {
     _durationMs;
     _inputTokens;
     _outputTokens;
+    _cost;
     constructor(serveUrl) {
         super();
         this.serveUrl = serveUrl;
@@ -86,11 +87,12 @@ class OpencodeProcess extends events_1.EventEmitter {
             }
             this.process = null;
             if (!this.stopping) {
-                this.emit("exit", this._durationMs, this._inputTokens, this._outputTokens);
+                this.emit("exit", this._durationMs, this._inputTokens, this._outputTokens, this._cost);
             }
             this._durationMs = undefined;
             this._inputTokens = undefined;
             this._outputTokens = undefined;
+            this._cost = undefined;
         });
     }
     handleCliMessage(msg) {
@@ -168,14 +170,20 @@ class OpencodeProcess extends events_1.EventEmitter {
                         this._durationMs = usage.total_duration_ms;
                     }
                 }
-                if (msg.usage && typeof msg.usage === "object") {
-                    const usage = msg.usage;
-                    if (typeof usage.input_tokens === "number") {
-                        this._inputTokens = usage.input_tokens;
+                const part = msg.part;
+                if (part && part.tokens && typeof part.tokens === "object") {
+                    const tokens = part.tokens;
+                    if (typeof tokens.input === "number") {
+                        this._inputTokens = tokens.input;
                     }
-                    if (typeof usage.output_tokens === "number") {
-                        this._outputTokens = usage.output_tokens;
+                    if (typeof tokens.output === "number") {
+                        this._outputTokens = tokens.output;
                     }
+                    console.log(`[bridge:opencode] tokens extracted: input=${this._inputTokens}, output=${this._outputTokens}`);
+                }
+                if (part && typeof part.cost === "number") {
+                    this._cost = part.cost;
+                    console.log(`[bridge:opencode] cost extracted: ${this._cost}`);
                 }
                 break;
             case "error":

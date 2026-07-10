@@ -8,6 +8,7 @@ class ChatMessage {
   final Duration? duration;
   final int? inputTokens;
   final int? outputTokens;
+  final double? cost;
   final DateTime timestamp;
 
   ChatMessage({
@@ -20,6 +21,7 @@ class ChatMessage {
     this.duration,
     this.inputTokens,
     this.outputTokens,
+    this.cost,
     DateTime? timestamp,
   }) : timestamp = timestamp ?? DateTime.now();
 
@@ -33,6 +35,7 @@ class ChatMessage {
     Duration? duration,
     int? inputTokens,
     int? outputTokens,
+    double? cost,
     DateTime? timestamp,
   }) {
     return ChatMessage(
@@ -45,6 +48,7 @@ class ChatMessage {
       duration: duration ?? this.duration,
       inputTokens: inputTokens ?? this.inputTokens,
       outputTokens: outputTokens ?? this.outputTokens,
+      cost: cost ?? this.cost,
       timestamp: timestamp ?? this.timestamp,
     );
   }
