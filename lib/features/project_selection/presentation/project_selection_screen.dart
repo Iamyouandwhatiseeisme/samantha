@@ -4,6 +4,7 @@ import 'package:samantha/app/injection.dart';
 import 'package:samantha/app/router.dart';
 import 'package:samantha/features/chat/data/error_message.dart';
 import 'package:samantha/features/connection_settings/data/connection_settings_repository.dart';
+import 'package:samantha/common/extensions/date_time_x.dart';
 import 'package:samantha/features/project_selection/data/project_api.dart';
 
 @RoutePage()
@@ -328,7 +329,7 @@ class _SessionListView extends StatelessWidget {
           leading: const Icon(Icons.chat),
           title: Text(session.displayName),
           subtitle: Text(
-            '${session.directory.split('/').last} \u2022 ${_formatDate(session.createdAt)}',
+            '${session.directory.split('/').last} \u2022 ${DateTime.fromMillisecondsSinceEpoch(session.createdAt * 1000).toRelative()}',
             style: const TextStyle(fontSize: 12),
           ),
           trailing: selected ? const Icon(Icons.check_circle, color: Colors.green) : null,
@@ -340,13 +341,3 @@ class _SessionListView extends StatelessWidget {
   }
 }
 
-String _formatDate(int timestamp) {
-  if (timestamp == 0) return '';
-  final date = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
-  final now = DateTime.now();
-  final diff = now.difference(date);
-  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-  if (diff.inHours < 24) return '${diff.inHours}h ago';
-  if (diff.inDays < 7) return '${diff.inDays}d ago';
-  return '${date.month}/${date.day}';
-}
