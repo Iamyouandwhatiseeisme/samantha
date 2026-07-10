@@ -7,7 +7,6 @@ import 'package:samantha/features/chat/data/error_message.dart';
 import 'package:samantha/features/chat/domain/entities.dart';
 import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
 import 'package:samantha/features/chat/presentation/state/chat_state.dart';
-import 'package:samantha/features/chat/presentation/timestamp_reveal.dart';
 
 @RoutePage()
 class ChatScreen extends StatefulWidget {
@@ -20,7 +19,13 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final _scrollController = ScrollController();
   final _inputController = TextEditingController();
-  late final _revealController = TimestampRevealController(this);
+  late final _revealController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 200),
+  );
+
+  static const double _maxReveal = 48.0;
+  double _dragOffset = 0;
 
   @override
   void initState() {
@@ -48,6 +53,18 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         );
       }
     });
+  }
+
+  void _onRevealDragUpdate(DragUpdateDetails details) {
+    _revealController.stop();
+    _dragOffset += details.delta.dx;
+    _dragOffset = _dragOffset.clamp(-_maxReveal, 0.0);
+    _revealController.value = (-_dragOffset / _maxReveal).clamp(0.0, 1.0);
+  }
+
+  void _onRevealDragEnd(DragEndDetails details) {
+    _revealController.reverse();
+    _dragOffset = 0;
   }
 
   @override
@@ -79,8 +96,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               ),
               Expanded(
                 child: GestureDetector(
-                  onHorizontalDragUpdate: _revealController.onPanUpdate,
-                  onHorizontalDragEnd: _revealController.onPanEnd,
+                  onHorizontalDragUpdate: _onRevealDragUpdate,
+                  onHorizontalDragEnd: _onRevealDragEnd,
                   child: _MessageList(
                     scrollController: _scrollController,
                     revealController: _revealController,
@@ -260,7 +277,7 @@ class _ErrorBanner extends StatelessWidget {
 
 class _MessageList extends StatelessWidget {
   final ScrollController scrollController;
-  final TimestampRevealController revealController;
+  final AnimationController revealController;
 
   const _MessageList({
     required this.scrollController,
@@ -287,7 +304,7 @@ class _MessageList extends StatelessWidget {
               return AnimatedBuilder(
                 animation: revealController,
                 builder: (context, _) {
-                  final fraction = revealController.revealFraction;
+                  final fraction = revealController.value;
 
                   return Stack(
                     clipBehavior: Clip.none,
