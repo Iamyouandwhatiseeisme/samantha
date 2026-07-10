@@ -25,18 +25,6 @@ class ToolResultChip extends StatelessWidget {
     }
   }
 
-  Widget _buildContent(BuildContext context) {
-    final content = result.content;
-    if (content == null) return const SizedBox.shrink();
-    return switch (content) {
-      TodoToolContent(todos: final todos) => _TodoContent(todos: todos),
-      RawToolContent(content: final c) => SelectableText(
-        c,
-        style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-      ),
-    };
-  }
-
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -78,7 +66,7 @@ class ToolResultChip extends StatelessWidget {
           '${result.tool}: ${result.description}',
           style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
         ),
-        child: _buildContent(context),
+        child: _ToolResultContent(content: result.content!),
       ),
     );
   }
@@ -141,6 +129,22 @@ class _TodoContent extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+class _ToolResultContent extends StatelessWidget {
+  final ToolContent content;
+  const _ToolResultContent({required this.content});
+
+  @override
+  Widget build(BuildContext context) {
+    return switch (content) {
+      TodoToolContent(todos: final todos) => _TodoContent(todos: todos),
+      RawToolContent(content: final c) => SelectableText(
+        c,
+        style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+      ),
+    };
   }
 }
 

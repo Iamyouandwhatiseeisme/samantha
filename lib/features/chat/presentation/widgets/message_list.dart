@@ -26,7 +26,6 @@ class MessageList extends StatelessWidget {
             itemBuilder: (context, index) {
               final msg = messages[index];
               final isUser = msg.role == ChatRole.user;
-              final bubble = _buildBubble(context, msg, isUser);
 
               return AnimatedBuilder(
                 animation: revealController,
@@ -40,7 +39,7 @@ class MessageList extends StatelessWidget {
                         alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
                         child: Padding(
                           padding: EdgeInsets.only(right: fraction * 48),
-                          child: bubble,
+                          child: _MessageBubble(msg: msg, isUser: isUser),
                         ),
                       ),
                       Positioned(
@@ -73,20 +72,22 @@ class MessageList extends StatelessWidget {
     );
   }
 
-  Widget _buildBubble(BuildContext context, ChatMessage msg, bool isUser) {
-    final footerParts = <String>[];
-    if (msg.inputTokens != null || msg.outputTokens != null) {
-      final total = (msg.inputTokens ?? 0) + (msg.outputTokens ?? 0);
-      if (total > 0) {
-        footerParts.add('${_formatTokenCount(total)} tokens');
-      }
-    }
-    if (msg.cost != null && msg.cost! > 0) {
-      footerParts.add('\$${msg.cost!.toStringAsFixed(4)}');
-    }
-    if (msg.duration != null && msg.duration!.inSeconds > 0) {
-      footerParts.add(_formatDuration(msg.duration!));
-    }
+  String _formatTime(DateTime dt) {
+    final h = dt.hour.toString().padLeft(2, '0');
+    final m = dt.minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+}
+
+class _MessageBubble extends StatelessWidget {
+  final ChatMessage msg;
+  final bool isUser;
+
+  const _MessageBubble({required this.msg, required this.isUser});
+
+  @override
+  Widget build(BuildContext context) {
+    final footerParts = _buildFooterParts();
 
     return Column(
       crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
@@ -121,10 +122,21 @@ class MessageList extends StatelessWidget {
     );
   }
 
-  String _formatTime(DateTime dt) {
-    final h = dt.hour.toString().padLeft(2, '0');
-    final m = dt.minute.toString().padLeft(2, '0');
-    return '$h:$m';
+  List<String> _buildFooterParts() {
+    final parts = <String>[];
+    if (msg.inputTokens != null || msg.outputTokens != null) {
+      final total = (msg.inputTokens ?? 0) + (msg.outputTokens ?? 0);
+      if (total > 0) {
+        parts.add('${_formatTokenCount(total)} tokens');
+      }
+    }
+    if (msg.cost != null && msg.cost! > 0) {
+      parts.add('\$${msg.cost!.toStringAsFixed(4)}');
+    }
+    if (msg.duration != null && msg.duration!.inSeconds > 0) {
+      parts.add(_formatDuration(msg.duration!));
+    }
+    return parts;
   }
 
   String _formatTokenCount(int count) {

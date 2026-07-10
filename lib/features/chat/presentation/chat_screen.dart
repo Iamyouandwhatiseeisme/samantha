@@ -87,7 +87,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           bottom: false,
           child: Column(
             children: [
-              _buildTopBar(context),
+              const _TopBar(),
               SizedBox(height: 16),
               const Divider(height: 1, thickness: 1),
               const SizedBox(height: 4),
@@ -141,13 +141,18 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       ),
     );
   }
+}
 
-  Widget _buildTopBar(BuildContext context) {
+class _TopBar extends StatelessWidget {
+  const _TopBar();
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Row(
         children: [
-          _iconButton(icon: Icons.arrow_back, onPressed: () => context.router.pop()),
+          _IconButton(icon: Icons.arrow_back, onPressed: () => context.router.pop()),
           SizedBox(width: 8),
           const Expanded(child: ModelTextField()),
           SizedBox(width: 8),
@@ -155,19 +160,27 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           const SizedBox(width: 8),
           BlocBuilder<ThemeModeCubit, ThemeMode>(
             builder: (context, themeMode) {
-              return _iconButton(
+              return _IconButton(
                 icon: themeMode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode,
                 onPressed: () => context.read<ThemeModeCubit>().toggle(),
               );
             },
           ),
-          _iconButton(icon: Icons.refresh, onPressed: () => context.read<ChatCubit>().connect()),
+          _IconButton(icon: Icons.refresh, onPressed: () => context.read<ChatCubit>().connect()),
         ],
       ),
     );
   }
+}
 
-  Widget _iconButton({required IconData icon, required VoidCallback onPressed}) {
+class _IconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  const _IconButton({required this.icon, this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
     return IconButton(
       icon: Icon(icon, size: 20),
       constraints: const BoxConstraints(minWidth: 36, maxWidth: 36, minHeight: 36, maxHeight: 36),

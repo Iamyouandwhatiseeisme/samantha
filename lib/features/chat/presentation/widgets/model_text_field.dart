@@ -194,7 +194,12 @@ class _ModelTextFieldState extends State<ModelTextField> {
                         .toList();
                 _showOverlay(filtered);
               },
-              onTapOutside: (_) => _dismiss(),
+              onTapOutside: (_) {
+                // Defer so the overlay ListTile's onTap can claim the gesture first
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted && _overlayEntry != null) _dismiss();
+                });
+              },
               onChanged: (value) {
                 _dismissedBySelection = false;
                 final query = value.toLowerCase();
