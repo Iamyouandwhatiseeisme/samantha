@@ -36,6 +36,7 @@ class OpencodeProcess extends events_1.EventEmitter {
     _inputTokens;
     _outputTokens;
     _cost;
+    _textBuffers = new Map();
     constructor(serveUrl) {
         super();
         this.serveUrl = serveUrl;
@@ -144,11 +145,27 @@ class OpencodeProcess extends events_1.EventEmitter {
             // latch here anymore.
             case "step_start":
                 break;
-            case "text":
-                if (msg.part?.text) {
-                    this.emit("output", msg.part.text);
+            case "text": {
+                const part = msg.part;
+                if (part?.text) {
+                    const partId = part.id ?? "";
+                    const newText = part.text;
+                    const prevText = this._textBuffers.get(partId) ?? "";
+                    this._textBuffers.set(partId, newText);
+                    const delta = newText.slice(prevText.length);
+                    if (delta) {
+                        this.emit("output", delta);
+                    }
                 }
                 break;
+            }
+            case "text_delta": {
+                const delta = msg.delta ?? "";
+                if (delta) {
+                    this.emit("output", delta);
+                }
+                break;
+            }
             case "tool":
             case "tool_use": {
                 const part = msg.part;

@@ -6,8 +6,8 @@ import 'package:samantha/features/chat/data/error_message.dart';
 import 'package:samantha/features/chat/domain/entities.dart';
 import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
 import 'package:samantha/features/chat/presentation/state/chat_state.dart';
-import 'package:samantha/features/chat/presentation/widgets/thinking_block.dart';
 import 'package:samantha/features/chat/presentation/widgets/collapsible_block.dart';
+import 'package:samantha/features/chat/presentation/widgets/thinking_block.dart';
 
 @RoutePage()
 class ChatScreen extends StatefulWidget {
@@ -146,10 +146,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       padding: const EdgeInsets.only(left: 4),
       child: Row(
         children: [
-          _iconButton(
-            icon: Icons.arrow_back,
-            onPressed: () => context.router.pop(),
-          ),
+          _iconButton(icon: Icons.arrow_back, onPressed: () => context.router.pop()),
           SizedBox(width: 8),
           const Expanded(child: _ModelTextField()),
           SizedBox(width: 8),
@@ -905,13 +902,20 @@ class _ToolResultChip extends StatelessWidget {
 
   IconData get _icon {
     switch (result.tool) {
-      case 'read': return Icons.menu_book;
-      case 'write': return Icons.edit;
-      case 'edit': return Icons.edit_note;
-      case 'bash': return Icons.terminal;
-      case 'glob': return Icons.search;
-      case 'grep': return Icons.find_in_page;
-      default: return Icons.build;
+      case 'read':
+        return Icons.menu_book;
+      case 'write':
+        return Icons.edit;
+      case 'edit':
+        return Icons.edit_note;
+      case 'bash':
+        return Icons.terminal;
+      case 'glob':
+        return Icons.search;
+      case 'grep':
+        return Icons.find_in_page;
+      default:
+        return Icons.build;
     }
   }
 
@@ -968,8 +972,6 @@ class _ToolResultChip extends StatelessWidget {
           '${result.tool}: ${result.description}',
           style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
         ),
-        backgroundColor: colorScheme.surfaceContainerLow.withValues(alpha: 0.6),
-        borderColor: colorScheme.outlineVariant.withValues(alpha: 0.35),
         child: _buildContent(context),
       ),
     );

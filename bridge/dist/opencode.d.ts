@@ -23,6 +23,7 @@ export declare class OpencodeProcess extends EventEmitter {
     private _inputTokens?;
     private _outputTokens?;
     private _cost?;
+    private _textBuffers;
     constructor(serveUrl: string);
     get running(): boolean;
     get manualStop(): boolean;

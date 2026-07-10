@@ -55,6 +55,7 @@ export class OpencodeProcess extends EventEmitter {
   private _inputTokens?: number;
   private _outputTokens?: number;
   private _cost?: number;
+  private _textBuffers: Map<string, string> = new Map();
 
   constructor(serveUrl: string) {
     super();
@@ -176,11 +177,28 @@ export class OpencodeProcess extends EventEmitter {
       case "step_start":
         break;
 
-      case "text":
-        if ((msg.part as Record<string, unknown>)?.text) {
-          this.emit("output", (msg.part as Record<string, string>).text);
+      case "text": {
+        const part = msg.part as Record<string, unknown> | undefined;
+        if (part?.text) {
+          const partId = (part.id as string) ?? "";
+          const newText = part.text as string;
+          const prevText = this._textBuffers.get(partId) ?? "";
+          this._textBuffers.set(partId, newText);
+          const delta = newText.slice(prevText.length);
+          if (delta) {
+            this.emit("output", delta);
+          }
         }
         break;
+      }
+
+      case "text_delta": {
+        const delta = (msg.delta as string) ?? "";
+        if (delta) {
+          this.emit("output", delta);
+        }
+        break;
+      }
 
       case "tool":
       case "tool_use": {
