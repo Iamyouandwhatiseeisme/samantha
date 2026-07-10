@@ -20,6 +20,8 @@ export declare class OpencodeProcess extends EventEmitter {
     sessionId: string | null;
     private readonly serveUrl;
     private _durationMs?;
+    private _inputTokens?;
+    private _outputTokens?;
     constructor(serveUrl: string);
     get running(): boolean;
     get manualStop(): boolean;

@@ -342,6 +342,17 @@ class _MessageList extends StatelessWidget {
       labelParts.add('Thought ${msg.duration!.inSeconds}s');
     }
 
+    final footerParts = <String>[];
+    if (msg.inputTokens != null || msg.outputTokens != null) {
+      final total = (msg.inputTokens ?? 0) + (msg.outputTokens ?? 0);
+      if (total > 0) {
+        footerParts.add('${_formatTokenCount(total)} tokens');
+      }
+    }
+    if (msg.duration != null && msg.duration!.inSeconds > 0) {
+      footerParts.add(_formatDuration(msg.duration!));
+    }
+
     return Column(
       crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -369,6 +380,14 @@ class _MessageList extends StatelessWidget {
             toolResults: msg.toolResults,
           ),
         ),
+        if (!isUser && footerParts.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: 12, top: 2),
+            child: Text(
+              footerParts.join(' \u00B7 '),
+              style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
+          ),
       ],
     );
   }
@@ -377,6 +396,19 @@ class _MessageList extends StatelessWidget {
     final h = dt.hour.toString().padLeft(2, '0');
     final m = dt.minute.toString().padLeft(2, '0');
     return '$h:$m';
+  }
+
+  String _formatTokenCount(int count) {
+    if (count >= 1000) {
+      return '${(count / 1000).toStringAsFixed(1)}k';
+    }
+    return count.toString();
+  }
+
+  String _formatDuration(Duration d) {
+    if (d.inSeconds < 60) return '${d.inSeconds}s';
+    if (d.inMinutes < 60) return '${d.inMinutes}m';
+    return '${d.inMinutes}m ${d.inSeconds % 60}s';
   }
 }
 

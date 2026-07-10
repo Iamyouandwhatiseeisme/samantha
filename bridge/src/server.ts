@@ -112,13 +112,13 @@ export function createBridgeServer(config: BridgeConfig) {
         }
       });
 
-      opencode.on("exit", (durationMs: number | undefined) => {
+      opencode.on("exit", (durationMs: number | undefined, inputTokens?: number, outputTokens?: number) => {
         if (
           ws.readyState === WebSocket.OPEN &&
           opencode &&
           !opencode.manualStop
         ) {
-          ws.send(JSON.stringify({ type: "done", duration_ms: durationMs }));
+          ws.send(JSON.stringify({ type: "done", duration_ms: durationMs, input_tokens: inputTokens, output_tokens: outputTokens }));
         }
       });
 
@@ -258,6 +258,17 @@ export function createBridgeServer(config: BridgeConfig) {
                   ? info.usage.total_duration_ms
                   : undefined);
 
+              let inputTokens: number | undefined;
+              let outputTokens: number | undefined;
+              if (info.usage && typeof info.usage === "object") {
+                if (typeof info.usage.input_tokens === "number") {
+                  inputTokens = info.usage.input_tokens;
+                }
+                if (typeof info.usage.output_tokens === "number") {
+                  outputTokens = info.usage.output_tokens;
+                }
+              }
+
               const textSegments: string[] = [];
               let thinkingContent = "";
               const toolResults: Array<{
@@ -284,7 +295,7 @@ export function createBridgeServer(config: BridgeConfig) {
 
               const content = textSegments.join("\n\n");
               const timestamp = info.created ?? info.timestamp ?? info.time;
-              return { role, content, thinkingContent, toolResults, duration, timestamp };
+              return { role, content, thinkingContent, toolResults, duration, inputTokens, outputTokens, timestamp };
             },
           );
           ws.send(

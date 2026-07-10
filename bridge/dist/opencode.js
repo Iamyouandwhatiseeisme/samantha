@@ -9,6 +9,8 @@ class OpencodeProcess extends events_1.EventEmitter {
     sessionId = null;
     serveUrl;
     _durationMs;
+    _inputTokens;
+    _outputTokens;
     constructor(serveUrl) {
         super();
         this.serveUrl = serveUrl;
@@ -84,9 +86,11 @@ class OpencodeProcess extends events_1.EventEmitter {
             }
             this.process = null;
             if (!this.stopping) {
-                this.emit("exit", this._durationMs);
+                this.emit("exit", this._durationMs, this._inputTokens, this._outputTokens);
             }
             this._durationMs = undefined;
+            this._inputTokens = undefined;
+            this._outputTokens = undefined;
         });
     }
     handleCliMessage(msg) {
@@ -162,6 +166,15 @@ class OpencodeProcess extends events_1.EventEmitter {
                     }
                     else if (typeof usage.total_duration_ms === "number") {
                         this._durationMs = usage.total_duration_ms;
+                    }
+                }
+                if (msg.usage && typeof msg.usage === "object") {
+                    const usage = msg.usage;
+                    if (typeof usage.input_tokens === "number") {
+                        this._inputTokens = usage.input_tokens;
+                    }
+                    if (typeof usage.output_tokens === "number") {
+                        this._outputTokens = usage.output_tokens;
                     }
                 }
                 break;

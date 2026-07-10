@@ -81,8 +81,8 @@ class ChatCubit extends Cubit<ChatState> {
         switch (event) {
           case TokenEvent(:final content):
             _handleToken(content);
-          case DoneEvent(durationMs: final durationMs):
-            _handleDone(durationMs);
+          case DoneEvent(durationMs: final durationMs, inputTokens: final input, outputTokens: final output):
+            _handleDone(durationMs, input, output);
           case ErrorEvent(:final message):
             emit(state.copyWith(errorMessage: message));
           case AuthFailedEvent(:final message):
@@ -165,7 +165,7 @@ class ChatCubit extends Cubit<ChatState> {
     ));
   }
 
-  void _handleDone(int? durationMs) {
+  void _handleDone(int? durationMs, int? inputTokens, int? outputTokens) {
     final duration = durationMs != null ? Duration(milliseconds: durationMs) : null;
 
     final messages = List<ChatMessage>.from(state.messages);
@@ -173,7 +173,12 @@ class ChatCubit extends Cubit<ChatState> {
         messages.last.role == ChatRole.assistant &&
         messages.last.isStreaming) {
       final last = messages.removeLast();
-      messages.add(last.copyWith(isStreaming: false, duration: duration));
+      messages.add(last.copyWith(
+        isStreaming: false,
+        duration: duration,
+        inputTokens: inputTokens,
+        outputTokens: outputTokens,
+      ));
     }
 
     emit(state.copyWith(
@@ -295,6 +300,9 @@ class ChatCubit extends Cubit<ChatState> {
       final durationMs = m['duration'] as int?;
       final duration = durationMs != null ? Duration(milliseconds: durationMs) : null;
 
+      final inputTokens = m['inputTokens'] as int?;
+      final outputTokens = m['outputTokens'] as int?;
+
       final rawTs = m['timestamp'];
       DateTime? timestamp;
       if (rawTs is String) {
@@ -310,6 +318,8 @@ class ChatCubit extends Cubit<ChatState> {
         thinkingContent: thinkingContent,
         toolResults: toolResults,
         duration: duration,
+        inputTokens: inputTokens,
+        outputTokens: outputTokens,
         timestamp: timestamp,
       );
     }).toList();

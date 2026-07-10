@@ -24,6 +24,8 @@ export class OpencodeProcess extends EventEmitter {
   sessionId: string | null = null;
   private readonly serveUrl: string;
   private _durationMs?: number;
+  private _inputTokens?: number;
+  private _outputTokens?: number;
 
   constructor(serveUrl: string) {
     super();
@@ -109,9 +111,11 @@ export class OpencodeProcess extends EventEmitter {
       }
       this.process = null;
       if (!this.stopping) {
-        this.emit("exit", this._durationMs);
+        this.emit("exit", this._durationMs, this._inputTokens, this._outputTokens);
       }
       this._durationMs = undefined;
+      this._inputTokens = undefined;
+      this._outputTokens = undefined;
     });
   }
 
@@ -190,6 +194,15 @@ export class OpencodeProcess extends EventEmitter {
             this._durationMs = usage.duration_ms as number;
           } else if (typeof usage.total_duration_ms === "number") {
             this._durationMs = usage.total_duration_ms as number;
+          }
+        }
+        if (msg.usage && typeof msg.usage === "object") {
+          const usage = msg.usage as Record<string, unknown>;
+          if (typeof usage.input_tokens === "number") {
+            this._inputTokens = usage.input_tokens as number;
+          }
+          if (typeof usage.output_tokens === "number") {
+            this._outputTokens = usage.output_tokens as number;
           }
         }
         break;

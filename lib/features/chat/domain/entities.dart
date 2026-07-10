@@ -6,6 +6,8 @@ class ChatMessage {
   final bool isStreaming;
   final List<ToolResult> toolResults;
   final Duration? duration;
+  final int? inputTokens;
+  final int? outputTokens;
   final DateTime timestamp;
 
   ChatMessage({
@@ -16,6 +18,8 @@ class ChatMessage {
     this.isStreaming = false,
     this.toolResults = const [],
     this.duration,
+    this.inputTokens,
+    this.outputTokens,
     DateTime? timestamp,
   }) : timestamp = timestamp ?? DateTime.now();
 
@@ -27,6 +31,8 @@ class ChatMessage {
     bool? isStreaming,
     List<ToolResult>? toolResults,
     Duration? duration,
+    int? inputTokens,
+    int? outputTokens,
     DateTime? timestamp,
   }) {
     return ChatMessage(
@@ -37,6 +43,8 @@ class ChatMessage {
       isStreaming: isStreaming ?? this.isStreaming,
       toolResults: toolResults ?? this.toolResults,
       duration: duration ?? this.duration,
+      inputTokens: inputTokens ?? this.inputTokens,
+      outputTokens: outputTokens ?? this.outputTokens,
       timestamp: timestamp ?? this.timestamp,
     );
   }

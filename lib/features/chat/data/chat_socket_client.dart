@@ -12,7 +12,9 @@ class TokenEvent extends ChatEvent {
 
 class DoneEvent extends ChatEvent {
   final int? durationMs;
-  DoneEvent({this.durationMs});
+  final int? inputTokens;
+  final int? outputTokens;
+  DoneEvent({this.durationMs, this.inputTokens, this.outputTokens});
 }
 
 class ErrorEvent extends ChatEvent {
@@ -109,6 +111,8 @@ class ChatSocketClient {
             case 'done':
               _eventController.add(DoneEvent(
                 durationMs: parsed['duration_ms'] as int?,
+                inputTokens: parsed['input_tokens'] as int?,
+                outputTokens: parsed['output_tokens'] as int?,
               ));
             case 'auth_failed':
               _channel = null;

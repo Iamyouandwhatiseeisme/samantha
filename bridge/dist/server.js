@@ -88,11 +88,11 @@ function createBridgeServer(config) {
                     }));
                 }
             });
-            opencode.on("exit", (durationMs) => {
+            opencode.on("exit", (durationMs, inputTokens, outputTokens) => {
                 if (ws.readyState === ws_1.WebSocket.OPEN &&
                     opencode &&
                     !opencode.manualStop) {
-                    ws.send(JSON.stringify({ type: "done", duration_ms: durationMs }));
+                    ws.send(JSON.stringify({ type: "done", duration_ms: durationMs, input_tokens: inputTokens, output_tokens: outputTokens }));
                 }
             });
             opencode.on("error", (err) => {
@@ -207,6 +207,16 @@ function createBridgeServer(config) {
                         (info.usage && typeof info.usage.total_duration_ms === "number"
                             ? info.usage.total_duration_ms
                             : undefined);
+                    let inputTokens;
+                    let outputTokens;
+                    if (info.usage && typeof info.usage === "object") {
+                        if (typeof info.usage.input_tokens === "number") {
+                            inputTokens = info.usage.input_tokens;
+                        }
+                        if (typeof info.usage.output_tokens === "number") {
+                            outputTokens = info.usage.output_tokens;
+                        }
+                    }
                     const textSegments = [];
                     let thinkingContent = "";
                     const toolResults = [];
@@ -229,7 +239,7 @@ function createBridgeServer(config) {
                     }
                     const content = textSegments.join("\n\n");
                     const timestamp = info.created ?? info.timestamp ?? info.time;
-                    return { role, content, thinkingContent, toolResults, duration, timestamp };
+                    return { role, content, thinkingContent, toolResults, duration, inputTokens, outputTokens, timestamp };
                 });
                 ws.send(JSON.stringify({ type: "session_messages", messages: simplified }));
             })
