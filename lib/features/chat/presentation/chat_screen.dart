@@ -7,6 +7,7 @@ import 'package:samantha/features/chat/presentation/state/chat_state.dart';
 import 'package:samantha/features/chat/presentation/widgets/error_banner.dart';
 import 'package:samantha/features/chat/presentation/widgets/message_input.dart';
 import 'package:samantha/features/chat/presentation/widgets/message_list.dart';
+import 'package:samantha/features/chat/presentation/widgets/model_text_field.dart';
 import 'package:samantha/features/chat/presentation/widgets/status_dot.dart';
 
 @RoutePage()
@@ -153,6 +154,7 @@ class _TopBar extends StatelessWidget {
         children: [
           _IconButton(icon: Icons.arrow_back, onPressed: () => context.router.pop()),
           SizedBox(width: 8),
+          Expanded(child: ModelTextField()),
           SizedBox(width: 8),
           const StatusDot(),
           const SizedBox(width: 8),

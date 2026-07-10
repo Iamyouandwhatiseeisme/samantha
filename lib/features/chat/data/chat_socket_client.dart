@@ -150,15 +150,6 @@ class ChatSocketClient {
             case 'models':
               final providers = (parsed['providers'] as List)
                   .cast<Map<String, dynamic>>();
-              debugPrint('[Bridge] Available models received: ${providers.length} providers');
-              for (final provider in providers) {
-                final name = provider['name'] ?? 'unknown';
-                final models = provider['models'] as List? ?? [];
-                debugPrint('[Bridge]   Provider: $name (${models.length} models)');
-                for (final m in models) {
-                  debugPrint('[Bridge]     - ${m['displayName']} (${m['qualifiedId']})');
-                }
-              }
               _eventController.add(ModelsEvent(providers));
             case 'model_set':
               final model = parsed['model'] ?? '';
