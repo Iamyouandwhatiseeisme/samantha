@@ -6,6 +6,7 @@ import {
 } from "http";
 import { WebSocket, WebSocketServer } from "ws";
 import { OpencodeProcess } from "./opencode";
+import { OpencodeEventStream } from "./events";
 
 interface BridgeConfig {
   port: number;
@@ -68,6 +69,7 @@ export function createBridgeServer(config: BridgeConfig) {
 
     let authenticated = false;
     let opencode: OpencodeProcess | null = null;
+    let events: OpencodeEventStream | null = null;
     let currentModel: string | null = null;
     let currentProjectPath: string | null = null;
     let currentSessionId: string | null = null;
@@ -77,20 +79,42 @@ export function createBridgeServer(config: BridgeConfig) {
         opencode.stop();
         opencode = null;
       }
+      if (events) {
+        events.close();
+        events = null;
+      }
     };
 
     const createOpencode = () => {
       opencode = new OpencodeProcess(config.opencodeServeUrl);
 
-      opencode.on("output", (data: string) => {
+      // Token-level reasoning only exists on the serve process's event bus; the
+      // CLI's JSON output emits a reasoning block once it has already finished.
+      events = new OpencodeEventStream(config.opencodeServeUrl);
+      events.setDirectory(currentProjectPath);
+      events.setSession(currentSessionId);
+      events.start();
+
+      events.on("thinking", (content: string) => {
         if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: "token", content: data }));
+          ws.send(JSON.stringify({ type: "thinking", content }));
         }
       });
 
-      opencode.on("thinking", (data: string) => {
+      events.on("thinking_end", (durationMs: number | undefined) => {
         if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: "thinking", content: data }));
+          ws.send(JSON.stringify({ type: "thinking_end", duration_ms: durationMs }));
+        }
+      });
+
+      opencode.on("session", (sessionId: string) => {
+        currentSessionId = sessionId;
+        events?.setSession(sessionId);
+      });
+
+      opencode.on("output", (data: string) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "token", content: data }));
         }
       });
 
@@ -292,7 +316,8 @@ export function createBridgeServer(config: BridgeConfig) {
               }
 
               const textSegments: string[] = [];
-              let thinkingContent = "";
+              const thinkingSegments: string[] = [];
+              let thinkingMs = 0;
               const toolResults: Array<{
                 tool: string;
                 description: string;
@@ -302,8 +327,11 @@ export function createBridgeServer(config: BridgeConfig) {
               for (const p of Array.isArray(parts) ? parts : []) {
                 if (p.type === "text" && p.text) {
                   textSegments.push(p.text);
-                } else if (p.type === "thinking" && p.text) {
-                  thinkingContent += p.text;
+                } else if (p.type === "reasoning" && p.text) {
+                  thinkingSegments.push(p.text);
+                  if (typeof p.time?.start === "number" && typeof p.time?.end === "number") {
+                    thinkingMs += p.time.end - p.time.start;
+                  }
                 } else if (p.type === "tool") {
                   const toolName = p.tool ?? "tool";
                   const input = p.state?.input;
@@ -316,9 +344,21 @@ export function createBridgeServer(config: BridgeConfig) {
               }
 
               const content = textSegments.join("\n\n");
+              const thinkingContent = thinkingSegments.join("\n\n");
               const timestamp = info.created ?? info.timestamp ?? info.time;
               const cost = typeof info.cost === "number" ? info.cost : (typeof m.cost === "number" ? m.cost : undefined);
-              return { role, content, thinkingContent, toolResults, duration, inputTokens, outputTokens, cost, timestamp };
+              return {
+                role,
+                content,
+                thinkingContent,
+                thinkingMs: thinkingMs > 0 ? thinkingMs : undefined,
+                toolResults,
+                duration,
+                inputTokens,
+                outputTokens,
+                cost,
+                timestamp,
+              };
             },
           );
           ws.send(
@@ -369,14 +409,18 @@ export function createBridgeServer(config: BridgeConfig) {
           if (typeof msg.content === "string") {
             console.log(`[bridge] received prompt: ${msg.content.trim()}`);
             if (opencode) {
-              if (currentSessionId && !opencode.currentSessionId) {
-                opencode.setSessionId(currentSessionId);
-              }
-              opencode.write(
-                msg.content.trim(),
-                msg.model ?? currentModel ?? undefined,
-                currentProjectPath ?? undefined,
-              );
+              opencode
+                .write(
+                  msg.content.trim(),
+                  msg.model ?? currentModel ?? undefined,
+                  currentProjectPath ?? undefined,
+                )
+                .catch((err: Error) => {
+                  console.error(`[bridge] prompt failed: ${err.message}`);
+                  if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: "error", message: err.message }));
+                  }
+                });
             }
           }
           break;
@@ -411,6 +455,9 @@ export function createBridgeServer(config: BridgeConfig) {
             currentSessionId = sessionId;
             currentProjectPath = sessionPath ?? currentProjectPath;
             console.log(`[bridge] session set to: ${currentSessionId}`);
+            opencode?.setSessionId(currentSessionId);
+            events?.setDirectory(currentProjectPath);
+            events?.setSession(currentSessionId);
             ws.send(
               JSON.stringify({
                 type: "session_set",
@@ -427,6 +474,7 @@ export function createBridgeServer(config: BridgeConfig) {
           if (typeof msg.path === "string") {
             currentProjectPath = msg.path;
             console.log(`[bridge] project set to: ${currentProjectPath}`);
+            events?.setDirectory(currentProjectPath);
             ws.send(
               JSON.stringify({ type: "project_set", path: currentProjectPath }),
             );
