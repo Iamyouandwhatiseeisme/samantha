@@ -25,7 +25,7 @@ class OpenCodeSession {
   final String title;
   final String directory;
   final int createdAt;
-  final int totalTokens;
+  final int inputTokens;
   final double cost;
 
   const OpenCodeSession({
@@ -33,7 +33,7 @@ class OpenCodeSession {
     required this.title,
     required this.directory,
     required this.createdAt,
-    this.totalTokens = 0,
+    this.inputTokens = 0,
     this.cost = 0,
   });
 
@@ -44,7 +44,7 @@ class OpenCodeSession {
       title: json['title'] as String? ?? 'Untitled',
       directory: json['directory'] as String? ?? '',
       createdAt: (time['created'] as num?)?.toInt() ?? 0,
-      totalTokens: (json['totalTokens'] as num?)?.toInt() ?? 0,
+      inputTokens: (json['inputTokens'] as num?)?.toInt() ?? 0,
       cost: (json['cost'] as num?)?.toDouble() ?? 0,
     );
   }
@@ -56,9 +56,9 @@ class OpenCodeSession {
   }
 
   String get tokenCountStr {
-    if (totalTokens >= 1000000) return '${(totalTokens / 1000000).toStringAsFixed(1)}M';
-    if (totalTokens >= 1000) return '${(totalTokens / 1000).toStringAsFixed(1)}K';
-    return totalTokens.toString();
+    if (inputTokens >= 1000000) return '${(inputTokens / 1000000).toStringAsFixed(1)}M';
+    if (inputTokens >= 1000) return '${(inputTokens / 1000).toStringAsFixed(1)}K';
+    return inputTokens.toString();
   }
 
   String get costStr {
