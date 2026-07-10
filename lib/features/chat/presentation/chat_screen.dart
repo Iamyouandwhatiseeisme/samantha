@@ -64,6 +64,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       child: Scaffold(
         backgroundColor: Theme.of(context).colorScheme.surface,
         body: SafeArea(
+          top: true,
+          bottom: false,
           child: Column(
             children: [
               _buildTopBar(context),
@@ -392,7 +394,7 @@ class _MessageInput extends StatelessWidget {
         final isConnected = state.connectionStatus != ChatConnectionStatus.disconnected;
 
         return Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 80),
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
           child: Row(
             children: [
               Expanded(

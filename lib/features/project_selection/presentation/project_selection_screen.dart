@@ -99,47 +99,92 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
           ],
         ),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? _buildError()
-          : Column(
-              children: [
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [_buildProjectList(), _buildSessionList()],
-                  ),
-                ),
-                AnimatedOpacity(
-                  duration: const Duration(milliseconds: 250),
-                  opacity: _tabController.index == 0 ? 1.0 : 0.0,
-                  child: AnimatedSlide(
-                    duration: const Duration(milliseconds: 250),
-                    offset: _tabController.index == 0 ? Offset.zero : const Offset(0, 1),
-                    child: IgnorePointer(
-                      ignoring: _tabController.index != 0,
-                      child: SafeArea(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: _selectedProject != null ? _continue : null,
-                              child: const Text('New Session'),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+      body: _buildBody(),
     );
   }
 
-  Widget _buildError() {
+  Widget _buildBody() {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_error != null) {
+      return _ErrorView(
+        message: _error!,
+        onRetry: _loadData,
+        onBackToSettings: () => context.router.replace(const ConnectionSettingsRoute()),
+      );
+    }
+    return Column(
+      children: [
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _ProjectListView(
+                projects: _projects,
+                selectedProject: _selectedProject,
+                onSelectProject: (project) => setState(() {
+                  _selectedProject = project;
+                  _selectedSession = null;
+                }),
+                onRefresh: _loadData,
+              ),
+              _SessionListView(
+                sessions: _sessions,
+                selectedSession: _selectedSession,
+                onSelectSession: (session) {
+                  setState(() {
+                    _selectedSession = session;
+                    _selectedProject = null;
+                  });
+                  _continue();
+                },
+                onRefresh: _loadData,
+              ),
+            ],
+          ),
+        ),
+        AnimatedOpacity(
+          duration: const Duration(milliseconds: 250),
+          opacity: _tabController.index == 0 ? 1.0 : 0.0,
+          child: AnimatedSlide(
+            duration: const Duration(milliseconds: 250),
+            offset: _tabController.index == 0 ? Offset.zero : const Offset(0, 1),
+            child: IgnorePointer(
+              ignoring: _tabController.index != 0,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _selectedProject != null ? _continue : null,
+                      child: const Text('New Session'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ErrorView extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  final VoidCallback onBackToSettings;
+
+  const _ErrorView({
+    required this.message,
+    required this.onRetry,
+    required this.onBackToSettings,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
@@ -152,19 +197,19 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
             Text('Failed to load data', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             Text(
-              formatErrorMessage(_error!),
+              formatErrorMessage(message),
               textAlign: TextAlign.center,
               style: TextStyle(color: colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: 24),
             FilledButton.icon(
-              onPressed: _loadData,
+              onPressed: onRetry,
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
             ),
             const SizedBox(height: 8),
             TextButton(
-              onPressed: () => context.router.replace(const ConnectionSettingsRoute()),
+              onPressed: onBackToSettings,
               child: const Text('Back to Settings'),
             ),
           ],
@@ -172,9 +217,24 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
       ),
     );
   }
+}
 
-  Widget _buildProjectList() {
-    if (_projects.isEmpty) {
+class _ProjectListView extends StatelessWidget {
+  final List<OpenCodeProject> projects;
+  final OpenCodeProject? selectedProject;
+  final ValueChanged<OpenCodeProject> onSelectProject;
+  final VoidCallback onRefresh;
+
+  const _ProjectListView({
+    required this.projects,
+    required this.selectedProject,
+    required this.onSelectProject,
+    required this.onRefresh,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (projects.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -191,7 +251,7 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
               ),
               const SizedBox(height: 24),
               FilledButton.icon(
-                onPressed: _loadData,
+                onPressed: onRefresh,
                 icon: const Icon(Icons.refresh),
                 label: const Text('Refresh'),
               ),
@@ -201,27 +261,39 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
       );
     }
     return ListView.builder(
-      itemCount: _projects.length,
+      itemCount: projects.length,
       itemBuilder: (context, index) {
-        final project = _projects[index];
-        final selected = _selectedProject == project;
+        final project = projects[index];
+        final selected = selectedProject == project;
         return ListTile(
           leading: const Icon(Icons.folder),
           title: Text(project.displayName),
           subtitle: Text(project.worktree, style: const TextStyle(fontSize: 12)),
           trailing: selected ? const Icon(Icons.check_circle, color: Colors.green) : null,
           selected: selected,
-          onTap: () => setState(() {
-            _selectedProject = project;
-            _selectedSession = null;
-          }),
+          onTap: () => onSelectProject(project),
         );
       },
     );
   }
+}
 
-  Widget _buildSessionList() {
-    if (_sessions.isEmpty) {
+class _SessionListView extends StatelessWidget {
+  final List<OpenCodeSession> sessions;
+  final OpenCodeSession? selectedSession;
+  final ValueChanged<OpenCodeSession> onSelectSession;
+  final VoidCallback onRefresh;
+
+  const _SessionListView({
+    required this.sessions,
+    required this.selectedSession,
+    required this.onSelectSession,
+    required this.onRefresh,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (sessions.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -238,7 +310,7 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
               ),
               const SizedBox(height: 24),
               FilledButton.icon(
-                onPressed: _loadData,
+                onPressed: onRefresh,
                 icon: const Icon(Icons.refresh),
                 label: const Text('Refresh'),
               ),
@@ -248,10 +320,10 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
       );
     }
     return ListView.builder(
-      itemCount: _sessions.length,
+      itemCount: sessions.length,
       itemBuilder: (context, index) {
-        final session = _sessions[index];
-        final selected = _selectedSession == session;
+        final session = sessions[index];
+        final selected = selectedSession == session;
         return ListTile(
           leading: const Icon(Icons.chat),
           title: Text(session.displayName),
@@ -261,24 +333,20 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
           ),
           trailing: selected ? const Icon(Icons.check_circle, color: Colors.green) : null,
           selected: selected,
-          onTap: () {
-            _selectedSession = session;
-            _selectedProject = null;
-            _continue();
-          },
+          onTap: () => onSelectSession(session),
         );
       },
     );
   }
+}
 
-  String _formatDate(int timestamp) {
-    if (timestamp == 0) return '';
-    final date = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
-    final now = DateTime.now();
-    final diff = now.difference(date);
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
-    return '${date.month}/${date.day}';
-  }
+String _formatDate(int timestamp) {
+  if (timestamp == 0) return '';
+  final date = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
+  final now = DateTime.now();
+  final diff = now.difference(date);
+  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+  if (diff.inHours < 24) return '${diff.inHours}h ago';
+  if (diff.inDays < 7) return '${diff.inDays}d ago';
+  return '${date.month}/${date.day}';
 }
