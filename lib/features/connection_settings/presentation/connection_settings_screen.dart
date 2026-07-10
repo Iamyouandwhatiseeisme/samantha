@@ -51,7 +51,7 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
           _syncFromState(state);
         }
         if (state is ConnectionSettingsTestSuccess) {
-          context.router.replace(const ProjectSelectionRoute());
+          context.router.push(const ProjectSelectionRoute());
         }
       },
       builder: (context, state) {

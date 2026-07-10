@@ -51,7 +51,7 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
       final host = await _repository.getHost();
       if (host == null || host.isEmpty) {
         if (!mounted) return;
-        context.router.replace(const ConnectionSettingsRoute());
+        context.router.pop();
         return;
       }
 
@@ -83,7 +83,7 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
       return;
     }
     if (!mounted) return;
-    context.router.replace(const ChatRoute());
+    context.router.push(const ChatRoute());
   }
 
   @override
@@ -112,7 +112,7 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
       return _ErrorView(
         message: _error!,
         onRetry: _loadData,
-        onBackToSettings: () => context.router.replace(const ConnectionSettingsRoute()),
+        onBackToSettings: () => context.router.pop(),
       );
     }
     return Column(

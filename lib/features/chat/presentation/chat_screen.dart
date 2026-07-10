@@ -1,7 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:samantha/app/router.dart';
 import 'package:samantha/app/theme_mode_cubit.dart';
 import 'package:samantha/features/chat/data/error_message.dart';
 import 'package:samantha/features/chat/domain/entities.dart';
@@ -147,7 +146,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         children: [
           _iconButton(
             icon: Icons.arrow_back,
-            onPressed: () => context.router.replace(const ProjectSelectionRoute()),
+            onPressed: () => context.router.pop(),
           ),
           SizedBox(width: 8),
           const Expanded(child: _ModelTextField()),
