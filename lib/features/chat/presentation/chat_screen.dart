@@ -226,7 +226,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 ),
               ),
             const SizedBox(height: 8),
-            const _ModelDropdown(),
+            const _ModelTextField(),
           ],
         );
       },
@@ -717,8 +717,112 @@ class _ModelDropdownState {
   const _ModelDropdownState({required this.availableModels, this.selectedModel});
 }
 
-class _ModelDropdown extends StatelessWidget {
-  const _ModelDropdown();
+class _FlatModel {
+  final String qualifiedId;
+  final String displayName;
+  final String providerName;
+  const _FlatModel(this.qualifiedId, this.displayName, this.providerName);
+}
+
+class _ModelTextField extends StatefulWidget {
+  const _ModelTextField();
+
+  @override
+  State<_ModelTextField> createState() => _ModelTextFieldState();
+}
+
+class _ModelTextFieldState extends State<_ModelTextField> {
+  final _controller = TextEditingController();
+  final _focusNode = FocusNode();
+  final _layerLink = LayerLink();
+  OverlayEntry? _overlayEntry;
+  String? _lastSelectedQualifier;
+  bool _dismissedBySelection = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  @override
+  void dispose() {
+    _removeOverlay();
+    _focusNode.removeListener(_onFocusChange);
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onFocusChange() {
+    if (!_focusNode.hasFocus) {
+      _removeOverlay();
+      _restoreSelectedText();
+    }
+  }
+
+  void _restoreSelectedText() {
+    _dismissedBySelection = false;
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry?.dispose();
+    _overlayEntry = null;
+  }
+
+  void _showOverlay(List<_FlatModel> models) {
+    _removeOverlay();
+    final overlay = Overlay.of(context);
+    final renderBox = context.findRenderObject() as RenderBox;
+    final size = renderBox.size;
+
+    _overlayEntry = OverlayEntry(
+      builder: (ctx) => Positioned(
+        width: size.width,
+        child: CompositedTransformFollower(
+          link: _layerLink,
+          showWhenUnlinked: false,
+          offset: Offset(0, size.height + 4),
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(12),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 240),
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: models.length,
+                itemBuilder: (ctx, index) {
+                  final model = models[index];
+                  return ListTile(
+                    dense: true,
+                    title: Text(
+                      model.displayName,
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                    subtitle: Text(
+                      model.providerName,
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                    onTap: () {
+                      _dismissedBySelection = true;
+                      _lastSelectedQualifier = model.qualifiedId;
+                      _controller.text = '${model.displayName} (${model.providerName})';
+                      context.read<ChatCubit>().setModel(model.qualifiedId);
+                      _focusNode.unfocus();
+                      _removeOverlay();
+                    },
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    overlay.insert(_overlayEntry!);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -732,52 +836,74 @@ class _ModelDropdown extends StatelessWidget {
           return const SizedBox(height: 36);
         }
 
-        final items = <DropdownMenuItem<String>>[];
+        final allModels = <_FlatModel>[];
         for (final provider in dropdownState.availableModels) {
           for (final model in provider.models) {
-            items.add(
-              DropdownMenuItem(
-                value: model.qualifiedId,
-                child: Text(
-                  '${model.displayName} (${provider.name})',
-                  style: const TextStyle(fontSize: 13),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            );
+            allModels.add(_FlatModel(model.qualifiedId, model.displayName, provider.name));
           }
         }
 
         final selected = dropdownState.selectedModel;
-        final hasValidSelection = selected != null && items.any((i) => i.value == selected);
+        if (!_dismissedBySelection && (selected != null || _lastSelectedQualifier != null)) {
+          final target = selected ?? _lastSelectedQualifier;
+          if (target != null && _controller.text.isEmpty) {
+            final match = allModels.where((m) => m.qualifiedId == target);
+            if (match.isNotEmpty) {
+              final m = match.first;
+              _controller.text = '${m.displayName} (${m.providerName})';
+              _lastSelectedQualifier = target;
+            }
+          } else if (target == null) {
+            _controller.clear();
+          }
+        }
 
-        final hintText = items.isNotEmpty
-            ? (items.first.child as Text).data ?? 'Select model'
-            : 'Select model';
-
-        return Container(
-          height: 36,
-          margin: const EdgeInsets.only(bottom: 6),
-          decoration: BoxDecoration(
-            border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5)),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: hasValidSelection ? selected : null,
-              hint: Text(
-                hintText,
-                style: const TextStyle(fontSize: 13),
-                overflow: TextOverflow.ellipsis,
+        return CompositedTransformTarget(
+          link: _layerLink,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            decoration: BoxDecoration(
+              border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5)),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: TextField(
+              controller: _controller,
+              focusNode: _focusNode,
+              style: const TextStyle(fontSize: 13),
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                isDense: true,
+                isCollapsed: true,
+                hintText: 'Search models...',
+                hintStyle: TextStyle(
+                  fontSize: 13,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                suffixIcon: GestureDetector(
+                  onTap: () => _focusNode.requestFocus(),
+                  child: const Icon(Icons.arrow_drop_down, size: 20),
+                ),
               ),
-              isDense: true,
-              isExpanded: true,
-              items: items,
-              onChanged: (model) {
-                if (model != null) {
-                  context.read<ChatCubit>().setModel(model);
-                }
+              onTap: () {
+                final query = _controller.text.toLowerCase();
+                final filtered = query.isEmpty
+                    ? allModels
+                    : allModels.where((m) =>
+                        m.displayName.toLowerCase().contains(query) ||
+                        m.providerName.toLowerCase().contains(query)).toList();
+                _showOverlay(filtered);
+              },
+              onChanged: (value) {
+                _dismissedBySelection = false;
+                final query = value.toLowerCase();
+                final filtered = query.isEmpty
+                    ? allModels
+                    : allModels.where((m) =>
+                        m.displayName.toLowerCase().contains(query) ||
+                        m.providerName.toLowerCase().contains(query)).toList();
+                _showOverlay(filtered);
               },
             ),
           ),
