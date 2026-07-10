@@ -42,23 +42,58 @@ function createBridgeServer(config) {
             return;
         }
         if (req.method === "GET" && req.url === "/sessions") {
-            const url = new URL("/session", config.opencodeServeUrl);
-            fetchJson(url.href)
-                .then((sessions) => {
-                const list = Array.isArray(sessions) ? sessions : [];
-                const enriched = list.map((s, i) => {
-                    const tokens = s.tokens ?? {};
-                    const inputTokens = tokens.input ?? 0;
-                    const cost = s.cost ?? 0;
-                    if (i === 0) {
-                        console.log(`[bridge:sessions] session[0]: id=${s.id}, title=${s.title}`, `input=${tokens.input ?? 0}, output=${tokens.output ?? 0}, reasoning=${tokens.reasoning ?? 0}`, `cache.read=${tokens.cache?.read ?? 0}, cache.write=${tokens.cache?.write ?? 0}`, `total=${tokens.total ?? 'N/A'}, cost=${s.cost ?? 0}`);
+            const modelsUrl = new URL("/config/providers", config.opencodeServeUrl);
+            (0, http_1.get)(modelsUrl.href, (modelsRes) => {
+                let modelsData = "";
+                modelsRes.on("data", (chunk) => (modelsData += chunk));
+                modelsRes.on("end", () => {
+                    let modelCtxMap = {};
+                    try {
+                        const parsed = JSON.parse(modelsData);
+                        const providers = parsed.providers ?? parsed ?? [];
+                        for (const p of providers) {
+                            for (const [_, model] of Object.entries(p.models ?? {})) {
+                                const m = model;
+                                if (m.id && m.limit?.context) {
+                                    modelCtxMap[m.id] = m.limit.context;
+                                }
+                            }
+                        }
                     }
-                    return { ...s, inputTokens, cost };
+                    catch { /* use empty map */ }
+                    const sessionsUrl = new URL("/session", config.opencodeServeUrl);
+                    (0, http_1.get)(sessionsUrl.href, (sessionsRes) => {
+                        let sessionsData = "";
+                        sessionsRes.on("data", (chunk) => (sessionsData += chunk));
+                        sessionsRes.on("end", () => {
+                            try {
+                                const sessions = JSON.parse(sessionsData);
+                                const list = Array.isArray(sessions) ? sessions : [];
+                                const enriched = list.map((s, i) => {
+                                    const tokens = s.tokens ?? {};
+                                    const inputTokens = tokens.input ?? 0;
+                                    const cost = s.cost ?? 0;
+                                    const modelId = s.model?.id;
+                                    const ctxWin = modelCtxMap[modelId] ?? 200000;
+                                    if (i === 0) {
+                                        console.log(`[bridge:sessions] session[0]: id=${s.id}, title=${s.title}`, `model=${modelId}, ctxWindow=${ctxWin} (fromAPI=${!!modelCtxMap[modelId]})`, `input=${inputTokens}, output=${tokens.output ?? 0}, reasoning=${tokens.reasoning ?? 0}`, `cache.read=${tokens.cache?.read ?? 0}, cache.write=${tokens.cache?.write ?? 0}`, `cost=${cost}`, `contextPct=${inputTokens > 0 ? ((inputTokens / ctxWin) * 100).toFixed(1) : "0.0"}%`);
+                                    }
+                                    return { ...s, inputTokens, cost };
+                                });
+                                res.writeHead(200, { "Content-Type": "application/json" });
+                                res.end(JSON.stringify(enriched));
+                            }
+                            catch (err) {
+                                res.writeHead(502, { "Content-Type": "application/json" });
+                                res.end(JSON.stringify({ error: err.message }));
+                            }
+                        });
+                    }).on("error", (err) => {
+                        res.writeHead(502, { "Content-Type": "application/json" });
+                        res.end(JSON.stringify({ error: err.message }));
+                    });
                 });
-                res.writeHead(200, { "Content-Type": "application/json" });
-                res.end(JSON.stringify(enriched));
-            })
-                .catch((err) => {
+            }).on("error", (err) => {
                 res.writeHead(502, { "Content-Type": "application/json" });
                 res.end(JSON.stringify({ error: err.message }));
             });

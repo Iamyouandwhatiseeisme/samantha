@@ -27,6 +27,7 @@ class OpenCodeSession {
   final int createdAt;
   final int inputTokens;
   final double cost;
+  final double contextPercent;
 
   const OpenCodeSession({
     required this.id,
@@ -35,6 +36,7 @@ class OpenCodeSession {
     required this.createdAt,
     this.inputTokens = 0,
     this.cost = 0,
+    this.contextPercent = 0,
   });
 
   factory OpenCodeSession.fromJson(Map<String, dynamic> json) {
@@ -46,6 +48,7 @@ class OpenCodeSession {
       createdAt: (time['created'] as num?)?.toInt() ?? 0,
       inputTokens: (json['inputTokens'] as num?)?.toInt() ?? 0,
       cost: (json['cost'] as num?)?.toDouble() ?? 0,
+      contextPercent: (json['contextPercent'] as num?)?.toDouble() ?? 0,
     );
   }
 
@@ -65,6 +68,12 @@ class OpenCodeSession {
     if (cost <= 0) return '';
     if (cost < 0.01) return '<\$0.01';
     return '\$${cost.toStringAsFixed(2)}';
+  }
+
+  String get contextPctStr {
+    if (contextPercent <= 0) return '';
+    if (contextPercent < 0.1) return '<0.1%';
+    return '${contextPercent.toStringAsFixed(1)}%';
   }
 }
 

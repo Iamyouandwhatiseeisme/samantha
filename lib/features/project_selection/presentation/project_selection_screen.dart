@@ -328,7 +328,7 @@ class _SessionListView extends StatelessWidget {
           leading: const Icon(Icons.chat),
           title: Text(session.displayName),
           subtitle: Text(
-            '${session.directory.split('/').last} \u2022 ${session.tokenCountStr} tokens${session.cost > 0 ? ' \u2022 ${session.costStr}' : ''}',
+            '${session.directory.split('/').last} \u2022 ${session.tokenCountStr} tokens${session.cost > 0 ? ' \u2022 ${session.costStr}' : ''}${session.contextPercent > 0 ? ' \u2022 ${session.contextPctStr}' : ''}',
             style: const TextStyle(fontSize: 12),
           ),
           trailing: selected ? const Icon(Icons.check_circle, color: Colors.green) : null,
