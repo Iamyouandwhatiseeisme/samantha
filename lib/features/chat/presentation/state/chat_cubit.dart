@@ -14,6 +14,7 @@ class ChatCubit extends Cubit<ChatState> {
   Timer? _reconnectTimer;
   int _reconnectAttempt = 0;
   bool _authFailed = false;
+  bool _userSelectedModel = false;
 
   ChatCubit(this._repository) : super(const ChatState());
 
@@ -99,6 +100,10 @@ class ChatCubit extends Cubit<ChatState> {
             _handleModels(providers);
           case ModelSetEvent(:final model):
             emit(state.copyWith(selectedModel: model));
+          case CurrentModelEvent(:final model):
+            if (!_userSelectedModel) {
+              emit(state.copyWith(selectedModel: model));
+            }
           case SessionMessagesEvent(:final messages):
             _handleSessionMessages(messages);
           case ThinkingEvent(:final content):
@@ -365,6 +370,7 @@ class ChatCubit extends Cubit<ChatState> {
   }
 
   void setModel(String model) {
+    _userSelectedModel = true;
     emit(state.copyWith(selectedModel: model));
     _repository.setModel(model);
   }

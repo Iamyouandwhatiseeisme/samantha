@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:injectable/injectable.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -36,6 +37,14 @@ class ModelsEvent extends ChatEvent {
 class ModelSetEvent extends ChatEvent {
   final String model;
   ModelSetEvent(this.model);
+}
+
+/// The active session's chosen model, fetched by the bridge from opencode serve.
+/// Distinct from ModelSetEvent (which acknowledges an explicit set_model) so the
+/// cubit can avoid clobbering a user's manual pick on reconnect.
+class CurrentModelEvent extends ChatEvent {
+  final String model;
+  CurrentModelEvent(this.model);
 }
 
 class SessionMessagesEvent extends ChatEvent {
@@ -109,6 +118,9 @@ class ChatSocketClient {
 
     channel.sink.add(jsonEncode({'type': 'auth', 'token': authToken}));
 
+    // Request current model after auth
+    channel.sink.add(jsonEncode({'type': 'get_models'}));
+
     channel.stream.listen(
       (data) {
         try {
@@ -138,9 +150,24 @@ class ChatSocketClient {
             case 'models':
               final providers = (parsed['providers'] as List)
                   .cast<Map<String, dynamic>>();
+              debugPrint('[Bridge] Available models received: ${providers.length} providers');
+              for (final provider in providers) {
+                final name = provider['name'] ?? 'unknown';
+                final models = provider['models'] as List? ?? [];
+                debugPrint('[Bridge]   Provider: $name (${models.length} models)');
+                for (final m in models) {
+                  debugPrint('[Bridge]     - ${m['displayName']} (${m['qualifiedId']})');
+                }
+              }
               _eventController.add(ModelsEvent(providers));
             case 'model_set':
-              _eventController.add(ModelSetEvent(parsed['model'] ?? ''));
+              final model = parsed['model'] ?? '';
+              debugPrint('[Bridge] Current model set: $model');
+              _eventController.add(ModelSetEvent(model));
+            case 'current_model':
+              final model = parsed['model'] ?? '';
+              debugPrint('[Bridge] Current model from opencode: $model');
+              _eventController.add(CurrentModelEvent(model));
             case 'session_messages':
               final msgs = (parsed['messages'] as List)
                   .cast<Map<String, dynamic>>();
@@ -180,7 +207,10 @@ class ChatSocketClient {
   void sendPrompt(String content, {String? model}) {
     if (_channel != null) {
       final msg = <String, dynamic>{'type': 'prompt', 'content': content};
-      if (model != null) msg['model'] = model;
+      if (model != null) {
+        msg['model'] = model;
+        debugPrint('[Bridge] Sending prompt with model: $model');
+      }
       _channel!.sink.add(jsonEncode(msg));
     }
   }
@@ -196,12 +226,16 @@ class ChatSocketClient {
   }
 
   void setModel(String model) {
+    debugPrint('[Bridge] Setting model: $model');
     if (_channel != null) {
       _channel!.sink.add(jsonEncode({'type': 'set_model', 'model': model}));
+    } else {
+      debugPrint('[Bridge] Cannot set model: not connected');
     }
   }
 
   void requestModels() {
+    debugPrint('[Bridge] Requesting available models');
     if (_channel != null) {
       _channel!.sink.add(jsonEncode({'type': 'get_models'}));
     }

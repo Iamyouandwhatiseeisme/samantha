@@ -241,6 +241,51 @@ export function createBridgeServer(config: BridgeConfig) {
       });
     };
 
+    // Reads opencode's currently chosen model — either from a specific session
+    // (when the app binds one via set_session) or from the most recent session —
+    // and pushes it to the client so the dropdown can show what opencode will
+    // actually use for the next prompt. The qualified form `providerID/modelId`
+    // matches what the app sends back via set_model.
+    const fetchCurrentModel = (sessionId?: string | null, retries = 3, delay = 500) => {
+      const url = sessionId
+        ? new URL(`/session/${sessionId}`, config.opencodeServeUrl)
+        : new URL("/session", config.opencodeServeUrl);
+      httpGet(url.href, (res) => {
+        let data = "";
+        res.on("data", (chunk) => (data += chunk));
+        res.on("end", () => {
+          try {
+            const body = JSON.parse(data);
+            const session = sessionId
+              ? body
+              : Array.isArray(body) && body.length > 0
+                ? body[0]
+                : null;
+            if (
+              session &&
+              session.model &&
+              typeof session.model.id === "string" &&
+              typeof session.model.providerID === "string"
+            ) {
+              const modelId = `${session.model.providerID}/${session.model.id}`;
+              console.log(`[bridge] current model: ${modelId}`);
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "current_model", model: modelId }));
+              }
+            }
+          } catch {
+            if (retries > 0) {
+              setTimeout(() => fetchCurrentModel(sessionId, retries - 1, delay), delay);
+            }
+          }
+        });
+      }).on("error", () => {
+        if (retries > 0) {
+          setTimeout(() => fetchCurrentModel(sessionId, retries - 1, delay), delay);
+        }
+      });
+    };
+
     const formatToolDesc = (
       tool: string,
       input: any,
@@ -454,6 +499,7 @@ export function createBridgeServer(config: BridgeConfig) {
           console.log(`[bridge] client authenticated`);
           createOpencode();
           fetchModels();
+          fetchCurrentModel(currentSessionId);
         } else {
           console.log(`[bridge] auth failed`);
           if (ws.readyState === WebSocket.OPEN) {
@@ -531,6 +577,7 @@ export function createBridgeServer(config: BridgeConfig) {
             );
             fetchModels();
             fetchSessionMessages();
+            fetchCurrentModel(currentSessionId);
           }
           break;
         }
