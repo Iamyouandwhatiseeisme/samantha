@@ -3,6 +3,10 @@ class ChatMessage {
   final ChatRole role;
   final String content;
   final String thinkingContent;
+
+  /// Time the model spent reasoning, summed across the turn's reasoning blocks.
+  /// Distinct from [duration], which covers the whole turn including tool calls.
+  final Duration? thinkingDuration;
   final bool isStreaming;
   final List<ToolResult> toolResults;
   final Duration? duration;
@@ -16,6 +20,7 @@ class ChatMessage {
     required this.role,
     this.content = '',
     this.thinkingContent = '',
+    this.thinkingDuration,
     this.isStreaming = false,
     this.toolResults = const [],
     this.duration,
@@ -30,6 +35,7 @@ class ChatMessage {
     ChatRole? role,
     String? content,
     String? thinkingContent,
+    Duration? thinkingDuration,
     bool? isStreaming,
     List<ToolResult>? toolResults,
     Duration? duration,
@@ -43,6 +49,7 @@ class ChatMessage {
       role: role ?? this.role,
       content: content ?? this.content,
       thinkingContent: thinkingContent ?? this.thinkingContent,
+      thinkingDuration: thinkingDuration ?? this.thinkingDuration,
       isStreaming: isStreaming ?? this.isStreaming,
       toolResults: toolResults ?? this.toolResults,
       duration: duration ?? this.duration,
