@@ -46,14 +46,15 @@ function createBridgeServer(config) {
             fetchJson(url.href)
                 .then((sessions) => {
                 const list = Array.isArray(sessions) ? sessions : [];
-                const enriched = list.map((s) => {
+                const enriched = list.map((s, i) => {
                     const tokens = s.tokens ?? {};
-                    const totalTokens = (tokens.input ?? 0) +
-                        (tokens.output ?? 0) +
-                        (tokens.reasoning ?? 0) +
-                        (tokens.cache?.read ?? 0) +
-                        (tokens.cache?.write ?? 0);
+                    const totalTokens = typeof tokens.total === "number"
+                        ? tokens.total
+                        : (tokens.input ?? 0) + (tokens.output ?? 0) + (tokens.reasoning ?? 0);
                     const cost = s.cost ?? 0;
+                    if (i === 0) {
+                        console.log(`[bridge:sessions] session[0]: id=${s.id}, title=${s.title}`, `input=${tokens.input ?? 0}, output=${tokens.output ?? 0}, reasoning=${tokens.reasoning ?? 0}`, `cache.read=${tokens.cache?.read ?? 0}, cache.write=${tokens.cache?.write ?? 0}`, `total=${tokens.total ?? 'N/A'}, cost=${s.cost ?? 0}`, `computed=${totalTokens}`);
+                    }
                     return { ...s, totalTokens, cost };
                 });
                 res.writeHead(200, { "Content-Type": "application/json" });

@@ -57,7 +57,7 @@ class OpenCodeSession {
 
   String get tokenCountStr {
     if (totalTokens >= 1000000) return '${(totalTokens / 1000000).toStringAsFixed(1)}M';
-    if (totalTokens >= 1000) return '${(totalTokens / 1000).toStringAsFixed(1)}k';
+    if (totalTokens >= 1000) return '${(totalTokens / 1000).toStringAsFixed(1)}K';
     return totalTokens.toString();
   }
 
