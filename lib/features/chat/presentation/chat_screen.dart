@@ -6,6 +6,7 @@ import 'package:samantha/features/chat/data/error_message.dart';
 import 'package:samantha/features/chat/domain/entities.dart';
 import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
 import 'package:samantha/features/chat/presentation/state/chat_state.dart';
+import 'package:samantha/features/chat/presentation/widgets/thinking_block.dart';
 
 @RoutePage()
 class ChatScreen extends StatefulWidget {
@@ -337,11 +338,6 @@ class _MessageList extends StatelessWidget {
   }
 
   Widget _buildBubble(BuildContext context, ChatMessage msg, bool isUser) {
-    final labelParts = <String>[];
-    if (msg.duration != null) {
-      labelParts.add('Thought ${msg.duration!.inSeconds}s');
-    }
-
     final footerParts = <String>[];
     if (msg.inputTokens != null || msg.outputTokens != null) {
       final total = (msg.inputTokens ?? 0) + (msg.outputTokens ?? 0);
@@ -360,14 +356,6 @@ class _MessageList extends StatelessWidget {
       crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (labelParts.isNotEmpty)
-          Padding(
-            padding: EdgeInsets.only(left: isUser ? 0 : 12, right: isUser ? 12 : 0, bottom: 2),
-            child: Text(
-              labelParts.join(' \u00B7 '),
-              style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant),
-            ),
-          ),
         Container(
           margin: const EdgeInsets.symmetric(vertical: 4.0),
           padding: const EdgeInsets.all(12.0),
@@ -377,8 +365,10 @@ class _MessageList extends StatelessWidget {
           ),
           constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
           child: _ChatMessageContent(
+            messageId: msg.id,
             content: msg.content,
             thinkingContent: msg.thinkingContent,
+            thinkingDuration: msg.thinkingDuration,
             isStreaming: msg.isStreaming,
             toolResults: msg.toolResults,
           ),
@@ -472,82 +462,55 @@ class _MessageInput extends StatelessWidget {
 }
 
 class _ChatMessageContent extends StatelessWidget {
+  final String messageId;
   final String content;
   final String thinkingContent;
+  final Duration? thinkingDuration;
   final bool isStreaming;
   final List<ToolResult> toolResults;
 
   const _ChatMessageContent({
+    required this.messageId,
     required this.content,
     this.thinkingContent = '',
+    this.thinkingDuration,
     required this.isStreaming,
     this.toolResults = const [],
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     final hasThinking = thinkingContent.isNotEmpty;
-    final isEmptyContent = isStreaming && content.isEmpty;
+    // The model is still reasoning as long as the turn is live and no answer has
+    // begun. Once tokens arrive, the block settles into its "Thought" label.
+    final isThinking = isStreaming && content.isEmpty;
 
     final children = <Widget>[];
 
     if (hasThinking) {
       children.add(
-        Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.psychology, size: 14, color: colorScheme.onSurfaceVariant),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Thinking',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                thinkingContent,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontStyle: FontStyle.italic,
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
+        ThinkingBlock(
+          // Pins the expand/collapse state to its message as the cubit emits a
+          // fresh ChatMessage on every delta.
+          key: ValueKey('thinking-$messageId'),
+          text: thinkingContent,
+          isThinking: isThinking,
+          duration: thinkingDuration,
         ),
       );
     }
 
-    if (isEmptyContent) {
-      children.add(
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Thinking...'),
-            const SizedBox(width: 4),
-            const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2)),
-          ],
-        ),
-      );
+    if (isThinking) {
+      // With reasoning on screen the block's own shimmer already says the model
+      // is working; a second indicator would just compete with it.
+      if (!hasThinking) {
+        children.add(
+          const ShimmerText(
+            'Streaming…',
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+          ),
+        );
+      }
     } else if (content.isNotEmpty) {
       final segments = _parseContent(content);
 
