@@ -25,14 +25,16 @@ class OpenCodeSession {
   final String title;
   final String directory;
   final int createdAt;
-  final double contextPercent;
+  final int totalTokens;
+  final double cost;
 
   const OpenCodeSession({
     required this.id,
     required this.title,
     required this.directory,
     required this.createdAt,
-    this.contextPercent = 0,
+    this.totalTokens = 0,
+    this.cost = 0,
   });
 
   factory OpenCodeSession.fromJson(Map<String, dynamic> json) {
@@ -42,7 +44,8 @@ class OpenCodeSession {
       title: json['title'] as String? ?? 'Untitled',
       directory: json['directory'] as String? ?? '',
       createdAt: (time['created'] as num?)?.toInt() ?? 0,
-      contextPercent: (json['contextPercent'] as num?)?.toDouble() ?? 0,
+      totalTokens: (json['totalTokens'] as num?)?.toInt() ?? 0,
+      cost: (json['cost'] as num?)?.toDouble() ?? 0,
     );
   }
 
@@ -52,10 +55,16 @@ class OpenCodeSession {
     return parts.isNotEmpty ? parts.last : 'Session';
   }
 
-  String get contextPercentStr {
-    if (contextPercent <= 0) return '0%';
-    if (contextPercent < 0.1) return '<0.1%';
-    return '${contextPercent.toStringAsFixed(1)}%';
+  String get tokenCountStr {
+    if (totalTokens >= 1000000) return '${(totalTokens / 1000000).toStringAsFixed(1)}M';
+    if (totalTokens >= 1000) return '${(totalTokens / 1000).toStringAsFixed(1)}k';
+    return totalTokens.toString();
+  }
+
+  String get costStr {
+    if (cost <= 0) return '';
+    if (cost < 0.01) return '<\$0.01';
+    return '\$${cost.toStringAsFixed(2)}';
   }
 }
 

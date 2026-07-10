@@ -48,24 +48,13 @@ function createBridgeServer(config) {
                 const list = Array.isArray(sessions) ? sessions : [];
                 const enriched = list.map((s) => {
                     const tokens = s.tokens ?? {};
-                    const model = s.model ?? {};
-                    const modelId = (model.id ?? "").toLowerCase();
-                    const inputTokens = tokens.input ?? 0;
-                    let contextWindow = 200000;
-                    if (modelId.includes("claude"))
-                        contextWindow = 200000;
-                    else if (modelId.includes("gpt-4"))
-                        contextWindow = 128000;
-                    else if (modelId.includes("gpt-3.5"))
-                        contextWindow = 16000;
-                    else if (modelId.includes("gemini-2"))
-                        contextWindow = 1048576;
-                    else if (modelId.includes("gemini"))
-                        contextWindow = 32768;
-                    const pct = inputTokens > 0
-                        ? Math.min((inputTokens / contextWindow) * 100, 100)
-                        : 0;
-                    return { ...s, contextTokens: inputTokens, contextPercent: Math.round(pct * 10) / 10 };
+                    const totalTokens = (tokens.input ?? 0) +
+                        (tokens.output ?? 0) +
+                        (tokens.reasoning ?? 0) +
+                        (tokens.cache?.read ?? 0) +
+                        (tokens.cache?.write ?? 0);
+                    const cost = s.cost ?? 0;
+                    return { ...s, totalTokens, cost };
                 });
                 res.writeHead(200, { "Content-Type": "application/json" });
                 res.end(JSON.stringify(enriched));
