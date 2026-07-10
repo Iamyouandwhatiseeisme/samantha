@@ -300,7 +300,7 @@ class _ModelDropdownMenuState extends State<_ModelDropdownMenu> {
                             padding: const EdgeInsets.only(bottom: 4),
                             shrinkWrap: true,
                             itemCount: filtered.length,
-                            separatorBuilder: (_, __) => Divider(
+                            separatorBuilder: (context, index) => Divider(
                               height: 1,
                               thickness: 0.5,
                               color: colorScheme.outlineVariant.withValues(alpha: 0.5),
