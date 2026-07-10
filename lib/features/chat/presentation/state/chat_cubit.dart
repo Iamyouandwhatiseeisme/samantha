@@ -95,6 +95,8 @@ class ChatCubit extends Cubit<ChatState> {
             _handleSessionMessages(messages);
           case ThinkingEvent(:final content):
             _handleThinking(content);
+          case ThinkingEndEvent(:final durationMs):
+            _handleThinkingEnd(durationMs);
           case ToolEvent(:final tool, :final status, :final title, :final description, :final content):
             _handleTool(tool, status, title ?? description, content: content);
           case PermissionRequestEvent(:final id, :final title):
@@ -119,18 +121,24 @@ class ChatCubit extends Cubit<ChatState> {
     );
   }
 
+  /// Pops the in-progress assistant message off [messages] so the caller can
+  /// amend it, creating a fresh one when the turn has not started yet.
+  ChatMessage _takeStreamingMessage(List<ChatMessage> messages) {
+    if (messages.isNotEmpty &&
+        messages.last.role == ChatRole.assistant &&
+        messages.last.isStreaming) {
+      return messages.removeLast();
+    }
+    return ChatMessage(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      role: ChatRole.assistant,
+      isStreaming: true,
+    );
+  }
+
   void _handleToken(String content) {
     final messages = List<ChatMessage>.from(state.messages);
-
-    final streamingMessage = messages.isNotEmpty &&
-            messages.last.role == ChatRole.assistant &&
-            messages.last.isStreaming
-        ? messages.removeLast()
-        : ChatMessage(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            role: ChatRole.assistant,
-            isStreaming: true,
-          );
+    final streamingMessage = _takeStreamingMessage(messages);
 
     messages.add(streamingMessage.copyWith(
       content: streamingMessage.content + content,
@@ -144,19 +152,34 @@ class ChatCubit extends Cubit<ChatState> {
 
   void _handleThinking(String content) {
     final messages = List<ChatMessage>.from(state.messages);
-
-    final streamingMessage = messages.isNotEmpty &&
-            messages.last.role == ChatRole.assistant &&
-            messages.last.isStreaming
-        ? messages.removeLast()
-        : ChatMessage(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            role: ChatRole.assistant,
-            isStreaming: true,
-          );
+    final streamingMessage = _takeStreamingMessage(messages);
 
     messages.add(streamingMessage.copyWith(
       thinkingContent: streamingMessage.thinkingContent + content,
+    ));
+
+    emit(state.copyWith(
+      messages: messages,
+      connectionStatus: ChatConnectionStatus.streaming,
+    ));
+  }
+
+  /// A reasoning block closed. A turn can contain several — one per agent step —
+  /// so separate them and accumulate their elapsed time.
+  void _handleThinkingEnd(int? durationMs) {
+    final messages = List<ChatMessage>.from(state.messages);
+    final streamingMessage = _takeStreamingMessage(messages);
+
+    final elapsed = durationMs != null ? Duration(milliseconds: durationMs) : null;
+    final total = elapsed == null
+        ? streamingMessage.thinkingDuration
+        : (streamingMessage.thinkingDuration ?? Duration.zero) + elapsed;
+
+    messages.add(streamingMessage.copyWith(
+      thinkingContent: streamingMessage.thinkingContent.isEmpty
+          ? streamingMessage.thinkingContent
+          : '${streamingMessage.thinkingContent}\n\n',
+      thinkingDuration: total,
     ));
 
     emit(state.copyWith(
@@ -280,6 +303,9 @@ class ChatCubit extends Cubit<ChatState> {
       final role = m['role'] == 'user' ? ChatRole.user : ChatRole.assistant;
       final content = m['content'] as String? ?? '';
       final thinkingContent = m['thinkingContent'] as String? ?? '';
+      final thinkingMs = m['thinkingMs'] as int?;
+      final thinkingDuration =
+          thinkingMs != null ? Duration(milliseconds: thinkingMs) : null;
 
       final List<ToolResult> toolResults = [];
       final rawToolResults = m['toolResults'];
@@ -318,6 +344,7 @@ class ChatCubit extends Cubit<ChatState> {
         role: role,
         content: content,
         thinkingContent: thinkingContent,
+        thinkingDuration: thinkingDuration,
         toolResults: toolResults,
         duration: duration,
         inputTokens: inputTokens,

@@ -23,12 +23,20 @@ export declare class OpencodeProcess extends EventEmitter {
     private _inputTokens?;
     private _outputTokens?;
     private _cost?;
+    private _textBuffers;
     constructor(serveUrl: string);
     get running(): boolean;
     get manualStop(): boolean;
     get currentSessionId(): string | null;
     setSessionId(id: string): void;
-    write(prompt: string, model?: string, projectPath?: string): void;
+    /**
+     * Create the session up front rather than waiting to latch it off the CLI's
+     * `step_start` line. The event stream filters reasoning by session ID, and by
+     * the time `step_start` reaches us on stdout the first deltas have already
+     * been published. This mirrors what `opencode run` does internally.
+     */
+    private ensureSession;
+    write(prompt: string, model?: string, projectPath?: string): Promise<void>;
     private handleCliMessage;
     private formatToolDesc;
     private extractToolContent;

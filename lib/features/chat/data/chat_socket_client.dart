@@ -48,6 +48,13 @@ class ThinkingEvent extends ChatEvent {
   ThinkingEvent(this.content);
 }
 
+/// A reasoning block finished. [durationMs] is the block's own elapsed time,
+/// not the turn's.
+class ThinkingEndEvent extends ChatEvent {
+  final int? durationMs;
+  ThinkingEndEvent(this.durationMs);
+}
+
 class ToolEvent extends ChatEvent {
   final String tool;
   final String status;
@@ -140,6 +147,8 @@ class ChatSocketClient {
               _eventController.add(SessionMessagesEvent(msgs));
             case 'thinking':
               _eventController.add(ThinkingEvent(parsed['content'] ?? ''));
+            case 'thinking_end':
+              _eventController.add(ThinkingEndEvent(parsed['duration_ms'] as int?));
             case 'tool':
               _eventController.add(ToolEvent(
                 tool: parsed['tool'] ?? '',

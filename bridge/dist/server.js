@@ -4,6 +4,7 @@ exports.createBridgeServer = createBridgeServer;
 const http_1 = require("http");
 const ws_1 = require("ws");
 const opencode_1 = require("./opencode");
+const events_1 = require("./events");
 const fetchJson = (url) => new Promise((resolve, reject) => {
     (0, http_1.get)(url, (res) => {
         let data = "";
@@ -75,10 +76,13 @@ function createBridgeServer(config) {
                                     const cost = s.cost ?? 0;
                                     const modelId = s.model?.id;
                                     const ctxWin = modelCtxMap[modelId] ?? 200000;
+                                    const ctxPct = inputTokens > 0
+                                        ? Math.round((inputTokens / ctxWin) * 1000) / 10
+                                        : 0;
                                     if (i === 0) {
-                                        console.log(`[bridge:sessions] session[0]: id=${s.id}, title=${s.title}`, `model=${modelId}, ctxWindow=${ctxWin} (fromAPI=${!!modelCtxMap[modelId]})`, `input=${inputTokens}, output=${tokens.output ?? 0}, reasoning=${tokens.reasoning ?? 0}`, `cache.read=${tokens.cache?.read ?? 0}, cache.write=${tokens.cache?.write ?? 0}`, `cost=${cost}`, `contextPct=${inputTokens > 0 ? ((inputTokens / ctxWin) * 100).toFixed(1) : "0.0"}%`);
+                                        console.log(`[bridge:sessions] session[0]: id=${s.id}, title=${s.title}`, `model=${modelId}, ctxWindow=${ctxWin} (fromAPI=${!!modelCtxMap[modelId]})`, `input=${inputTokens}, output=${tokens.output ?? 0}, reasoning=${tokens.reasoning ?? 0}`, `cache.read=${tokens.cache?.read ?? 0}, cache.write=${tokens.cache?.write ?? 0}`, `cost=${cost}, contextPct=${ctxPct}%`);
                                     }
-                                    return { ...s, inputTokens, cost };
+                                    return { ...s, inputTokens, cost, contextPercent: ctxPct };
                                 });
                                 res.writeHead(200, { "Content-Type": "application/json" });
                                 res.end(JSON.stringify(enriched));
@@ -107,6 +111,7 @@ function createBridgeServer(config) {
         console.log(`[bridge] WebSocket client connected`);
         let authenticated = false;
         let opencode = null;
+        let events = null;
         let currentModel = null;
         let currentProjectPath = null;
         let currentSessionId = null;
@@ -115,17 +120,36 @@ function createBridgeServer(config) {
                 opencode.stop();
                 opencode = null;
             }
+            if (events) {
+                events.close();
+                events = null;
+            }
         };
         const createOpencode = () => {
             opencode = new opencode_1.OpencodeProcess(config.opencodeServeUrl);
+            // Token-level reasoning only exists on the serve process's event bus; the
+            // CLI's JSON output emits a reasoning block once it has already finished.
+            events = new events_1.OpencodeEventStream(config.opencodeServeUrl);
+            events.setDirectory(currentProjectPath);
+            events.setSession(currentSessionId);
+            events.start();
+            events.on("thinking", (content) => {
+                if (ws.readyState === ws_1.WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: "thinking", content }));
+                }
+            });
+            events.on("thinking_end", (durationMs) => {
+                if (ws.readyState === ws_1.WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: "thinking_end", duration_ms: durationMs }));
+                }
+            });
+            opencode.on("session", (sessionId) => {
+                currentSessionId = sessionId;
+                events?.setSession(sessionId);
+            });
             opencode.on("output", (data) => {
                 if (ws.readyState === ws_1.WebSocket.OPEN) {
                     ws.send(JSON.stringify({ type: "token", content: data }));
-                }
-            });
-            opencode.on("thinking", (data) => {
-                if (ws.readyState === ws_1.WebSocket.OPEN) {
-                    ws.send(JSON.stringify({ type: "thinking", content: data }));
                 }
             });
             opencode.on("tool", (data) => {
@@ -291,14 +315,18 @@ function createBridgeServer(config) {
                         }
                     }
                     const textSegments = [];
-                    let thinkingContent = "";
+                    const thinkingSegments = [];
+                    let thinkingMs = 0;
                     const toolResults = [];
                     for (const p of Array.isArray(parts) ? parts : []) {
                         if (p.type === "text" && p.text) {
                             textSegments.push(p.text);
                         }
-                        else if (p.type === "thinking" && p.text) {
-                            thinkingContent += p.text;
+                        else if (p.type === "reasoning" && p.text) {
+                            thinkingSegments.push(p.text);
+                            if (typeof p.time?.start === "number" && typeof p.time?.end === "number") {
+                                thinkingMs += p.time.end - p.time.start;
+                            }
                         }
                         else if (p.type === "tool") {
                             const toolName = p.tool ?? "tool";
@@ -311,9 +339,21 @@ function createBridgeServer(config) {
                         }
                     }
                     const content = textSegments.join("\n\n");
+                    const thinkingContent = thinkingSegments.join("\n\n");
                     const timestamp = info.created ?? info.timestamp ?? info.time;
                     const cost = typeof info.cost === "number" ? info.cost : (typeof m.cost === "number" ? m.cost : undefined);
-                    return { role, content, thinkingContent, toolResults, duration, inputTokens, outputTokens, cost, timestamp };
+                    return {
+                        role,
+                        content,
+                        thinkingContent,
+                        thinkingMs: thinkingMs > 0 ? thinkingMs : undefined,
+                        toolResults,
+                        duration,
+                        inputTokens,
+                        outputTokens,
+                        cost,
+                        timestamp,
+                    };
                 });
                 ws.send(JSON.stringify({ type: "session_messages", messages: simplified }));
             })
@@ -354,10 +394,14 @@ function createBridgeServer(config) {
                     if (typeof msg.content === "string") {
                         console.log(`[bridge] received prompt: ${msg.content.trim()}`);
                         if (opencode) {
-                            if (currentSessionId && !opencode.currentSessionId) {
-                                opencode.setSessionId(currentSessionId);
-                            }
-                            opencode.write(msg.content.trim(), msg.model ?? currentModel ?? undefined, currentProjectPath ?? undefined);
+                            opencode
+                                .write(msg.content.trim(), msg.model ?? currentModel ?? undefined, currentProjectPath ?? undefined)
+                                .catch((err) => {
+                                console.error(`[bridge] prompt failed: ${err.message}`);
+                                if (ws.readyState === ws_1.WebSocket.OPEN) {
+                                    ws.send(JSON.stringify({ type: "error", message: err.message }));
+                                }
+                            });
                         }
                     }
                     break;
@@ -386,6 +430,9 @@ function createBridgeServer(config) {
                         currentSessionId = sessionId;
                         currentProjectPath = sessionPath ?? currentProjectPath;
                         console.log(`[bridge] session set to: ${currentSessionId}`);
+                        opencode?.setSessionId(currentSessionId);
+                        events?.setDirectory(currentProjectPath);
+                        events?.setSession(currentSessionId);
                         ws.send(JSON.stringify({
                             type: "session_set",
                             session_id: currentSessionId,
@@ -399,6 +446,7 @@ function createBridgeServer(config) {
                     if (typeof msg.path === "string") {
                         currentProjectPath = msg.path;
                         console.log(`[bridge] project set to: ${currentProjectPath}`);
+                        events?.setDirectory(currentProjectPath);
                         ws.send(JSON.stringify({ type: "project_set", path: currentProjectPath }));
                         fetchModels();
                     }

@@ -1,5 +1,6 @@
 import { EventEmitter } from "events";
 import { spawn, ChildProcess } from "child_process";
+import { request as httpRequest } from "http";
 
 export interface ToolEvent {
   tool: string;
@@ -18,6 +19,33 @@ export interface PermissionEvent {
   title?: string;
 }
 
+const postJson = (url: string): Promise<any> =>
+  new Promise((resolve, reject) => {
+    const target = new URL(url);
+    const req = httpRequest(
+      {
+        hostname: target.hostname,
+        port: target.port,
+        path: `${target.pathname}${target.search}`,
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Content-Length": 2 },
+      },
+      (res) => {
+        let data = "";
+        res.on("data", (chunk) => (data += chunk));
+        res.on("end", () => {
+          try {
+            resolve(JSON.parse(data));
+          } catch {
+            reject(new Error(`Failed to parse response from ${url}`));
+          }
+        });
+      },
+    );
+    req.on("error", reject);
+    req.end("{}");
+  });
+
 export class OpencodeProcess extends EventEmitter {
   private process: ChildProcess | null = null;
   private stopping = false;
@@ -27,6 +55,7 @@ export class OpencodeProcess extends EventEmitter {
   private _inputTokens?: number;
   private _outputTokens?: number;
   private _cost?: number;
+  private _textBuffers: Map<string, string> = new Map();
 
   constructor(serveUrl: string) {
     super();
@@ -49,11 +78,33 @@ export class OpencodeProcess extends EventEmitter {
     this.sessionId = id;
   }
 
-  write(prompt: string, model?: string, projectPath?: string): void {
+  /**
+   * Create the session up front rather than waiting to latch it off the CLI's
+   * `step_start` line. The event stream filters reasoning by session ID, and by
+   * the time `step_start` reaches us on stdout the first deltas have already
+   * been published. This mirrors what `opencode run` does internally.
+   */
+  private async ensureSession(projectPath?: string): Promise<string> {
+    if (this.sessionId) return this.sessionId;
+
+    const url = new URL("/session", this.serveUrl);
+    if (projectPath) url.searchParams.set("directory", projectPath);
+    const session = await postJson(url.href);
+    if (!session?.id) throw new Error("opencode did not return a session id");
+
+    this.sessionId = session.id as string;
+    console.log(`[bridge:opencode] created session: ${this.sessionId}`);
+    return this.sessionId;
+  }
+
+  async write(prompt: string, model?: string, projectPath?: string): Promise<void> {
     if (this.process) {
       this.stop();
     }
     this.stopping = false;
+
+    const sessionId = await this.ensureSession(projectPath);
+    this.emit("session", sessionId);
 
     const args = ["run", "--format", "json", "--auto", "--attach", this.serveUrl];
     if (model) {
@@ -62,9 +113,7 @@ export class OpencodeProcess extends EventEmitter {
     if (projectPath) {
       args.push("--dir", projectPath);
     }
-    if (this.sessionId) {
-      args.push("--session", this.sessionId);
-    }
+    args.push("--session", sessionId);
     args.push(prompt);
 
     const ptyArgs = ["-q", "/dev/null", "opencode", ...args];
@@ -123,24 +172,33 @@ export class OpencodeProcess extends EventEmitter {
 
   private handleCliMessage(msg: Record<string, unknown>): void {
     switch (msg.type) {
+      // The session is created before the CLI is spawned, so there is nothing to
+      // latch here anymore.
       case "step_start":
-        if (msg.sessionID && !this.sessionId) {
-          this.sessionId = msg.sessionID as string;
-          console.log(`[bridge:opencode] session: ${this.sessionId}`);
-        }
         break;
 
-      case "text":
-        if ((msg.part as Record<string, unknown>)?.text) {
-          this.emit("output", (msg.part as Record<string, string>).text);
+      case "text": {
+        const part = msg.part as Record<string, unknown> | undefined;
+        if (part?.text) {
+          const partId = (part.id as string) ?? "";
+          const newText = part.text as string;
+          const prevText = this._textBuffers.get(partId) ?? "";
+          this._textBuffers.set(partId, newText);
+          const delta = newText.slice(prevText.length);
+          if (delta) {
+            this.emit("output", delta);
+          }
         }
         break;
+      }
 
-      case "thinking":
-        if ((msg.part as Record<string, unknown>)?.text) {
-          this.emit("thinking", (msg.part as Record<string, string>).text);
+      case "text_delta": {
+        const delta = (msg.delta as string) ?? "";
+        if (delta) {
+          this.emit("output", delta);
         }
         break;
+      }
 
       case "tool":
       case "tool_use": {
