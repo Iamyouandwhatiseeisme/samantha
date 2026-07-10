@@ -499,13 +499,21 @@ class _ChatMessageContent extends StatelessWidget {
     }
 
     if (isThinking) {
-      // With reasoning on screen the block's own shimmer already says the model
-      // is working; a second indicator would just compete with it.
       if (!hasThinking) {
         children.add(
-          const ShimmerText(
-            'Streaming…',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _PulseDot(),
+                const SizedBox(width: 8),
+                const ShimmerText(
+                  'Thinking…',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
           ),
         );
       }
@@ -1089,6 +1097,50 @@ class _ToolStatusBanner extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PulseDot extends StatefulWidget {
+  @override
+  State<_PulseDot> createState() => _PulseDotState();
+}
+
+class _PulseDotState extends State<_PulseDot> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _opacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat(reverse: true);
+    _opacity = Tween<double>(begin: 0.4, end: 1.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return AnimatedBuilder(
+      animation: _opacity,
+      builder: (context, child) {
+        return Opacity(
+          opacity: _opacity.value,
+          child: Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: colorScheme.primary,
+              shape: BoxShape.circle,
+            ),
+          ),
+        );
+      },
     );
   }
 }

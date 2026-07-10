@@ -33,7 +33,15 @@ class ChatCubit extends Cubit<ChatState> {
     );
 
     emit(state.copyWith(
-      messages: [...state.messages, userMessage],
+      messages: [
+        ...state.messages,
+        userMessage,
+        ChatMessage(
+          id: '${messageId}_ai',
+          role: ChatRole.assistant,
+          isStreaming: true,
+        ),
+      ],
       inputText: '',
       clearToolName: true,
       clearToolStatus: true,
