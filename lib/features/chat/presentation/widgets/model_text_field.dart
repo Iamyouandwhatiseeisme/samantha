@@ -57,16 +57,22 @@ class _ModelTextFieldState extends State<ModelTextField> {
     _dismissedBySelection = false;
   }
 
-  void _dismiss() {
-    _focusNode.unfocus();
-    _removeOverlay();
-    _restoreSelectedText();
-  }
-
   void _removeOverlay() {
     _overlayEntry?.remove();
     _overlayEntry?.dispose();
     _overlayEntry = null;
+  }
+
+  List<_FlatModel> _getFilteredModels(List<_FlatModel> allModels) {
+    final query = _controller.text.toLowerCase();
+    if (query.isEmpty) return allModels;
+    return allModels
+        .where(
+          (m) =>
+              m.displayName.toLowerCase().contains(query) ||
+              m.providerName.toLowerCase().contains(query),
+        )
+        .toList();
   }
 
   void _showOverlay(List<_FlatModel> models) {
@@ -150,70 +156,71 @@ class _ModelTextFieldState extends State<ModelTextField> {
           }
         }
 
+        final filtered = _controller.text.isEmpty
+            ? allModels
+            : allModels
+                .where(
+                  (m) =>
+                      m.displayName.toLowerCase().contains(_controller.text.toLowerCase()) ||
+                      m.providerName.toLowerCase().contains(_controller.text.toLowerCase()),
+                )
+                .toList();
+
         return CompositedTransformTarget(
           link: _layerLink,
           child: Container(
             height: 32,
-            alignment: Alignment.center,
             decoration: BoxDecoration(
               border: Border.all(
                 color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
               ),
               borderRadius: BorderRadius.circular(8),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: TextField(
-              controller: _controller,
-              focusNode: _focusNode,
-              textAlignVertical: TextAlignVertical.center,
-              style: const TextStyle(fontSize: 12),
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                isDense: true,
-                hintText: 'Search models...',
-                hintStyle: TextStyle(
-                  fontSize: 12,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    focusNode: _focusNode,
+                    textAlignVertical: TextAlignVertical.center,
+                    style: const TextStyle(fontSize: 12),
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      isDense: true,
+                      hintText: 'Search models...',
+                      hintStyle: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                    ),
+                    onTap: () => _showOverlay(filtered),
+                    onChanged: (_) {
+                      _dismissedBySelection = false;
+                      _showOverlay(_getFilteredModels(allModels));
+                    },
+                  ),
                 ),
-                contentPadding: EdgeInsets.zero,
-                suffixIcon: GestureDetector(
-                  onTap: () => _focusNode.requestFocus(),
-                  child: const Icon(Icons.arrow_drop_down, size: 20),
+                VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
                 ),
-              ),
-              onTap: () {
-                final query = _controller.text.toLowerCase();
-                final filtered = query.isEmpty
-                    ? allModels
-                    : allModels
-                        .where(
-                          (m) =>
-                              m.displayName.toLowerCase().contains(query) ||
-                              m.providerName.toLowerCase().contains(query),
-                        )
-                        .toList();
-                _showOverlay(filtered);
-              },
-              onTapOutside: (_) {
-                // Defer so the overlay ListTile's onTap can claim the gesture first
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted && _overlayEntry != null) _dismiss();
-                });
-              },
-              onChanged: (value) {
-                _dismissedBySelection = false;
-                final query = value.toLowerCase();
-                final filtered = query.isEmpty
-                    ? allModels
-                    : allModels
-                        .where(
-                          (m) =>
-                              m.displayName.toLowerCase().contains(query) ||
-                              m.providerName.toLowerCase().contains(query),
-                        )
-                        .toList();
-                _showOverlay(filtered);
-              },
+                GestureDetector(
+                  onTap: () {
+                    _focusNode.requestFocus();
+                    _showOverlay(_getFilteredModels(allModels));
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Icon(
+                      Icons.arrow_drop_down,
+                      size: 20,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         );
