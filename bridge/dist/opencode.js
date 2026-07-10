@@ -3,6 +3,30 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OpencodeProcess = void 0;
 const events_1 = require("events");
 const child_process_1 = require("child_process");
+const http_1 = require("http");
+const postJson = (url) => new Promise((resolve, reject) => {
+    const target = new URL(url);
+    const req = (0, http_1.request)({
+        hostname: target.hostname,
+        port: target.port,
+        path: `${target.pathname}${target.search}`,
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Content-Length": 2 },
+    }, (res) => {
+        let data = "";
+        res.on("data", (chunk) => (data += chunk));
+        res.on("end", () => {
+            try {
+                resolve(JSON.parse(data));
+            }
+            catch {
+                reject(new Error(`Failed to parse response from ${url}`));
+            }
+        });
+    });
+    req.on("error", reject);
+    req.end("{}");
+});
 class OpencodeProcess extends events_1.EventEmitter {
     process = null;
     stopping = false;
@@ -28,11 +52,32 @@ class OpencodeProcess extends events_1.EventEmitter {
     setSessionId(id) {
         this.sessionId = id;
     }
-    write(prompt, model, projectPath) {
+    /**
+     * Create the session up front rather than waiting to latch it off the CLI's
+     * `step_start` line. The event stream filters reasoning by session ID, and by
+     * the time `step_start` reaches us on stdout the first deltas have already
+     * been published. This mirrors what `opencode run` does internally.
+     */
+    async ensureSession(projectPath) {
+        if (this.sessionId)
+            return this.sessionId;
+        const url = new URL("/session", this.serveUrl);
+        if (projectPath)
+            url.searchParams.set("directory", projectPath);
+        const session = await postJson(url.href);
+        if (!session?.id)
+            throw new Error("opencode did not return a session id");
+        this.sessionId = session.id;
+        console.log(`[bridge:opencode] created session: ${this.sessionId}`);
+        return this.sessionId;
+    }
+    async write(prompt, model, projectPath) {
         if (this.process) {
             this.stop();
         }
         this.stopping = false;
+        const sessionId = await this.ensureSession(projectPath);
+        this.emit("session", sessionId);
         const args = ["run", "--format", "json", "--auto", "--attach", this.serveUrl];
         if (model) {
             args.push("--model", model);
@@ -40,9 +85,7 @@ class OpencodeProcess extends events_1.EventEmitter {
         if (projectPath) {
             args.push("--dir", projectPath);
         }
-        if (this.sessionId) {
-            args.push("--session", this.sessionId);
-        }
+        args.push("--session", sessionId);
         args.push(prompt);
         const ptyArgs = ["-q", "/dev/null", "opencode", ...args];
         this.process = (0, child_process_1.spawn)("script", ptyArgs, {
@@ -97,20 +140,13 @@ class OpencodeProcess extends events_1.EventEmitter {
     }
     handleCliMessage(msg) {
         switch (msg.type) {
+            // The session is created before the CLI is spawned, so there is nothing to
+            // latch here anymore.
             case "step_start":
-                if (msg.sessionID && !this.sessionId) {
-                    this.sessionId = msg.sessionID;
-                    console.log(`[bridge:opencode] session: ${this.sessionId}`);
-                }
                 break;
             case "text":
                 if (msg.part?.text) {
                     this.emit("output", msg.part.text);
-                }
-                break;
-            case "thinking":
-                if (msg.part?.text) {
-                    this.emit("thinking", msg.part.text);
                 }
                 break;
             case "tool":
