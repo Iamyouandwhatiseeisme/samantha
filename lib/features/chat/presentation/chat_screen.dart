@@ -7,6 +7,7 @@ import 'package:samantha/features/chat/domain/entities.dart';
 import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
 import 'package:samantha/features/chat/presentation/state/chat_state.dart';
 import 'package:samantha/features/chat/presentation/widgets/thinking_block.dart';
+import 'package:samantha/features/chat/presentation/widgets/collapsible_block.dart';
 
 @RoutePage()
 class ChatScreen extends StatefulWidget {
@@ -898,117 +899,79 @@ class _ModelTextFieldState extends State<_ModelTextField> {
   }
 }
 
-class _ToolResultChip extends StatefulWidget {
+class _ToolResultChip extends StatelessWidget {
   final ToolResult result;
   const _ToolResultChip({required this.result});
 
-  @override
-  State<_ToolResultChip> createState() => _ToolResultChipState();
-}
+  IconData get _icon {
+    switch (result.tool) {
+      case 'read': return Icons.menu_book;
+      case 'write': return Icons.edit;
+      case 'edit': return Icons.edit_note;
+      case 'bash': return Icons.terminal;
+      case 'glob': return Icons.search;
+      case 'grep': return Icons.find_in_page;
+      default: return Icons.build;
+    }
+  }
 
-class _ToolResultChipState extends State<_ToolResultChip> {
-  bool _expanded = false;
+  Widget _buildContent(BuildContext context) {
+    final content = result.content;
+    if (content == null) return const SizedBox.shrink();
+    return switch (content) {
+      TodoToolContent(todos: final todos) => _TodoContent(todos: todos),
+      RawToolContent(content: final c) => SelectableText(
+        c,
+        style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+      ),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final hasContent = widget.result.content != null;
+    final hasContent = result.content != null;
+
+    if (!hasContent) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.check_circle_outline, size: 14, color: colorScheme.primary),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  '${result.tool}: ${result.description}',
+                  style: TextStyle(fontSize: 12, color: colorScheme.primary),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.only(top: 6),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(6),
-            onTap: hasContent ? () => setState(() => _expanded = !_expanded) : null,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.check_circle_outline, size: 14, color: colorScheme.primary),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      '${widget.result.tool}: ${widget.result.description}',
-                      style: TextStyle(fontSize: 12, color: colorScheme.primary),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (hasContent) ...[
-                    const SizedBox(width: 4),
-                    Icon(
-                      _expanded ? Icons.expand_less : Icons.expand_more,
-                      size: 16,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          if (_expanded && hasContent)
-            Container(
-              margin: const EdgeInsets.only(top: 4),
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
-              ),
-              child: switch (widget.result.content!) {
-                TodoToolContent(todos: final todos) => _TodoContent(todos: todos),
-                RawToolContent(content: final c) => _ToolResultRawContent(
-                  tool: widget.result.tool,
-                  content: c,
-                ),
-              },
-            ),
-        ],
+      child: CollapsibleBlock(
+        icon: _icon,
+        label: Text(
+          '${result.tool}: ${result.description}',
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: colorScheme.surfaceContainerLow.withValues(alpha: 0.6),
+        borderColor: colorScheme.outlineVariant.withValues(alpha: 0.35),
+        child: _buildContent(context),
       ),
-    );
-  }
-}
-
-class _ToolResultRawContent extends StatelessWidget {
-  final String tool;
-  final String content;
-  const _ToolResultRawContent({required this.tool, required this.content});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.description, size: 14, color: colorScheme.onSurfaceVariant),
-            const SizedBox(width: 4),
-            Text(
-              tool,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        SelectableText(
-          content,
-          style: TextStyle(fontFamily: 'monospace', fontSize: 12, color: colorScheme.onSurface),
-        ),
-      ],
     );
   }
 }
