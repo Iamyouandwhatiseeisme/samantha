@@ -47,7 +47,7 @@ class _MessageListState extends State<MessageList> {
   void _scrollToBottom() {
     widget.scrollController.animateTo(
       widget.scrollController.position.maxScrollExtent,
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 500),
       curve: Curves.easeOut,
     );
   }
