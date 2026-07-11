@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:samantha/features/chat/domain/chat_message_formatting.dart';
 import 'package:samantha/features/chat/domain/entities.dart';
 import 'package:samantha/features/chat/presentation/widgets/chat_message_content.dart';
 
@@ -10,7 +11,7 @@ class MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final footerParts = _buildFooterParts();
+    final footerParts = msg.buildFooterParts();
 
     return Column(
       crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
@@ -43,35 +44,5 @@ class MessageBubble extends StatelessWidget {
           ),
       ],
     );
-  }
-
-  List<String> _buildFooterParts() {
-    final parts = <String>[];
-    if (msg.inputTokens != null || msg.outputTokens != null) {
-      final total = (msg.inputTokens ?? 0) + (msg.outputTokens ?? 0);
-      if (total > 0) {
-        parts.add('${_formatTokenCount(total)} tokens');
-      }
-    }
-    if (msg.cost != null && msg.cost! > 0) {
-      parts.add('\$${msg.cost!.toStringAsFixed(4)}');
-    }
-    if (msg.duration != null && msg.duration!.inSeconds > 0) {
-      parts.add(_formatDuration(msg.duration!));
-    }
-    return parts;
-  }
-
-  String _formatTokenCount(int count) {
-    if (count >= 1000) {
-      return '${(count / 1000).toStringAsFixed(1)}k';
-    }
-    return count.toString();
-  }
-
-  String _formatDuration(Duration d) {
-    if (d.inSeconds < 60) return '${d.inSeconds}s';
-    if (d.inMinutes < 60) return '${d.inMinutes}m';
-    return '${d.inMinutes}m ${d.inSeconds % 60}s';
   }
 }
