@@ -5,11 +5,49 @@ import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
 import 'package:samantha/features/chat/presentation/widgets/chat_message_content.dart';
 import 'package:samantha/features/chat/presentation/widgets/tool_status_banner.dart';
 
-class MessageList extends StatelessWidget {
+class MessageList extends StatefulWidget {
   final ScrollController scrollController;
   final AnimationController revealController;
 
   const MessageList({super.key, required this.scrollController, required this.revealController});
+
+  @override
+  State<MessageList> createState() => _MessageListState();
+}
+
+class _MessageListState extends State<MessageList> {
+  bool _showScrollToBottom = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    widget.scrollController.removeListener(_onScroll);
+    super.dispose();
+  }
+
+  void _onScroll() {
+    final controller = widget.scrollController;
+    if (!controller.hasClients) return;
+    final maxScroll = controller.position.maxScrollExtent;
+    final currentScroll = controller.position.pixels;
+    final show = maxScroll - currentScroll > 200;
+    if (show != _showScrollToBottom) {
+      setState(() => _showScrollToBottom = show);
+    }
+  }
+
+  void _scrollToBottom() {
+    widget.scrollController.animateTo(
+      widget.scrollController.position.maxScrollExtent,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,48 +57,95 @@ class MessageList extends StatelessWidget {
     return Column(
       children: [
         Expanded(
-          child: ListView.builder(
-            controller: scrollController,
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            itemCount: messages.length,
-            itemBuilder: (context, index) {
-              final msg = messages[index];
-              final isUser = msg.role == ChatRole.user;
+          child: Stack(
+            children: [
+              ListView.builder(
+                controller: widget.scrollController,
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                itemCount: messages.length,
+                itemBuilder: (context, index) {
+                  final msg = messages[index];
+                  final isUser = msg.role == ChatRole.user;
 
-              return AnimatedBuilder(
-                animation: revealController,
-                builder: (context, _) {
-                  final fraction = revealController.value;
+                  return AnimatedBuilder(
+                    animation: widget.revealController,
+                    builder: (context, _) {
+                      final fraction = widget.revealController.value;
 
-                  return Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Align(
-                        alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                        child: Padding(
-                          padding: EdgeInsets.only(right: fraction * 48),
-                          child: _MessageBubble(msg: msg, isUser: isUser),
-                        ),
-                      ),
-                      Positioned(
-                        right: (fraction - 1) * 48,
-                        bottom: 4,
-                        child: Opacity(
-                          opacity: fraction,
-                          child: Text(
-                            _formatTime(msg.timestamp),
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Align(
+                            alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                            child: Padding(
+                              padding: EdgeInsets.only(right: fraction * 48),
+                              child: _MessageBubble(msg: msg, isUser: isUser),
                             ),
                           ),
-                        ),
-                      ),
-                    ],
+                          Positioned(
+                            right: (fraction - 1) * 48,
+                            bottom: 4,
+                            child: Opacity(
+                              opacity: fraction,
+                              child: Text(
+                                _formatTime(msg.timestamp),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   );
                 },
-              );
-            },
+              ),
+              if (_showScrollToBottom)
+                Positioned(
+                  bottom: 16,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: GestureDetector(
+                      onTap: _scrollToBottom,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.arrow_downward,
+                              size: 18,
+                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Scroll to bottom',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
         if (state.currentToolName != null)
