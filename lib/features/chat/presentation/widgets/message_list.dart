@@ -21,7 +21,7 @@ class MessageList extends StatelessWidget {
         Expanded(
           child: ListView.builder(
             controller: scrollController,
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             itemCount: messages.length,
             itemBuilder: (context, index) {
               final msg = messages[index];
@@ -100,7 +100,7 @@ class _MessageBubble extends StatelessWidget {
             color: isUser ? Theme.of(context).colorScheme.primaryContainer : null,
             borderRadius: BorderRadius.circular(12.0),
           ),
-          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+          constraints: isUser ? BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75) : null,
           child: ChatMessageContent(
             messageId: msg.id,
             content: msg.content,
