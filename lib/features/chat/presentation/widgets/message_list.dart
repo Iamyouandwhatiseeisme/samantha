@@ -1,10 +1,10 @@
-import 'dart:ui';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:samantha/features/chat/domain/entities.dart';
 import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
-import 'package:samantha/features/chat/presentation/widgets/chat_message_content.dart';
+import 'package:samantha/features/chat/presentation/widgets/message_bubble.dart';
+import 'package:samantha/features/chat/presentation/widgets/scroll_to_bottom_fab.dart';
 import 'package:samantha/features/chat/presentation/widgets/tool_status_banner.dart';
 
 class MessageList extends StatefulWidget {
@@ -39,7 +39,10 @@ class _MessageListState extends State<MessageList> {
     if (!controller.hasClients) return;
     final maxScroll = controller.position.maxScrollExtent;
     final currentScroll = controller.position.pixels;
-    _showScrollToBottom.value = maxScroll - currentScroll > 200;
+    final visible = maxScroll - currentScroll > 200;
+    if (_showScrollToBottom.value != visible) {
+      _showScrollToBottom.value = visible;
+    }
   }
 
   void _scrollToBottom() {
@@ -54,9 +57,6 @@ class _MessageListState extends State<MessageList> {
   Widget build(BuildContext context) {
     final state = context.watch<ChatCubit>().state;
     final messages = state.messages;
-    final theme = Theme.of(context);
-    final bgColor = theme.colorScheme.surfaceContainerHighest;
-    final fgColor = theme.colorScheme.onSurface;
 
     return Column(
       children: [
@@ -83,7 +83,7 @@ class _MessageListState extends State<MessageList> {
                             alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
                             child: Padding(
                               padding: EdgeInsets.only(right: fraction * 48),
-                              child: _MessageBubble(msg: msg, isUser: isUser),
+                              child: MessageBubble(msg: msg, isUser: isUser),
                             ),
                           ),
                           Positioned(
@@ -110,54 +110,9 @@ class _MessageListState extends State<MessageList> {
                 bottom: 16,
                 left: 0,
                 right: 0,
-                child: ValueListenableBuilder<bool>(
-                  valueListenable: _showScrollToBottom,
-                  builder: (_, show, _) => AnimatedCrossFade(
-                    duration: const Duration(milliseconds: 200),
-                    crossFadeState: show ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-                    firstChild: const SizedBox.shrink(),
-                    secondChild: Center(
-                      child: GestureDetector(
-                        onTap: _scrollToBottom,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
-                            child: Container(
-                              clipBehavior: Clip.antiAlias,
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: bgColor.withValues(alpha: 0.8),
-                                borderRadius: BorderRadius.circular(100),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.15),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.arrow_downward, size: 18, color: fgColor),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'Scroll to bottom',
-                                    style: TextStyle(
-                                      color: fgColor,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                child: ScrollToBottomFab(
+                  showScrollToBottom: _showScrollToBottom,
+                  onPressed: _scrollToBottom,
                 ),
               ),
             ],
@@ -176,79 +131,5 @@ class _MessageListState extends State<MessageList> {
     final h = dt.hour.toString().padLeft(2, '0');
     final m = dt.minute.toString().padLeft(2, '0');
     return '$h:$m';
-  }
-}
-
-class _MessageBubble extends StatelessWidget {
-  final ChatMessage msg;
-  final bool isUser;
-
-  const _MessageBubble({required this.msg, required this.isUser});
-
-  @override
-  Widget build(BuildContext context) {
-    final footerParts = _buildFooterParts();
-
-    return Column(
-      crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          margin: const EdgeInsets.symmetric(vertical: 4.0),
-          padding: const EdgeInsets.all(12.0),
-          decoration: BoxDecoration(
-            color: isUser ? Theme.of(context).colorScheme.primaryContainer : null,
-            borderRadius: BorderRadius.circular(12.0),
-          ),
-          constraints: isUser ? BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75) : null,
-          child: ChatMessageContent(
-            messageId: msg.id,
-            content: msg.content,
-            thinkingContent: msg.thinkingContent,
-            thinkingDuration: msg.thinkingDuration,
-            isStreaming: msg.isStreaming,
-            toolResults: msg.toolResults,
-          ),
-        ),
-        if (!isUser && footerParts.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(left: 12, top: 2),
-            child: Text(
-              footerParts.join(' \u00B7 '),
-              style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant),
-            ),
-          ),
-      ],
-    );
-  }
-
-  List<String> _buildFooterParts() {
-    final parts = <String>[];
-    if (msg.inputTokens != null || msg.outputTokens != null) {
-      final total = (msg.inputTokens ?? 0) + (msg.outputTokens ?? 0);
-      if (total > 0) {
-        parts.add('${_formatTokenCount(total)} tokens');
-      }
-    }
-    if (msg.cost != null && msg.cost! > 0) {
-      parts.add('\$${msg.cost!.toStringAsFixed(4)}');
-    }
-    if (msg.duration != null && msg.duration!.inSeconds > 0) {
-      parts.add(_formatDuration(msg.duration!));
-    }
-    return parts;
-  }
-
-  String _formatTokenCount(int count) {
-    if (count >= 1000) {
-      return '${(count / 1000).toStringAsFixed(1)}k';
-    }
-    return count.toString();
-  }
-
-  String _formatDuration(Duration d) {
-    if (d.inSeconds < 60) return '${d.inSeconds}s';
-    if (d.inMinutes < 60) return '${d.inMinutes}m';
-    return '${d.inMinutes}m ${d.inSeconds % 60}s';
   }
 }
