@@ -17,6 +17,7 @@ class MessageList extends StatefulWidget {
 
 class _MessageListState extends State<MessageList> {
   bool _showScrollToBottom = false;
+  bool _isScrollingToBottom = false;
 
   @override
   void initState() {
@@ -32,7 +33,7 @@ class _MessageListState extends State<MessageList> {
 
   void _onScroll() {
     final controller = widget.scrollController;
-    if (!controller.hasClients) return;
+    if (!controller.hasClients || _isScrollingToBottom) return;
     final maxScroll = controller.position.maxScrollExtent;
     final currentScroll = controller.position.pixels;
     final show = maxScroll - currentScroll > 200;
@@ -42,11 +43,14 @@ class _MessageListState extends State<MessageList> {
   }
 
   void _scrollToBottom() {
+    setState(() => _isScrollingToBottom = true);
     widget.scrollController.animateTo(
       widget.scrollController.position.maxScrollExtent,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOut,
-    );
+    ).then((_) {
+      if (mounted) setState(() => _isScrollingToBottom = false);
+    });
   }
 
   @override
@@ -102,11 +106,13 @@ class _MessageListState extends State<MessageList> {
                   );
                 },
               ),
-              if (_showScrollToBottom)
-                Positioned(
-                  bottom: 16,
-                  left: 0,
-                  right: 0,
+              Positioned(
+                bottom: 16,
+                left: 0,
+                right: 0,
+                child: AnimatedOpacity(
+                  opacity: _showScrollToBottom ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 200),
                   child: Center(
                     child: GestureDetector(
                       onTap: _scrollToBottom,
@@ -145,6 +151,7 @@ class _MessageListState extends State<MessageList> {
                     ),
                   ),
                 ),
+              ),
             ],
           ),
         ),
