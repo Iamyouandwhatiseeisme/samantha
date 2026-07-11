@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:samantha/features/chat/domain/entities.dart';
@@ -16,47 +18,45 @@ class MessageList extends StatefulWidget {
 }
 
 class _MessageListState extends State<MessageList> {
-  bool _showScrollToBottom = false;
-  bool _isScrollingToBottom = false;
+  late final ValueNotifier<bool> _showScrollToBottom;
 
   @override
   void initState() {
     super.initState();
+    _showScrollToBottom = ValueNotifier(false);
     widget.scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
     widget.scrollController.removeListener(_onScroll);
+    _showScrollToBottom.dispose();
     super.dispose();
   }
 
   void _onScroll() {
     final controller = widget.scrollController;
-    if (!controller.hasClients || _isScrollingToBottom) return;
+    if (!controller.hasClients) return;
     final maxScroll = controller.position.maxScrollExtent;
     final currentScroll = controller.position.pixels;
-    final show = maxScroll - currentScroll > 200;
-    if (show != _showScrollToBottom) {
-      setState(() => _showScrollToBottom = show);
-    }
+    _showScrollToBottom.value = maxScroll - currentScroll > 200;
   }
 
   void _scrollToBottom() {
-    setState(() => _isScrollingToBottom = true);
     widget.scrollController.animateTo(
       widget.scrollController.position.maxScrollExtent,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOut,
-    ).then((_) {
-      if (mounted) setState(() => _isScrollingToBottom = false);
-    });
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<ChatCubit>().state;
     final messages = state.messages;
+    final theme = Theme.of(context);
+    final bgColor = theme.colorScheme.surfaceContainerHighest;
+    final fgColor = theme.colorScheme.onSurface;
 
     return Column(
       children: [
@@ -110,42 +110,50 @@ class _MessageListState extends State<MessageList> {
                 bottom: 16,
                 left: 0,
                 right: 0,
-                child: AnimatedOpacity(
-                  opacity: _showScrollToBottom ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 200),
-                  child: Center(
-                    child: GestureDetector(
-                      onTap: _scrollToBottom,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.arrow_downward,
-                              size: 18,
-                              color: Theme.of(context).colorScheme.onPrimaryContainer,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Scroll to bottom',
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.onPrimaryContainer,
-                                fontWeight: FontWeight.w500,
+                child: ValueListenableBuilder<bool>(
+                  valueListenable: _showScrollToBottom,
+                  builder: (_, show, _) => AnimatedCrossFade(
+                    duration: const Duration(milliseconds: 200),
+                    crossFadeState: show ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+                    firstChild: const SizedBox.shrink(),
+                    secondChild: Center(
+                      child: GestureDetector(
+                        onTap: _scrollToBottom,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
+                            child: Container(
+                              clipBehavior: Clip.antiAlias,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: bgColor.withValues(alpha: 0.8),
+                                borderRadius: BorderRadius.circular(100),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.15),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.arrow_downward, size: 18, color: fgColor),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Scroll to bottom',
+                                    style: TextStyle(
+                                      color: fgColor,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
