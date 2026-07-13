@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:samantha/app/theme.dart';
 import 'package:samantha/app/router.dart';
 import 'package:samantha/features/chat/data/error_message.dart';
 import 'package:samantha/features/connection_settings/presentation/state/connection_settings_cubit.dart';
@@ -45,6 +46,9 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final theme = Theme.of(context);
+
     return BlocConsumer<ConnectionSettingsCubit, ConnectionSettingsState>(
       listener: (context, state) {
         if (state is ConnectionSettingsLoaded) {
@@ -70,7 +74,6 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
                   decoration: const InputDecoration(
                     labelText: 'Host / Tailscale IP',
                     hintText: '100.101.102.103 or laptop.tailnet.ts.net',
-                    border: OutlineInputBorder(),
                   ),
                   onChanged: (v) =>
                       context.read<ConnectionSettingsCubit>().updateHost(v),
@@ -83,7 +86,6 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
                   decoration: const InputDecoration(
                     labelText: 'Auth Token',
                     hintText: 'Set by BRIDGE_AUTH_TOKEN env var',
-                    border: OutlineInputBorder(),
                   ),
                   onChanged: (v) =>
                       context.read<ConnectionSettingsCubit>().updateAuthToken(v),
@@ -95,21 +97,42 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
                   children: [
                     Expanded(
                       child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          side: BorderSide(
+                            color: theme.colorScheme.outline,
+                            width: 0.5,
+                          ),
+                        ),
                         onPressed: state is! ConnectionSettingsTesting
                             ? () => context
                                 .read<ConnectionSettingsCubit>()
                                 .testConnection(_hostController.text.trim())
                             : null,
                         child: state is ConnectionSettingsTesting
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                            ? SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: colors.accent,
+                                ),
                               )
-                            : const Text('Test Connection'),
+                            : Text(
+                                'Test Connection',
+                                style: TextStyle(
+                                  fontFamily: colors.mono,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                              ),
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
                         onPressed: state is ConnectionSettingsTesting
@@ -128,7 +151,14 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
                                     .read<ConnectionSettingsCubit>()
                                     .testConnection(host);
                               },
-                        child: const Text('Save & Connect'),
+                        child: Text(
+                          'Save & Connect',
+                          style: TextStyle(
+                            fontFamily: colors.mono,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -149,42 +179,55 @@ class _TestResultWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final colors = AppColors.of(context);
+    final theme = Theme.of(context);
 
     return switch (state) {
       ConnectionSettingsTestSuccess() => Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: colorScheme.primaryContainer.withValues(alpha: 0.4),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: colorScheme.primary.withValues(alpha: 0.4)),
+            color: colors.success.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: colors.success.withValues(alpha: 0.3),
+              width: 0.5,
+            ),
           ),
           child: Row(
             children: [
-              Icon(Icons.check_circle, size: 20, color: colorScheme.primary),
+              Icon(Icons.check_circle, size: 16, color: colors.success),
               const SizedBox(width: 8),
               Text(
                 'Connection successful',
-                style: TextStyle(color: colorScheme.onPrimaryContainer),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: theme.colorScheme.onSurface,
+                ),
               ),
             ],
           ),
         ),
       ConnectionSettingsTestFailure(:final message) => Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: colorScheme.errorContainer.withValues(alpha: 0.4),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: colorScheme.error.withValues(alpha: 0.4)),
+            color: colors.error.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: colors.error.withValues(alpha: 0.3),
+              width: 0.5,
+            ),
           ),
           child: Row(
             children: [
-              Icon(Icons.error_outline, size: 20, color: colorScheme.error),
+              Icon(Icons.error_outline, size: 16, color: colors.error),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   formatErrorMessage(message),
-                  style: TextStyle(color: colorScheme.onErrorContainer),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: theme.colorScheme.onSurface,
+                  ),
                 ),
               ),
             ],
