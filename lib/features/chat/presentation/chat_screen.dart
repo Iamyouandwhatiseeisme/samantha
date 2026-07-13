@@ -29,6 +29,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   static const double _maxReveal = 48.0;
   double _dragOffset = 0;
   bool _hasInitiallyScrolled = false;
+  bool _programmaticScrollActive = false;
 
   @override
   void initState() {
@@ -47,8 +48,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   void _scrollToBottom() {
+    if (_programmaticScrollActive) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scrollController.hasClients) return;
+      if (!_scrollController.hasClients || _programmaticScrollActive) return;
 
       final maxExtent = _scrollController.position.maxScrollExtent;
       final current = _scrollController.position.pixels;
@@ -58,12 +60,42 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         _hasInitiallyScrolled = true;
         _scrollController.jumpTo(maxExtent);
       } else if (isNearBottom) {
-        _scrollController.animateTo(
-          maxExtent,
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-        );
+        _scrollController.jumpTo(maxExtent);
       }
+    });
+  }
+
+  void _scrollToBottomNow() {
+    final controller = _scrollController;
+    if (!controller.hasClients) return;
+
+    _programmaticScrollActive = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!controller.hasClients) {
+        _programmaticScrollActive = false;
+        return;
+      }
+      final target = controller.position.maxScrollExtent;
+      if ((target - controller.position.pixels).abs() < 2) {
+        _programmaticScrollActive = false;
+        return;
+      }
+
+      controller
+          .animateTo(
+            target,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          )
+          .then((_) {
+        if (controller.hasClients) {
+          final newTarget = controller.position.maxScrollExtent;
+          if ((newTarget - controller.position.pixels).abs() > 2) {
+            controller.jumpTo(newTarget);
+          }
+        }
+        _programmaticScrollActive = false;
+      });
     });
   }
 
@@ -114,6 +146,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                   child: MessageList(
                     scrollController: _scrollController,
                     revealController: _revealController,
+                    onScrollToBottom: _scrollToBottomNow,
                   ),
                 ),
               ),

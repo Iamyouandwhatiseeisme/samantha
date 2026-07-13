@@ -9,8 +9,14 @@ import 'package:samantha/features/chat/presentation/widgets/tool_status_banner.d
 class MessageList extends StatefulWidget {
   final ScrollController scrollController;
   final AnimationController revealController;
+  final VoidCallback onScrollToBottom;
 
-  const MessageList({super.key, required this.scrollController, required this.revealController});
+  const MessageList({
+    super.key,
+    required this.scrollController,
+    required this.revealController,
+    required this.onScrollToBottom,
+  });
 
   @override
   State<MessageList> createState() => _MessageListState();
@@ -42,34 +48,6 @@ class _MessageListState extends State<MessageList> {
     if (_showScrollToBottom.value != visible) {
       _showScrollToBottom.value = visible;
     }
-  }
-
-  void _scrollToBottom() {
-    final controller = widget.scrollController;
-    if (!controller.hasClients) return;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!controller.hasClients) return;
-      final target = controller.position.maxScrollExtent;
-      if ((target - controller.position.pixels).abs() < 2) return;
-
-      controller
-          .animateTo(
-            target,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          )
-          .then((_) {
-        if (controller.hasClients &&
-            (controller.position.maxScrollExtent - controller.position.pixels).abs() > 2) {
-          controller.animateTo(
-            controller.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOut,
-          );
-        }
-      });
-    });
   }
 
   @override
@@ -131,7 +109,7 @@ class _MessageListState extends State<MessageList> {
                 right: 0,
                 child: ScrollToBottomFab(
                   showScrollToBottom: _showScrollToBottom,
-                  onPressed: _scrollToBottom,
+                  onPressed: widget.onScrollToBottom,
                 ),
               ),
             ],
