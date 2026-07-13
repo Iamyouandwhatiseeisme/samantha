@@ -98,10 +98,7 @@ class MessageInput extends StatelessWidget {
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide(
-                                  color: colors.accent,
-                                  width: 1,
-                                ),
+                                borderSide: BorderSide(color: colors.accent, width: 1),
                               ),
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 14,
@@ -119,12 +116,14 @@ class MessageInput extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         SizedBox(
-                          width: 40,
-                          height: 40,
+                          width: 44,
+                          height: 46,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               padding: EdgeInsets.zero,
-                              shape: const CircleBorder(),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                               backgroundColor: hasText && isConnected
                                   ? colors.accent
                                   : theme.colorScheme.surfaceContainerHigh,
@@ -135,7 +134,7 @@ class MessageInput extends StatelessWidget {
                             ),
                             onPressed: isConnected ? () => _send(context) : null,
                             child: Icon(
-                              Icons.arrow_upward,
+                              Icons.send,
                               size: 18,
                               color: hasText && isConnected
                                   ? Colors.white
@@ -172,11 +171,7 @@ class _ContextChip extends StatelessWidget {
   final String label;
   final bool mono;
 
-  const _ContextChip({
-    required this.icon,
-    required this.label,
-    this.mono = false,
-  });
+  const _ContextChip({required this.icon, required this.label, this.mono = false});
 
   @override
   Widget build(BuildContext context) {
@@ -188,10 +183,7 @@ class _ContextChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainer,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant,
-          width: 0.5,
-        ),
+        border: Border.all(color: theme.colorScheme.outlineVariant, width: 0.5),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
