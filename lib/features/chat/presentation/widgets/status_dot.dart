@@ -34,14 +34,11 @@ class StatusDot extends StatelessWidget {
         final repoName = titleState.currentProjectPath?.split('/').last;
 
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
           decoration: BoxDecoration(
             color: theme.colorScheme.surfaceContainer,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: theme.colorScheme.outlineVariant,
-              width: 0.5,
-            ),
+            border: Border.all(color: theme.colorScheme.outlineVariant, width: 0.5),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -52,10 +49,7 @@ class StatusDot extends StatelessWidget {
                 Container(
                   width: 7,
                   height: 7,
-                  decoration: BoxDecoration(
-                    color: dotColor,
-                    shape: BoxShape.circle,
-                  ),
+                  decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
                 ),
               const SizedBox(width: 6),
               if (repoName != null) ...[
@@ -72,10 +66,7 @@ class StatusDot extends StatelessWidget {
                 const SizedBox(width: 4),
                 Text(
                   '\u00B7',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                  style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
                 ),
                 const SizedBox(width: 4),
               ],
@@ -104,17 +95,14 @@ class _PulsingDot extends StatefulWidget {
   State<_PulsingDot> createState() => _PulsingDotState();
 }
 
-class _PulsingDotState extends State<_PulsingDot>
-    with SingleTickerProviderStateMixin {
+class _PulsingDotState extends State<_PulsingDot> with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat(reverse: true);
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))
+      ..repeat(reverse: true);
   }
 
   @override
@@ -133,10 +121,7 @@ class _PulsingDotState extends State<_PulsingDot>
           child: Container(
             width: 7,
             height: 7,
-            decoration: BoxDecoration(
-              color: widget.color,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: widget.color, shape: BoxShape.circle),
           ),
         );
       },
