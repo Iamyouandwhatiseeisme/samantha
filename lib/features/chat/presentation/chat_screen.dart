@@ -89,6 +89,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                   child: MessageList(
                     scrollController: _scrollController,
                     revealController: _revealController,
+                    maxReveal: _maxReveal,
                   ),
                 ),
               ),

@@ -13,8 +13,14 @@ import 'package:samantha/features/chat/presentation/widgets/tool_status_banner.d
 class MessageList extends StatefulWidget {
   final ScrollController scrollController;
   final AnimationController revealController;
+  final double maxReveal;
 
-  const MessageList({super.key, required this.scrollController, required this.revealController});
+  const MessageList({
+    super.key,
+    required this.scrollController,
+    required this.revealController,
+    required this.maxReveal,
+  });
 
   @override
   State<MessageList> createState() => _MessageListState();
@@ -250,46 +256,51 @@ class _MessageListState extends State<MessageList> {
           Expanded(
             child: Stack(
               children: [
-                ListView.builder(
-                  controller: widget.scrollController,
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final msg = messages[index];
-                    final isUser = msg.role == ChatRole.user;
-
-                    return AnimatedBuilder(
-                      animation: widget.revealController,
-                      builder: (context, _) {
-                        final fraction = widget.revealController.value;
-
-                        return Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            Align(
-                              alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                              child: Padding(
-                                padding: EdgeInsets.only(right: fraction * 48),
-                                child: MessageBubble(msg: msg, isUser: isUser),
-                              ),
-                            ),
-                            Positioned(
-                              right: (fraction - 1) * 48,
-                              bottom: 4,
-                              child: Opacity(
-                                opacity: fraction,
-                                child: Text(
-                                  _formatTime(msg.timestamp),
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                AnimatedBuilder(
+                  animation: widget.revealController,
+                  builder: (context, _) {
+                    final shift = -widget.revealController.value * widget.maxReveal;
+                    return Transform.translate(
+                      offset: Offset(shift, 0),
+                      child: ListView.builder(
+                        controller: widget.scrollController,
+                        clipBehavior: Clip.none,
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                        itemCount: messages.length,
+                        itemBuilder: (context, index) {
+                          final msg = messages[index];
+                          final isUser = msg.role == ChatRole.user;
+                          return AnimatedBuilder(
+                            animation: widget.revealController,
+                            builder: (context, _) {
+                              final fraction = widget.revealController.value;
+                              return Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  Align(
+                                    alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                                    child: MessageBubble(msg: msg, isUser: isUser),
                                   ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
+                                  Positioned(
+                                    right: -fraction * widget.maxReveal,
+                                    bottom: 4,
+                                    child: Opacity(
+                                      opacity: fraction,
+                                      child: Text(
+                                        _formatTime(msg.timestamp),
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        },
+                      ),
                     );
                   },
                 ),
