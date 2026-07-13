@@ -31,6 +31,29 @@ const fetchJson = (url: string): Promise<any> =>
   });
 
 export function createBridgeServer(config: BridgeConfig) {
+  const fetchLastMessageTokens = (sessionId: string, ctxWin: number): Promise<{ contextUsed: number; ctxPct: number }> => {
+    const url = new URL(`/session/${sessionId}/message`, config.opencodeServeUrl);
+    return fetchJson(url.href).then((messages: any[]) => {
+      if (!Array.isArray(messages) || messages.length === 0) {
+        return { contextUsed: 0, ctxPct: 0 };
+      }
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const msg = messages[i];
+        const tokens = msg.info?.tokens ?? msg.tokens ?? {};
+        const input: number = tokens.input ?? 0;
+        const cacheRead: number = tokens.cache?.read ?? 0;
+        if (input > 0 || cacheRead > 0) {
+          const contextUsed = input + cacheRead;
+          const ctxPct = contextUsed > 0
+            ? Math.min(Math.round((contextUsed / ctxWin) * 1000) / 10, 100)
+            : 0;
+          return { contextUsed, ctxPct };
+        }
+      }
+      return { contextUsed: 0, ctxPct: 0 };
+    }).catch(() => ({ contextUsed: 0, ctxPct: 0 }));
+  };
+
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {
     if (req.method === "GET" && req.url === "/health") {
       res.writeHead(200, { "Content-Type": "application/json" });
@@ -82,31 +105,37 @@ export function createBridgeServer(config: BridgeConfig) {
               try {
                 const sessions = JSON.parse(sessionsData);
                 const list = Array.isArray(sessions) ? sessions : [];
-                const enriched = list.map((s: any, i: number) => {
+                const enrichedPromises = list.map((s: any) => {
                   const tokens = s.tokens ?? {};
                   const inputTokens: number = tokens.input ?? 0;
                   const cost: number = s.cost ?? 0;
                   const modelId = s.model?.id;
                   const ctxWin = modelCtxMap[modelId] ?? 200000;
 
-                  const ctxPct = inputTokens > 0
-                    ? Math.round((inputTokens / ctxWin) * 1000) / 10
-                    : 0;
+                  return fetchLastMessageTokens(s.id, ctxWin).then(({ contextUsed, ctxPct }) => ({
+                    ...s,
+                    inputTokens,
+                    cost,
+                    contextPercent: ctxPct,
+                    contextUsed,
+                  }));
+                });
 
-                  if (i === 0) {
+                Promise.all(enrichedPromises).then((enriched) => {
+                  if (list.length > 0) {
+                    const s = enriched[0];
                     console.log(
                       `[bridge:sessions] session[0]: id=${s.id}, title=${s.title}`,
-                      `model=${modelId}, ctxWindow=${ctxWin} (fromAPI=${!!modelCtxMap[modelId]})`,
-                      `input=${inputTokens}, output=${tokens.output ?? 0}, reasoning=${tokens.reasoning ?? 0}`,
-                      `cache.read=${tokens.cache?.read ?? 0}, cache.write=${tokens.cache?.write ?? 0}`,
-                      `cost=${cost}, contextPct=${ctxPct}%`,
+                      `model=${s.model?.id}, ctxWindow=${modelCtxMap[s.model?.id] ?? 200000}`,
+                      `contextUsed=${s.contextUsed}, contextPct=${s.contextPercent}%`,
                     );
                   }
-
-                  return { ...s, inputTokens, cost, contextPercent: ctxPct };
+                  res.writeHead(200, { "Content-Type": "application/json" });
+                  res.end(JSON.stringify(enriched));
+                }).catch((err: any) => {
+                  res.writeHead(502, { "Content-Type": "application/json" });
+                  res.end(JSON.stringify({ error: err.message }));
                 });
-                res.writeHead(200, { "Content-Type": "application/json" });
-                res.end(JSON.stringify(enriched));
               } catch (err: any) {
                 res.writeHead(502, { "Content-Type": "application/json" });
                 res.end(JSON.stringify({ error: err.message }));
