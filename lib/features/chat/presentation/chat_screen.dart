@@ -28,8 +28,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
   static const double _maxReveal = 48.0;
   double _dragOffset = 0;
-  bool _hasInitiallyScrolled = false;
-  bool _programmaticScrollActive = false;
 
   @override
   void initState() {
@@ -45,58 +43,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     _inputController.dispose();
     _revealController.dispose();
     super.dispose();
-  }
-
-  void _scrollToBottom() {
-    if (_programmaticScrollActive) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scrollController.hasClients || _programmaticScrollActive) return;
-
-      final maxExtent = _scrollController.position.maxScrollExtent;
-      final current = _scrollController.position.pixels;
-      final isNearBottom = maxExtent - current <= 200;
-
-      if (!_hasInitiallyScrolled) {
-        _hasInitiallyScrolled = true;
-        _scrollController.jumpTo(maxExtent);
-      } else if (isNearBottom) {
-        _scrollController.jumpTo(maxExtent);
-      }
-    });
-  }
-
-  void _scrollToBottomNow() {
-    final controller = _scrollController;
-    if (!controller.hasClients) return;
-
-    _programmaticScrollActive = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!controller.hasClients) {
-        _programmaticScrollActive = false;
-        return;
-      }
-      final target = controller.position.maxScrollExtent;
-      if ((target - controller.position.pixels).abs() < 2) {
-        _programmaticScrollActive = false;
-        return;
-      }
-
-      controller
-          .animateTo(
-            target,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          )
-          .then((_) {
-        if (controller.hasClients) {
-          final newTarget = controller.position.maxScrollExtent;
-          if ((newTarget - controller.position.pixels).abs() > 2) {
-            controller.jumpTo(newTarget);
-          }
-        }
-        _programmaticScrollActive = false;
-      });
-    });
   }
 
   void _onRevealDragUpdate(DragUpdateDetails details) {
@@ -115,9 +61,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return BlocListener<ChatCubit, ChatState>(
       listener: (context, state) {
-        if (state.messages.isNotEmpty) {
-          _scrollToBottom();
-        }
         if (state.currentPermissionId != null) {
           _showPermissionDialog(context, state.currentPermissionTitle ?? '');
         }
@@ -146,7 +89,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                   child: MessageList(
                     scrollController: _scrollController,
                     revealController: _revealController,
-                    onScrollToBottom: _scrollToBottomNow,
                   ),
                 ),
               ),
