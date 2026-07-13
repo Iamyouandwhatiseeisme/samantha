@@ -260,12 +260,14 @@ class _MessageListState extends State<MessageList> {
                   animation: widget.revealController,
                   builder: (context, _) {
                     final shift = -widget.revealController.value * widget.maxReveal;
-                    return Transform.translate(
-                      offset: Offset(shift, 0),
-                      child: ListView.builder(
-                        controller: widget.scrollController,
-                        clipBehavior: Clip.none,
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                    return ClipRect(
+                      clipper: _VerticalClipper(horizontalSlack: widget.maxReveal),
+                      child: Transform.translate(
+                        offset: Offset(shift, 0),
+                        child: ListView.builder(
+                          controller: widget.scrollController,
+                          clipBehavior: Clip.none,
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                         itemCount: messages.length,
                         itemBuilder: (context, index) {
                           final msg = messages[index];
@@ -301,6 +303,7 @@ class _MessageListState extends State<MessageList> {
                           );
                         },
                       ),
+                    ),
                     );
                   },
                 ),
@@ -331,4 +334,19 @@ class _MessageListState extends State<MessageList> {
     final m = dt.minute.toString().padLeft(2, '0');
     return '$h:$m';
   }
+}
+
+class _VerticalClipper extends CustomClipper<Rect> {
+  final double horizontalSlack;
+
+  const _VerticalClipper({required this.horizontalSlack});
+
+  @override
+  Rect getClip(Size size) {
+    return Rect.fromLTRB(-horizontalSlack, 0, size.width + horizontalSlack, size.height);
+  }
+
+  @override
+  bool shouldReclip(_VerticalClipper oldClipper) =>
+      horizontalSlack != oldClipper.horizontalSlack;
 }
