@@ -4,7 +4,6 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:samantha/app/theme.dart';
-import 'package:samantha/common/extensions/date_time_x.dart';
 import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
 import 'package:samantha/features/chat/presentation/state/chat_state.dart';
 import 'package:samantha/features/chat/presentation/widgets/error_banner.dart';
@@ -159,8 +158,7 @@ class _TopBar extends StatelessWidget {
                   child: BlocBuilder<ChatCubit, ChatState>(
                     builder: (context, state) {
                       final title = state.sessionName ?? 'Chat';
-                      final lastMessage = state.messages.isNotEmpty ? state.messages.last : null;
-                      final updateTime = lastMessage?.timestamp;
+                      final lastActivity = state.lastActivity;
 
                       return Column(
                         mainAxisSize: MainAxisSize.min,
@@ -176,9 +174,9 @@ class _TopBar extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          if (updateTime != null)
+                          if (lastActivity != null)
                             Text(
-                              updateTime.toRelative(),
+                              lastActivity,
                               style: TextStyle(
                                 fontFamily: colors.mono,
                                 fontSize: 10,

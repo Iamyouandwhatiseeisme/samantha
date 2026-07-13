@@ -8,6 +8,7 @@ class ConnectionSettingsRepository {
   static const _projectPathKey = 'opencode_project_path';
   static const _sessionIdKey = 'opencode_session_id';
   static const _sessionNameKey = 'opencode_session_name';
+  static const _lastActivityKey = 'opencode_last_activity';
 
   final SharedPreferences _prefs;
 
@@ -59,5 +60,17 @@ class ConnectionSettingsRepository {
 
   Future<String?> getSessionName() async {
     return _prefs.getString(_sessionNameKey);
+  }
+
+  Future<void> saveLastActivity(String? activity) async {
+    if (activity != null) {
+      await _prefs.setString(_lastActivityKey, activity);
+    } else {
+      await _prefs.remove(_lastActivityKey);
+    }
+  }
+
+  Future<String?> getLastActivity() async {
+    return _prefs.getString(_lastActivityKey);
   }
 }

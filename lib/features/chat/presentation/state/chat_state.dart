@@ -11,6 +11,7 @@ class ChatState {
   final String? selectedModel;
   final String? currentProjectPath;
   final String? sessionName;
+  final String? lastActivity;
   final String? currentToolName;
   final String? currentToolStatus;
   final String? currentPermissionId;
@@ -25,6 +26,7 @@ class ChatState {
     this.selectedModel,
     this.currentProjectPath,
     this.sessionName,
+    this.lastActivity,
     this.currentToolName,
     this.currentToolStatus,
     this.currentPermissionId,
@@ -44,6 +46,8 @@ class ChatState {
     bool clearProjectPath = false,
     String? sessionName,
     bool clearSessionName = false,
+    String? lastActivity,
+    bool clearLastActivity = false,
     String? currentToolName,
     bool clearToolName = false,
     String? currentToolStatus,
@@ -62,6 +66,7 @@ class ChatState {
       selectedModel: clearSelectedModel ? null : (selectedModel ?? this.selectedModel),
       currentProjectPath: clearProjectPath ? null : (currentProjectPath ?? this.currentProjectPath),
       sessionName: clearSessionName ? null : (sessionName ?? this.sessionName),
+      lastActivity: clearLastActivity ? null : (lastActivity ?? this.lastActivity),
       currentToolName: clearToolName ? null : (currentToolName ?? this.currentToolName),
       currentToolStatus: clearToolStatus ? null : (currentToolStatus ?? this.currentToolStatus),
       currentPermissionId: clearPermissionId ? null : (currentPermissionId ?? this.currentPermissionId),

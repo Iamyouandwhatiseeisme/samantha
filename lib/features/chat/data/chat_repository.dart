@@ -52,6 +52,8 @@ class ChatRepository {
 
   Future<String?> getSessionName() => _settingsRepository.getSessionName();
 
+  Future<String?> getLastActivity() => _settingsRepository.getLastActivity();
+
   Future<void> disconnect() async {
     _socketClient.disconnect();
   }

@@ -80,6 +80,7 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
       await _repository.saveProjectPath(_selectedSession!.directory);
       await _repository.saveSessionId(_selectedSession!.id);
       await _repository.saveSessionName(_selectedSession!.displayName);
+      await _repository.saveLastActivity(_selectedSession!.lastActivity);
     } else {
       return;
     }
