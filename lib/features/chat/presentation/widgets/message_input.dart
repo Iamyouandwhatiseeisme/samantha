@@ -19,6 +19,7 @@ class MessageInput extends StatelessWidget {
     return BlocBuilder<ChatCubit, ChatState>(
       builder: (context, state) {
         final isConnected = state.connectionStatus != ChatConnectionStatus.disconnected;
+        final isStreaming = state.connectionStatus == ChatConnectionStatus.streaming;
         final hasText = state.inputText.trim().isNotEmpty;
         final repoName = state.currentProjectPath?.split('/').last;
 
@@ -118,29 +119,47 @@ class MessageInput extends StatelessWidget {
                         SizedBox(
                           width: 44,
                           height: 46,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              backgroundColor: hasText && isConnected
-                                  ? colors.accent
-                                  : theme.colorScheme.surfaceContainerHigh,
-                              foregroundColor: hasText && isConnected
-                                  ? Colors.white
-                                  : theme.colorScheme.onSurfaceVariant,
-                              elevation: 0,
-                            ),
-                            onPressed: isConnected ? () => _send(context) : null,
-                            child: Icon(
-                              Icons.send,
-                              size: 18,
-                              color: hasText && isConnected
-                                  ? Colors.white
-                                  : theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
+                          child: isStreaming
+                              ? ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    backgroundColor: colors.error,
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                  ),
+                                  onPressed: () => context.read<ChatCubit>().stopGeneration(),
+                                  child: const Icon(
+                                    Icons.stop,
+                                    size: 18,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    backgroundColor: hasText && isConnected
+                                        ? colors.accent
+                                        : theme.colorScheme.surfaceContainerHigh,
+                                    foregroundColor: hasText && isConnected
+                                        ? Colors.white
+                                        : theme.colorScheme.onSurfaceVariant,
+                                    elevation: 0,
+                                  ),
+                                  onPressed: isConnected ? () => _send(context) : null,
+                                  child: Icon(
+                                    Icons.send,
+                                    size: 18,
+                                    color: hasText && isConnected
+                                        ? Colors.white
+                                        : theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
                         ),
                       ],
                     ),

@@ -53,6 +53,25 @@ class ChatCubit extends Cubit<ChatState> {
     _repository.send(text, model: state.selectedModel);
   }
 
+  void stopGeneration() {
+    _repository.stop();
+
+    final messages = List<ChatMessage>.from(state.messages);
+    if (messages.isNotEmpty &&
+        messages.last.role == ChatRole.assistant &&
+        messages.last.isStreaming) {
+      final last = messages.removeLast();
+      messages.add(last.copyWith(isStreaming: false));
+    }
+
+    emit(state.copyWith(
+      messages: messages,
+      connectionStatus: ChatConnectionStatus.connected,
+      clearToolName: true,
+      clearToolStatus: true,
+    ));
+  }
+
   Future<void> connect() async {
     _reconnectTimer?.cancel();
     _authFailed = false;

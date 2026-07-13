@@ -29,6 +29,8 @@ class ChatRepository {
   void send(String prompt, {String? model}) =>
       _socketClient.sendPrompt(prompt, model: model);
 
+  void stop() => _socketClient.stop();
+
   void setModel(String model) => _socketClient.setModel(model);
 
   void requestModels() => _socketClient.requestModels();

@@ -153,24 +153,7 @@ export function createBridgeServer(config: BridgeConfig) {
     const createOpencode = () => {
       opencode = new OpencodeProcess(config.opencodeServeUrl);
 
-      // Token-level reasoning only exists on the serve process's event bus; the
-      // CLI's JSON output emits a reasoning block once it has already finished.
-      events = new OpencodeEventStream(config.opencodeServeUrl);
-      events.setDirectory(currentProjectPath);
-      events.setSession(currentSessionId);
-      events.start();
-
-      events.on("thinking", (content: string) => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: "thinking", content }));
-        }
-      });
-
-      events.on("thinking_end", (durationMs: number | undefined) => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: "thinking_end", duration_ms: durationMs }));
-        }
-      });
+      createEvents();
 
       opencode.on("session", (sessionId: string) => {
         currentSessionId = sessionId;
@@ -214,6 +197,28 @@ export function createBridgeServer(config: BridgeConfig) {
       opencode.on("error", (err: Error) => {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: "error", message: err.message }));
+        }
+      });
+    };
+
+    const createEvents = () => {
+      if (events) {
+        events.close();
+      }
+      events = new OpencodeEventStream(config.opencodeServeUrl);
+      events.setDirectory(currentProjectPath);
+      events.setSession(currentSessionId);
+      events.start();
+
+      events.on("thinking", (content: string) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "thinking", content }));
+        }
+      });
+
+      events.on("thinking_end", (durationMs: number | undefined) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "thinking_end", duration_ms: durationMs }));
         }
       });
     };
@@ -520,6 +525,9 @@ export function createBridgeServer(config: BridgeConfig) {
           if (typeof msg.content === "string") {
             console.log(`[bridge] received prompt: ${msg.content.trim()}`);
             if (opencode) {
+              if (!events) {
+                createEvents();
+              }
               opencode
                 .write(
                   msg.content.trim(),
@@ -552,6 +560,20 @@ export function createBridgeServer(config: BridgeConfig) {
             currentModel = msg.model;
             console.log(`[bridge] model set to: ${currentModel}`);
             ws.send(JSON.stringify({ type: "model_set", model: currentModel }));
+          }
+          break;
+
+        case "stop":
+          console.log(`[bridge] stop requested`);
+          if (opencode) {
+            opencode.stop();
+          }
+          if (events) {
+            events.close();
+            events = null;
+          }
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "done" }));
           }
           break;
 

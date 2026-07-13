@@ -206,6 +206,12 @@ class ChatSocketClient {
     }
   }
 
+  void stop() {
+    if (_channel != null) {
+      _channel!.sink.add(jsonEncode({'type': 'stop'}));
+    }
+  }
+
   void sendPermissionResponse(String id, String response) {
     if (_channel != null) {
       _channel!.sink.add(jsonEncode({

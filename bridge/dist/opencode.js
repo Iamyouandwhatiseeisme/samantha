@@ -92,6 +92,7 @@ class OpencodeProcess extends events_1.EventEmitter {
         this.process = (0, child_process_1.spawn)("script", ptyArgs, {
             stdio: ["ignore", "pipe", "pipe"],
             env: { ...process.env },
+            detached: true,
         });
         let buffer = "";
         this.process.stdout?.on("data", (data) => {
@@ -293,8 +294,34 @@ class OpencodeProcess extends events_1.EventEmitter {
         if (!this.process)
             return;
         this.stopping = true;
-        this.process.kill("SIGTERM");
+        const pid = this.process.pid;
+        try {
+            if (pid !== undefined)
+                process.kill(-pid, "SIGTERM");
+        }
+        catch {
+            try {
+                this.process.kill("SIGTERM");
+            }
+            catch { }
+        }
         this.process = null;
+        if (this.sessionId) {
+            const url = new URL(`/session/${this.sessionId}/abort`, this.serveUrl);
+            const req = (0, http_1.request)(url.href, { method: "POST", headers: { "Content-Type": "application/json" } }, (res) => {
+                res.resume();
+                if (res.statusCode === 200) {
+                    console.log(`[bridge:opencode] session ${this.sessionId} aborted`);
+                }
+                else {
+                    console.log(`[bridge:opencode] abort returned ${res.statusCode}`);
+                }
+            });
+            req.on("error", (err) => {
+                console.error(`[bridge:opencode] abort failed: ${err.message}`);
+            });
+            req.end();
+        }
     }
     async reply(_permissionID, _response) {
         // Permissions auto-approved via --auto
