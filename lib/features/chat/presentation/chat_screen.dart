@@ -3,14 +3,13 @@ import 'dart:ui';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:samantha/app/theme_mode_cubit.dart';
+import 'package:samantha/app/theme.dart';
+import 'package:samantha/common/extensions/date_time_x.dart';
 import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
 import 'package:samantha/features/chat/presentation/state/chat_state.dart';
 import 'package:samantha/features/chat/presentation/widgets/error_banner.dart';
 import 'package:samantha/features/chat/presentation/widgets/message_input.dart';
 import 'package:samantha/features/chat/presentation/widgets/message_list.dart';
-import 'package:samantha/features/chat/presentation/widgets/model_text_field.dart';
-import 'package:samantha/features/chat/presentation/widgets/status_dot.dart';
 
 @RoutePage()
 class ChatScreen extends StatefulWidget {
@@ -137,6 +136,7 @@ class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = AppColors.of(context);
     return ClipRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
@@ -155,18 +155,40 @@ class _TopBar extends StatelessWidget {
             child: Row(
               children: [
                 _IconButton(icon: Icons.arrow_back, onPressed: () => context.router.pop()),
-                SizedBox(width: 4),
-                Expanded(child: ModelTextField()),
-                SizedBox(width: 4),
-                const StatusDot(),
-                const SizedBox(width: 4),
-                BlocBuilder<ThemeModeCubit, ThemeMode>(
-                  builder: (context, themeMode) {
-                    return _IconButton(
-                      icon: themeMode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode,
-                      onPressed: () => context.read<ThemeModeCubit>().toggle(),
-                    );
-                  },
+                Expanded(
+                  child: BlocBuilder<ChatCubit, ChatState>(
+                    builder: (context, state) {
+                      final repoName = state.currentProjectPath?.split('/').last ?? 'Chat';
+                      final lastMessage = state.messages.isNotEmpty ? state.messages.last : null;
+                      final updateTime = lastMessage?.timestamp;
+
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            repoName,
+                            style: TextStyle(
+                              fontFamily: colors.mono,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (updateTime != null)
+                            Text(
+                              updateTime.toRelative(),
+                              style: TextStyle(
+                                fontFamily: colors.mono,
+                                fontSize: 10,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
                 ),
                 _IconButton(
                   icon: Icons.refresh,

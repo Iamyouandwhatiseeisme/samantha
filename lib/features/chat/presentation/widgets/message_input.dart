@@ -5,6 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:samantha/app/theme.dart';
 import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
 import 'package:samantha/features/chat/presentation/state/chat_state.dart';
+import 'package:samantha/features/chat/presentation/widgets/model_text_field.dart';
+import 'package:samantha/features/chat/presentation/widgets/status_dot.dart';
 
 class MessageInput extends StatelessWidget {
   final TextEditingController inputController;
@@ -21,7 +23,6 @@ class MessageInput extends StatelessWidget {
         final isConnected = state.connectionStatus != ChatConnectionStatus.disconnected;
         final isStreaming = state.connectionStatus == ChatConnectionStatus.streaming;
         final hasText = state.inputText.trim().isNotEmpty;
-        final repoName = state.currentProjectPath?.split('/').last;
 
         return ClipRect(
           child: BackdropFilter(
@@ -41,31 +42,16 @@ class MessageInput extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (repoName != null || state.selectedModel != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: SizedBox(
-                          height: 28,
-                          child: ListView(
-                            scrollDirection: Axis.horizontal,
-                            children: [
-                              if (repoName != null)
-                                _ContextChip(
-                                  icon: Icons.folder_outlined,
-                                  label: repoName,
-                                  mono: true,
-                                ),
-                              if (repoName != null && state.selectedModel != null)
-                                const SizedBox(width: 6),
-                              if (state.selectedModel != null)
-                                _ContextChip(
-                                  icon: Icons.memory,
-                                  label: _modelLabel(state.selectedModel!),
-                                ),
-                            ],
-                          ),
-                        ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          const StatusDot(),
+                          const SizedBox(width: 8),
+                          const Expanded(child: ModelTextField()),
+                        ],
                       ),
+                    ),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
@@ -174,53 +160,8 @@ class MessageInput extends StatelessWidget {
     );
   }
 
-  String _modelLabel(String qualifiedId) {
-    final parts = qualifiedId.split('/');
-    return parts.length > 1 ? parts.last : qualifiedId;
-  }
-
   void _send(BuildContext context) {
     context.read<ChatCubit>().sendMessage();
     inputController.clear();
-  }
-}
-
-class _ContextChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool mono;
-
-  const _ContextChip({required this.icon, required this.label, this.mono = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = AppColors.of(context);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: theme.colorScheme.outlineVariant, width: 0.5),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: mono ? colors.mono : null,
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
   }
 }

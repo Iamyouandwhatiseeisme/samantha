@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:samantha/app/router.dart';
 import 'package:samantha/app/theme.dart';
+import 'package:samantha/app/theme_mode_cubit.dart';
 import 'package:samantha/features/chat/data/error_message.dart';
 import 'package:samantha/features/connection_settings/presentation/state/connection_settings_cubit.dart';
 import 'package:samantha/features/connection_settings/presentation/state/connection_settings_state.dart';
@@ -61,7 +62,22 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
         _syncFromState(state);
 
         return Scaffold(
-          appBar: AppBar(title: const Text('Connection Settings')),
+          appBar: AppBar(
+            title: const Text('Connection Settings'),
+            actions: [
+              BlocBuilder<ThemeModeCubit, ThemeMode>(
+                builder: (context, themeMode) {
+                  return IconButton(
+                    icon: Icon(
+                      themeMode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode,
+                      size: 20,
+                    ),
+                    onPressed: () => context.read<ThemeModeCubit>().toggle(),
+                  );
+                },
+              ),
+            ],
+          ),
           body: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
