@@ -158,7 +158,7 @@ class _TopBar extends StatelessWidget {
                 Expanded(
                   child: BlocBuilder<ChatCubit, ChatState>(
                     builder: (context, state) {
-                      final repoName = state.currentProjectPath?.split('/').last ?? 'Chat';
+                      final title = state.sessionName ?? 'Chat';
                       final lastMessage = state.messages.isNotEmpty ? state.messages.last : null;
                       final updateTime = lastMessage?.timestamp;
 
@@ -166,7 +166,7 @@ class _TopBar extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            repoName,
+                            title,
                             style: TextStyle(
                               fontFamily: colors.mono,
                               fontSize: 13,

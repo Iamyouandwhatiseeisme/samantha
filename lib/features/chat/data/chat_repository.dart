@@ -50,6 +50,8 @@ class ChatRepository {
 
   Future<String?> getSessionId() => _settingsRepository.getSessionId();
 
+  Future<String?> getSessionName() => _settingsRepository.getSessionName();
+
   Future<void> disconnect() async {
     _socketClient.disconnect();
   }

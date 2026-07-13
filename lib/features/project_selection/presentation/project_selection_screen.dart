@@ -75,9 +75,11 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
     if (_tabController.index == 0 && _selectedProject != null) {
       await _repository.saveProjectPath(_selectedProject!.worktree);
       await _repository.saveSessionId(null);
+      await _repository.saveSessionName(_selectedProject!.displayName);
     } else if (_tabController.index == 1 && _selectedSession != null) {
       await _repository.saveProjectPath(_selectedSession!.directory);
       await _repository.saveSessionId(_selectedSession!.id);
+      await _repository.saveSessionName(_selectedSession!.displayName);
     } else {
       return;
     }

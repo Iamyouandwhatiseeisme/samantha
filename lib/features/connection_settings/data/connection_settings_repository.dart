@@ -7,6 +7,7 @@ class ConnectionSettingsRepository {
   static const _authTokenKey = 'opencode_auth_token';
   static const _projectPathKey = 'opencode_project_path';
   static const _sessionIdKey = 'opencode_session_id';
+  static const _sessionNameKey = 'opencode_session_name';
 
   final SharedPreferences _prefs;
 
@@ -46,5 +47,17 @@ class ConnectionSettingsRepository {
 
   Future<String?> getSessionId() async {
     return _prefs.getString(_sessionIdKey);
+  }
+
+  Future<void> saveSessionName(String? name) async {
+    if (name != null) {
+      await _prefs.setString(_sessionNameKey, name);
+    } else {
+      await _prefs.remove(_sessionNameKey);
+    }
+  }
+
+  Future<String?> getSessionName() async {
+    return _prefs.getString(_sessionNameKey);
   }
 }

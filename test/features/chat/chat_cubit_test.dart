@@ -26,6 +26,7 @@ void main() {
     when(() => repository.disconnect()).thenAnswer((_) async {});
     when(() => repository.getProjectPath()).thenAnswer((_) async => null);
     when(() => repository.getSessionId()).thenAnswer((_) async => null);
+    when(() => repository.getSessionName()).thenAnswer((_) async => null);
     when(() => repository.setProject(any())).thenReturn(null);
     when(() => repository.setSession(any(), any())).thenReturn(null);
   });

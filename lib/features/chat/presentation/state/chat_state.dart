@@ -10,6 +10,7 @@ class ChatState {
   final List<ModelProvider> availableModels;
   final String? selectedModel;
   final String? currentProjectPath;
+  final String? sessionName;
   final String? currentToolName;
   final String? currentToolStatus;
   final String? currentPermissionId;
@@ -23,6 +24,7 @@ class ChatState {
     this.availableModels = const [],
     this.selectedModel,
     this.currentProjectPath,
+    this.sessionName,
     this.currentToolName,
     this.currentToolStatus,
     this.currentPermissionId,
@@ -40,6 +42,8 @@ class ChatState {
     bool clearSelectedModel = false,
     String? currentProjectPath,
     bool clearProjectPath = false,
+    String? sessionName,
+    bool clearSessionName = false,
     String? currentToolName,
     bool clearToolName = false,
     String? currentToolStatus,
@@ -57,6 +61,7 @@ class ChatState {
       availableModels: availableModels ?? this.availableModels,
       selectedModel: clearSelectedModel ? null : (selectedModel ?? this.selectedModel),
       currentProjectPath: clearProjectPath ? null : (currentProjectPath ?? this.currentProjectPath),
+      sessionName: clearSessionName ? null : (sessionName ?? this.sessionName),
       currentToolName: clearToolName ? null : (currentToolName ?? this.currentToolName),
       currentToolStatus: clearToolStatus ? null : (currentToolStatus ?? this.currentToolStatus),
       currentPermissionId: clearPermissionId ? null : (currentPermissionId ?? this.currentPermissionId),
