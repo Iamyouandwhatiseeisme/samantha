@@ -146,28 +146,24 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
             ],
           ),
         ),
-        AnimatedOpacity(
+        AnimatedSize(
           duration: const Duration(milliseconds: 250),
-          opacity: _tabController.index == 0 ? 1.0 : 0.0,
-          child: AnimatedSlide(
-            duration: const Duration(milliseconds: 250),
-            offset: _tabController.index == 0 ? Offset.zero : const Offset(0, 1),
-            child: IgnorePointer(
-              ignoring: _tabController.index != 0,
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _selectedProject != null ? _continue : null,
-                      child: const Text('New Session'),
+          curve: Curves.easeOut,
+          alignment: Alignment.bottomCenter,
+          child: _tabController.index == 0
+              ? SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _selectedProject != null ? _continue : null,
+                        child: const Text('New Session'),
+                      ),
                     ),
                   ),
-                ),
-              ),
-            ),
-          ),
+                )
+              : const SizedBox.shrink(),
         ),
       ],
     );
