@@ -1,7 +1,12 @@
 # Samanṭha Bridge Server
 
-Bridge server that spawns `opencode` and exposes it over WebSocket + HTTP
-for remote access from the Samanṭha Flutter app.
+Bridge server that proxies to `opencode serve` and exposes it over WebSocket +
+HTTP for remote access from the Samanṭha Flutter app.
+
+The bridge does **not** spawn a raw `opencode` CLI process. It expects
+`opencode serve` to be running (and starts it automatically if not) and
+translates between the serve process's HTTP API + SSE event stream and the
+simpler WebSocket protocol the app uses.
 
 ## Install
 
@@ -12,8 +17,12 @@ npm install
 ## Run
 
 ```bash
-BRIDGE_AUTH_TOKEN=your-secret-token PORT=8383 npm start
+BRIDGE_AUTH_TOKEN=your-secret-token npm start
 ```
+
+The bridge will start `opencode serve` automatically (on `127.0.0.1:0` by
+default, or a configured port). If `opencode serve` is already running, the
+bridge connects to it.
 
 Or for development with auto-reload:
 
@@ -23,23 +32,68 @@ BRIDGE_AUTH_TOKEN=your-secret-token npm run dev
 
 ### Environment Variables
 
-| Variable             | Default | Description                              |
-| -------------------- | ------- | ---------------------------------------- |
-| `BRIDGE_AUTH_TOKEN`  | (required) | Shared secret for client authentication |
-| `PORT`               | `8383`  | HTTP + WebSocket listen port             |
+| Variable             | Default     | Description                                    |
+| -------------------- | ----------- | ---------------------------------------------- |
+| `BRIDGE_AUTH_TOKEN`  | (required)  | Shared secret for client authentication        |
+| `PORT`               | `8383`      | HTTP + WebSocket listen port                   |
+
+`opencode` must be installed and on `PATH`.
 
 ## Endpoints
 
-- `GET /health` — `200 {"status":"ok","opencodeRunning":true}`
-- `WS /chat` — Authenticated WebSocket for opencode communication
+| Method | Path         | Description                                        |
+| ------ | ------------ | -------------------------------------------------- |
+| GET    | `/health`    | `200 {"status":"ok"}` — bridge health check        |
+| GET    | `/projects`  | Proxied to opencode serve `/project`               |
+| GET    | `/sessions`  | Proxied to opencode serve `/session` (+ model info)|
+| WS     | `/chat`      | Authenticated WebSocket for chat streaming         |
 
 ### WebSocket Protocol
 
-1. Client sends auth message first: `{"type":"auth","token":"<secret>"}`
-2. Client sends prompts: `{"type":"prompt","content":"<text>"}`
-3. Server streams tokens: `{"type":"token","content":"<chunk>"}`
-4. Server signals completion: `{"type":"done"}`
-5. Server signals errors: `{"type":"error","message":"<text>"}`
+#### Client → Server
+| `type`                 | Fields                            | When                    |
+| ---------------------- | --------------------------------- | ----------------------- |
+| `auth`                 | `token`                           | First message           |
+| `prompt`               | `content`, `model?`               | User message            |
+| `get_models`           | —                                 | Request model list      |
+| `set_model`            | `model`                           | Switch active model     |
+| `get_session_messages` | `session_id`                      | Load session history    |
+| `set_project`          | `path`                            | Set workspace           |
+| `set_session`          | `session_id`, `path`              | Set session + workspace |
+| `permission_response`  | `id`, `response` (`allow`/`deny`) | Respond to permission   |
+
+#### Server → Client
+| `type`               | Meaning                                       |
+| -------------------- | --------------------------------------------- |
+| `token`              | Assistant output chunk                        |
+| `done`               | Turn complete (with token counts, cost)       |
+| `thinking`           | Reasoning delta                               |
+| `thinking_end`       | Reasoning block finished                      |
+| `tool`               | Tool call status/result                       |
+| `models`             | Available model providers                     |
+| `model_set`          | Acknowledges `set_model`                      |
+| `current_model`      | Active model from opencode serve              |
+| `session_messages`   | Resumed session history                       |
+| `permission_request` | Tool needs user approval                      |
+| `auth_failed`        | Bad auth — client must NOT retry              |
+| `error`              | Other error                                   |
+
+### SSE Event Stream (`events.ts`)
+
+The bridge subscribes to `opencode serve`'s `/event` SSE endpoint (scoped to
+the active workspace directory) to get:
+
+- **Reasoning deltas** — `message.part.delta` events for reasoning parts,
+  coalesced on a 50ms timer so a fast model doesn't produce one WebSocket
+  frame per token.
+- **Reasoning block completion** — `message.part.updated` with `time.end`
+  emits a `thinking_end` event with the block's duration.
+
+Events are session-scoped: only reasoning parts matching the current
+`sessionId` are forwarded, so a TUI running against the same serve process
+doesn't leak into the app.
+
+The stream auto-reconnects with exponential backoff (500ms → 5s cap).
 
 ## Tailscale Setup
 

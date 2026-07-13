@@ -1,233 +1,210 @@
-# Project: Flutter Remote Chat Client for OpenCode (via Tailscale)
+# Samanṭha — Design
 
-## Summary
+The visual and interaction design for the Flutter chat client. This document
+describes what was built, not what was planned — see `PROJECT_GUIDE.md` for
+architecture and `scroll_position_control.md` for the scroll-follow spec.
 
-`opencode` is a terminal CLI with no network interface — it only reads
-stdin and writes stdout. This project makes it remotely accessible from a
-phone by adding:
+## Context
 
-1. A **bridge server** that runs on the same laptop as `opencode`. It
-   spawns/manages the `opencode` process and exposes it over WebSocket +
-   HTTP on the local network.
-2. **Tailscale**, installed on both the laptop and the phone, which gives
-   the laptop a stable, routable IP/hostname reachable from anywhere
-   (no port forwarding, no public exposure).
-3. A **Flutter app** that is a pure WebSocket client — it has zero
-   Tailscale-specific code. It just connects to whatever host/port the
-   user configures in a settings screen, because the OS network stack
-   (via Tailscale's VPN interface) transparently routes that traffic
-   through the tailnet.
+A chat UI for an AI coding agent (`opencode`). Messages include code blocks,
+diffs, file paths, tool-call output, and long streaming responses. Closer to
+Claude Code / Cursor chat than to WhatsApp: content is technical,
+monospace-heavy, and often long-form.
 
-### Where everything runs
+## Design system (`lib/app/theme.dart`)
 
-| Component          | Runs on                             |
-| ------------------ | ----------------------------------- |
-| Tailscale client   | Laptop AND phone                    |
-| Bridge server      | Laptop only                         |
-| `opencode` process | Laptop only (spawned by the bridge) |
-| Flutter app        | Phone only                          |
+### Palette
 
-The laptop must be powered on, connected to Tailscale, and running the
-bridge process for the app to work. This is not a hosted/always-on
-service — it's the user's own machine acting as the server.
+| Role              | Dark hex   | Light hex   | Usage                              |
+| ----------------- | ---------- | ----------- | ---------------------------------- |
+| Base surface      | `#0B0B0D`  | `#FAFAFA`   | Scaffold background                |
+| Surface container | `#16161A`  | `#E4E4E7`   | Cards, input fields, chips         |
+| Surface high      | `#1E1E24`  | `#D4D4D8`   | Buttons, elevated containers       |
+| On-surface        | `#E4E4E7`  | `#18181B`   | Primary text                       |
+| On-surface variant| `#71717A`  | `#52525B`   | Secondary text, labels             |
+| Accent            | `#F97316`  | `#F97316`   | User messages, primary actions     |
+| Accent dim        | `#B45309`  | `#B45309`   | Accent borders (dark)              |
+| Agent surface     | `#111114`  | `#F4F4F5`   | Agent message bubble background    |
+| User surface      | `#331C0A`  | `#FFEDD5`   | User message bubble background     |
+| Code surface      | `#08080A`  | `#FFFFFF`   | Code block background              |
+| Diff add          | `#22C55E`  | `#22C55E`   | `+` lines in diffs, tool success   |
+| Diff remove       | `#EF4444`  | `#EF4444`   | `-` lines in diffs, errors         |
+| Outline           | `#3F3F46`  | `#D4D4D8`   | Borders (0.5px default)            |
+| Outline variant   | `#27272A`  | `#E4E4E7`   | Subtle borders                     |
 
-### Data flow
+### Type
 
----
+- **Monospace** (`monospace`): all code, file paths, timestamps, tool labels,
+  status text, model names, footer metadata. Leans into the coding-tool
+  identity.
+- **System sans** (null fontFamily): prose and UI chrome.
+- **No serif** — it reads as generic "AI writing assistant," not a dev tool.
 
-## Part 1 — Bridge Server (`bridge/`)
+### Spacing scale
 
-### Purpose
+`4, 8, 12, 16, 24, 32, 48` — exposed as `AppTheme.space*` constants.
 
-Translate between "structured JSON over WebSocket" and "a terminal
-process reading stdin / writing stdout." Also owns process lifecycle and
-auth.
+### Motion
 
-### Before writing code
+- Short: 200ms (collapsible expand, opacity fades, chevron rotation)
+- Medium: 300ms (scroll-to-bottom animation, send button)
+- Long: 400ms (reserved)
 
-Check whether `opencode` already exposes a server/daemon/JSON-RPC mode
-(`opencode --help`, check its docs/repo). If it does, the bridge becomes a
-thin authenticated proxy to that API instead of scraping raw terminal
-output — much simpler and more reliable. Only fall back to raw
-stdin/stdout piping if no such mode exists.
+### Glassmorphism
 
-### Requirements
+`BackdropFilter` with `sigmaX/Y: 15` and `surface.withValues(alpha: 0.5)` on
+**transient/overlay layers only**:
 
-**Endpoints:**
+- Top bar (`chat_screen.dart` `_TopBar`)
+- Input bar (`message_input.dart`)
+- Scroll-to-bottom pill (`scroll_to_bottom_button.dart`)
 
-- `GET /health` → `200 { "status": "ok" }`
-  Used by the app's "Test Connection" button in settings.
-- `WS /chat`
-  - First message from client must be: `{ "type": "auth", "token": "<secret>" }`
-    Reject/close the connection if missing or wrong.
-  - Client → server: `{ "type": "prompt", "content": "<user text>" }`
-  - Server → client, streamed:
-    - `{ "type": "token", "content": "<chunk>" }` (repeated as output arrives)
-    - `{ "type": "done" }` when the turn is complete
-    - `{ "type": "error", "message": "<text>" }` on failure
+Never the base surface. Blur signals "temporary, content still below."
 
-**Behavior:**
+### Dark mode as default
 
-- Spawn `opencode` as a child process per connection (or a shared process
-  if opencode doesn't support concurrent sessions — verify this).
-- Strip ANSI escape codes / terminal control sequences from stdout before
-  forwarding as `token` events.
-- Bind to `0.0.0.0:PORT` (default `8383`) so it's reachable via the
-  Tailscale interface, not just localhost.
-- Read `BRIDGE_AUTH_TOKEN` and `PORT` from environment variables — never
-  hardcode secrets.
-- Log connection open/close, auth failures, and child process errors to
-  stdout.
-- Gracefully kill the child process when the WebSocket disconnects.
-
-### Tasks
-
-1. `npm init -y`, add `ws` (or `socket.io`) + `express`/`fastify`.
-2. Implement `/health`.
-3. Implement `/chat` with the auth handshake described above.
-4. Implement child process spawn/pipe/cleanup logic for `opencode`.
-5. Write `bridge/README.md` covering:
-   - Install: `npm install`
-   - Run: `BRIDGE_AUTH_TOKEN=xxxx PORT=8383 npm start`
-   - How to install Tailscale on this machine and get its IP:
-     `tailscale up` then `tailscale ip -4`
-   - How to keep it running persistently (systemd service on Linux,
-     launchd on macOS, or just a note on using `pm2`/`screen`/`tmux`)
+`ThemeModeCubit` starts with `ThemeMode.dark`. Dark is the primary designed
+theme (near-black base, true blacks for code surfaces). Light mode is a clean
+inverse, not an afterthought.
 
 ---
 
-## Part 2 — Flutter App (`app/`)
+## Component notes
 
-### Stack conventions to follow
+### Message bubble (`message_bubble.dart`)
 
-- State management: `flutter_bloc` (Cubit-based)
-- Architecture: clean architecture, feature-first folder structure
-- DI: `injectable` + `get_it`
-- Routing: `auto_route`
-- HTTP: `dio`
-- WebSocket: `web_socket_channel`
-- Local storage: `shared_preferences` (`SharedPreferencesAsync`)
-- Testing: `bloc_test` + `mocktail`
+- **Sender differentiation**: alignment + color, never color alone.
+  - User: right-aligned, accent-tinted surface (`userSurface`), accent border.
+  - Agent: left-aligned, neutral surface (`agentSurface`), subtle border.
+- **Asymmetric corner radius**: user bubble has a small bottom-right corner
+  (4px); agent has a small bottom-left corner. Creates a "tail" pointing
+  toward the sender.
+- **Max width**: 76% of screen width (leaves room for the copy icon beside
+  the bubble).
+- **Tap to copy**: tapping a bubble with content reveals a bare copy icon
+  beside it (left of user, right of agent). `AnimatedOpacity` fade in/out
+  (200ms, no layout movement). Auto-hides after 5 seconds. Copies message
+  content to clipboard; icon switches to a check for 1.5s.
+- **Footer** (agent only): monospace metadata — token count, cost, duration,
+  joined with middle dots.
 
-### Feature: `connection_settings`
+**States**: default (rendered) / streaming (terminal cursor appended) /
+thinking (shimmer label + pulse dot) / empty content (no copy button).
 
-**Purpose:** let the user type in the laptop's Tailscale host/IP and the
-shared auth token, and verify it works — instead of hardcoding it.
+### Code block (`code_block.dart`)
 
-`data/`
+- **All languages** supported (not just bash) — the parser extracts the
+  language label from the opening fence.
+- **Header bar**: language label (monospace) + terminal/code icon + copy
+  button. Copy button shows a check + "Copied" for 1.5s.
+- **Horizontal scroll** instead of wrap — long lines don't break the layout.
+- **Diff coloring**: `diff` language blocks render line-by-line with
+  `+` lines in green (`diffAdd` + `diffAddBg`), `-` lines in red
+  (`diffRemove` + `diffRemoveBg`), `@@` hunk headers in tertiary.
+- **Selectable text** for non-diff blocks.
 
-- `ConnectionSettingsRepository`
-  - `Future<void> saveHost(String host)`
-  - `Future<String?> getHost()`
-  - `Future<void> saveAuthToken(String token)`
-  - `Future<String?> getAuthToken()`
-  - Persisted via `SharedPreferencesAsync`, keys `opencode_host` /
-    `opencode_auth_token`
-- `ConnectionApi`
-  - `Future<bool> checkHealth(String host)` → Dio GET to
-    `http://$host:8383/health`, true on HTTP 200
+### Streaming indicator (`terminal_cursor.dart`)
 
-`presentation/`
+- **Signature element**: a blinking orange block cursor (8x16px, 600ms blink
+  cycle) tied to opencode's terminal origins. Replaces the generic
+  `CircularProgressIndicator` during streaming.
+- Respects `MediaQuery.disableAnimationsOf` (reduced motion) — stops blinking
+  but remains visible.
 
-- `ConnectionSettingsCubit`
-  States: `initial`, `loading`, `loaded(host, token)`, `testing`,
-  `testSuccess`, `testFailure(message)`
-- `ConnectionSettingsScreen`
-  - Text field: host/IP (e.g. `100.101.102.103` or
-    `laptop.tailnet-name.ts.net`)
-  - Text field: auth token
-  - "Test Connection" button → calls `checkHealth`, shows inline result
-  - "Save" button → persists via repository
+### Thinking block (`thinking_block.dart`)
 
-### Feature: `chat`
+- **Collapsible** reasoning, collapsed by default.
+- **Shimmer label** while thinking (`ShimmerText` — a band of light sweeps
+  across the glyphs, 1100ms cycle). Falls back to plain text when reduced
+  motion is requested.
+- **Static label** when done: "Thought for 3.2s" (monospace).
+- Reasoning content is italic, monospace, `onSurfaceVariant`.
 
-`data/`
+### Tool result chip (`tool_result_chip.dart`)
 
-- `ChatSocketClient`
-  - Wraps `WebSocketChannel`
-  - Sends the `auth` handshake message immediately on connect
-  - Exposes `Stream<ChatEvent>` (typed: `TokenEvent`, `DoneEvent`,
-    `ErrorEvent`) and `void sendPrompt(String text)`
-- `ChatRepository`
-  - Depends on `ChatSocketClient` + `ConnectionSettingsRepository`
-  - `Future<void> connect()` — reads saved host/token, opens the socket
-  - `Stream<ChatEvent> get events`
-  - `void send(String prompt)`
-  - `Future<void> disconnect()`
+- **Tool-specific icons**: read=book, write=edit, bash=terminal, glob=search,
+  grep=find, default=build.
+- **No content**: compact success-tinted chip (green border + check icon).
+- **With content**: collapsible block with the tool's output (monospace,
+  selectable).
+- **Todo lists**: rendered as a checklist with status icons (completed=green
+  check, in_progress=tertiary pending, cancelled=red cancel).
 
-`domain/`
+### Tool status banner (`tool_status_banner.dart`)
 
-- `ChatMessage { id, role (user/assistant), content, isStreaming }`
+- Shows when a tool is actively running (`currentToolName` is set).
+- Monospace status text, tool-specific icon, accent-colored spinner.
+- Positioned above the input bar with 80px bottom margin (clears the glass
+  input area).
 
-`presentation/`
+### Input composer (`message_input.dart`)
 
-- `ChatCubit`
-  States: `disconnected`, `connecting`, `connected`, `streaming`
-  (appending tokens to the in-progress assistant message), `error(message)`
-  - Implement reconnect-with-backoff on unexpected disconnect; surface
-    connection state to the UI rather than silently retrying forever
-- `ChatScreen`
-  - Scrollable message list
-  - Text input + send button
-  - Connection status indicator in the app bar (connected/disconnected +
-    current host)
+- **Context chips** above the text field: repo name (folder icon, monospace)
+  + model name (memory icon). Horizontally scrollable.
+- **Multi-line growth**: `minLines: 1, maxLines: 6` — grows with content.
+- **Rectangular send button**: 44x44, 12px radius, `Icons.send`. Accent when
+  text is present + connected; grey when empty or disconnected.
+- **Glass backdrop**: `BackdropFilter` blur + 0.5px top border.
+- **36px bottom spacing** inside the glass container (home-indicator clearance).
 
-### Routing
+**States**: connected (accent send) / disconnected (disabled, grey send) /
+empty (grey send) / has-text (accent send).
 
-- Register `ConnectionSettingsRoute` and `ChatRoute` in `auto_route`.
-- Guard `ChatRoute`: if no host is saved yet, redirect to
-  `ConnectionSettingsRoute` first (same pattern as an `AuthGuard`).
+### Model picker (`model_text_field.dart`)
 
-### DI (injectable)
+- **Bottom sheet** (not a dropdown/overlay) with search field and
+  draggable handle — follows the "bottom sheets over modals" pattern.
+- Monospace model names + provider subtitles.
+- Selected model highlighted with accent tint + check icon.
+- Empty state: "No models found."
 
-- `ConnectionSettingsRepository`, `ConnectionApi`, `ChatRepository` →
-  lazy singleton
-- `ChatSocketClient` → factory (fresh instance per connection, not a
-  singleton)
+### Connection status (`status_dot.dart`)
 
-### Testing
+- **Chip** (not a bare dot): repo name + status label in monospace.
+- **Pulsing dot** for `streaming` (accent) and `connecting` (amber).
+- **Static dot** for `connected` (green) and `disconnected` (red).
+- Bordered, `surfaceContainer` background.
 
-- `ConnectionSettingsCubit`: bloc_test for save success/failure and test-
-  connection success/failure, mocking `ConnectionApi` with mocktail.
-- `ChatCubit`: bloc_test for connect → streaming → done, and for connect
-  failure → error. Simulate the event stream with a `StreamController` in
-  tests to drive token-by-token arrival.
+### Scroll-to-bottom button (`scroll_to_bottom_button.dart`)
+
+- **"Jump to latest"** pill (not "scroll to bottom") — glass backdrop, accent
+  arrow, monospace label.
+- `AnimatedCrossFade` for show/hide (via `scroll_to_bottom_fab.dart`).
+- See `scroll_position_control.md` for the full scroll-follow logic.
+
+### Connection settings screen
+
+- Form with floating-label text fields (theme-driven `inputDecorationTheme`).
+- "Test Connection" (outlined) + "Save & Connect" (filled) buttons.
+- Inline test result: success (green-tinted) or failure (red-tinted) banner.
+- On success → `ProjectSelectionRoute`.
+
+### Project selection screen
+
+- **Tabbed**: Repositories | Sessions.
+- Repository tab: list of git worktrees, select + "New Session" button.
+- Session tab: list of previous sessions with token count, cost, context %.
+  Tapping a session immediately continues it.
+- Empty states and error retry for both tabs.
+
+### Error banner (`error_banner.dart`)
+
+- Red-tinted border + background, error icon, monospace RETRY button.
+- `formatErrorMessage()` (`error_message.dart`) maps raw exceptions to
+  human-friendly strings ("Could not reach the server", "Invalid auth token",
+  etc.).
 
 ---
 
-## Part 3 — Tailscale Setup (manual steps, document in root README)
+## Patterns applied
 
-1. Install Tailscale on the laptop: https://tailscale.com/download
-2. `tailscale up`, log in with your account.
-3. Install the Tailscale app on the phone, log into the **same account**.
-4. On the laptop: `tailscale ip -4` to get the stable tailnet IP, or use
-   the MagicDNS hostname shown in the Tailscale admin console
-   (`laptop-name.tailnet-name.ts.net`).
-5. Start the bridge server on the laptop.
-6. In the Flutter app's Connection Settings screen: enter the host and
-   auth token, tap "Test Connection," then "Save."
-7. Optional hardening later: Tailscale ACLs to restrict which tailnet
-   devices can reach port `8383`.
-
----
-
-## Definition of done
-
-- [ ] `bridge/` runs, responds to `/health`, authenticates WS connections,
-      and streams a real `opencode` response back over `/chat`
-- [ ] `app/` builds and runs on device/emulator
-- [ ] Connection Settings screen saves host + token and successfully
-      tests against a bridge on the same LAN (Tailscale not required to
-      verify this — LAN/localhost is fine for initial dev)
-- [ ] Chat screen connects, sends a prompt, renders streamed tokens live
-- [ ] Reconnect logic handles a dropped WebSocket without crashing the UI
-- [ ] Unit tests for `ConnectionSettingsCubit` and `ChatCubit` pass
-- [ ] Root `README.md` documents full Tailscale + bridge + app setup
-
-## Out of scope for this pass
-
-- Multiple simultaneous opencode sessions/devices
-- iOS background-mode hardening for long-lived sockets
-- Visual polish beyond a functional chat + settings UI
-- Any use of Tailscale's `tsnet` embedding — assumes the standard
-  Tailscale apps are installed on both devices
+- **Bottom sheets over modals**: model picker is a bottom sheet, not a
+  dropdown or full-screen push.
+- **Gesture vocabulary**: tap bubble = copy; horizontal drag on chat =
+  reveal timestamps (leftward slide).
+- **Restrained glassmorphism**: blur only on transient layers (top bar, input
+  bar, scroll-to-bottom pill).
+- **Dark mode as default**.
+- **Micro-interactions (200–400ms)**: terminal cursor blink, shimmer label,
+  copy-button check confirmation, collapsible chevron rotation, opacity fades.
+  No decorative load animation — motion confirms state changes only.
