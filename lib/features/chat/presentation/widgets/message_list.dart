@@ -45,11 +45,31 @@ class _MessageListState extends State<MessageList> {
   }
 
   void _scrollToBottom() {
-    widget.scrollController.animateTo(
-      widget.scrollController.position.maxScrollExtent,
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeOut,
-    );
+    final controller = widget.scrollController;
+    if (!controller.hasClients) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!controller.hasClients) return;
+      final target = controller.position.maxScrollExtent;
+      if ((target - controller.position.pixels).abs() < 2) return;
+
+      controller
+          .animateTo(
+            target,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          )
+          .then((_) {
+        if (controller.hasClients &&
+            (controller.position.maxScrollExtent - controller.position.pixels).abs() > 2) {
+          controller.animateTo(
+            controller.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    });
   }
 
   @override

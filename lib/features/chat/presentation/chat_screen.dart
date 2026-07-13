@@ -28,6 +28,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
   static const double _maxReveal = 48.0;
   double _dragOffset = 0;
+  bool _hasInitiallyScrolled = false;
 
   @override
   void initState() {
@@ -47,9 +48,18 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
+      if (!_scrollController.hasClients) return;
+
+      final maxExtent = _scrollController.position.maxScrollExtent;
+      final current = _scrollController.position.pixels;
+      final isNearBottom = maxExtent - current <= 200;
+
+      if (!_hasInitiallyScrolled) {
+        _hasInitiallyScrolled = true;
+        _scrollController.jumpTo(maxExtent);
+      } else if (isNearBottom) {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          maxExtent,
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
         );
