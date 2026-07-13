@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:samantha/app/theme.dart';
 import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
 import 'package:samantha/features/chat/presentation/state/chat_state.dart';
 
-class _ModelDropdownState {
+class _ModelPickerState {
   final List<ModelProvider> availableModels;
   final String? selectedModel;
-  const _ModelDropdownState({
+  const _ModelPickerState({
     required this.availableModels,
     this.selectedModel,
   });
@@ -28,14 +29,9 @@ class ModelTextField extends StatefulWidget {
 
 class _ModelTextFieldState extends State<ModelTextField> {
   final _searchController = TextEditingController();
-  final _searchFocusNode = FocusNode();
-  final _buttonKey = GlobalKey();
-  OverlayEntry? _overlayEntry;
 
   @override
   void dispose() {
-    _closeDropdown();
-    _searchFocusNode.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -57,105 +53,86 @@ class _ModelTextFieldState extends State<ModelTextField> {
   String _labelFor(String? selectedId, List<_FlatModel> all) {
     if (selectedId == null) return 'Select model';
     final match = all.where((m) => m.qualifiedId == selectedId);
-    if (match.isEmpty) return selectedId;
-    final m = match.first;
-    return m.displayName;
+    if (match.isEmpty) return selectedId.split('/').last;
+    return match.first.displayName;
   }
 
-  void _openDropdown(List<_FlatModel> allModels, String? selectedId) {
-    _closeDropdown();
-    final renderBox = _buttonKey.currentContext?.findRenderObject() as RenderBox?;
-    if (renderBox == null || !renderBox.hasSize) return;
-    final size = renderBox.size;
-    final offset = renderBox.localToGlobal(Offset.zero);
-    final overlay = Overlay.of(context);
-    _searchController.clear();
-
-    _overlayEntry = OverlayEntry(
-      builder: (ctx) => _ModelDropdownMenu(
-        offset: offset,
-        width: size.width,
+  void _openSheet(List<_FlatModel> allModels, String? selectedId) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (ctx) => _ModelPickerSheet(
         allModels: allModels,
         selectedId: selectedId,
-        searchController: _searchController,
-        searchFocusNode: _searchFocusNode,
-        onQueryChanged: (q) {
-          _overlayEntry?.markNeedsBuild();
-        },
         onSelected: (model) {
           context.read<ChatCubit>().setModel(model.qualifiedId);
-          _closeDropdown();
+          Navigator.of(ctx).pop();
         },
-        onDismiss: _closeDropdown,
       ),
     );
-    overlay.insert(_overlayEntry!);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _searchFocusNode.requestFocus();
-    });
-  }
-
-  void _closeDropdown() {
-    _overlayEntry?.remove();
-    _overlayEntry?.dispose();
-    _overlayEntry = null;
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocSelector<ChatCubit, ChatState, _ModelDropdownState>(
-      selector: (state) => _ModelDropdownState(
+    final colors = AppColors.of(context);
+    final theme = Theme.of(context);
+
+    return BlocSelector<ChatCubit, ChatState, _ModelPickerState>(
+      selector: (state) => _ModelPickerState(
         availableModels: state.availableModels,
         selectedModel: state.selectedModel,
       ),
-      builder: (context, dropdownState) {
-        if (dropdownState.availableModels.isEmpty) {
+      builder: (context, pickerState) {
+        if (pickerState.availableModels.isEmpty) {
           return const SizedBox(height: 32);
         }
 
-        final allModels = _flatten(dropdownState.availableModels);
-        final selectedId = dropdownState.selectedModel;
+        final allModels = _flatten(pickerState.availableModels);
+        final selectedId = pickerState.selectedModel;
         final label = _labelFor(selectedId, allModels);
 
-        return Container(
-          key: _buttonKey,
-          height: 32,
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
-            ),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            child: InkWell(
+        return GestureDetector(
+          onTap: () => _openSheet(allModels, selectedId),
+          child: Container(
+            height: 32,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainer,
               borderRadius: BorderRadius.circular(8),
-              onTap: () => _openDropdown(allModels, selectedId),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: selectedId != null
-                              ? Theme.of(context).colorScheme.onSurface
-                              : Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Icon(
-                      Icons.keyboard_arrow_down,
-                      size: 16,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ],
-                ),
+              border: Border.all(
+                color: theme.colorScheme.outlineVariant,
+                width: 0.5,
               ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.memory,
+                  size: 14,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontFamily: colors.mono,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: selectedId != null
+                          ? theme.colorScheme.onSurface
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Icon(
+                  Icons.keyboard_arrow_down,
+                  size: 16,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ],
             ),
           ),
         );
@@ -164,59 +141,26 @@ class _ModelTextFieldState extends State<ModelTextField> {
   }
 }
 
-class _ModelDropdownMenu extends StatefulWidget {
-  final Offset offset;
-  final double width;
+class _ModelPickerSheet extends StatefulWidget {
   final List<_FlatModel> allModels;
   final String? selectedId;
-  final TextEditingController searchController;
-  final FocusNode searchFocusNode;
-  final ValueChanged<String> onQueryChanged;
   final ValueChanged<_FlatModel> onSelected;
-  final VoidCallback onDismiss;
 
-  const _ModelDropdownMenu({
-    required this.offset,
-    required this.width,
+  const _ModelPickerSheet({
     required this.allModels,
     required this.selectedId,
-    required this.searchController,
-    required this.searchFocusNode,
-    required this.onQueryChanged,
     required this.onSelected,
-    required this.onDismiss,
   });
 
   @override
-  State<_ModelDropdownMenu> createState() => _ModelDropdownMenuState();
+  State<_ModelPickerSheet> createState() => _ModelPickerSheetState();
 }
 
-class _ModelDropdownMenuState extends State<_ModelDropdownMenu> {
-  late String _query;
-
-  @override
-  void initState() {
-    super.initState();
-    _query = '';
-    widget.searchController.addListener(_onChanged);
-  }
-
-  @override
-  void dispose() {
-    widget.searchController.removeListener(_onChanged);
-    super.dispose();
-  }
-
-  void _onChanged() {
-    final q = widget.searchController.text;
-    if (q != _query) {
-      _query = q;
-      widget.onQueryChanged(q);
-    }
-  }
+class _ModelPickerSheetState extends State<_ModelPickerSheet> {
+  String _query = '';
 
   List<_FlatModel> get _filtered {
-    if (_query.isEmpty) return List.unmodifiable(widget.allModels);
+    if (_query.isEmpty) return widget.allModels;
     final q = _query.toLowerCase();
     return widget.allModels
         .where((m) =>
@@ -227,143 +171,131 @@ class _ModelDropdownMenuState extends State<_ModelDropdownMenu> {
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.sizeOf(context);
-    final menuTop = widget.offset.dy + 36 + 4;
-    final menuMaxHeight = (screenSize.height - menuTop - 16).clamp(120.0, 320.0);
+    final colors = AppColors.of(context);
+    final theme = Theme.of(context);
     final filtered = _filtered;
-    final colorScheme = Theme.of(context).colorScheme;
 
-    return Stack(
-      children: [
-        GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onTap: widget.onDismiss,
-          child: const SizedBox.expand(),
-        ),
-        Positioned(
-          left: widget.offset.dx,
-          top: menuTop,
-          width: widget.width,
-          child: Material(
-            elevation: 8,
-            borderRadius: BorderRadius.circular(12),
-            color: colorScheme.surface,
-            child: Container(
-              constraints: BoxConstraints(maxHeight: menuMaxHeight),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: colorScheme.outlineVariant,
-                  width: 0.5,
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+            child: Row(
+              children: [
+                Text(
+                  'Select Model',
+                  style: theme.textTheme.titleMedium,
                 ),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-                    child: TextField(
-                      controller: widget.searchController,
-                      focusNode: widget.searchFocusNode,
-                      style: const TextStyle(fontSize: 13),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        hintText: 'Search models...',
-                        hintStyle: TextStyle(
-                          fontSize: 12,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                        prefixIcon: Icon(Icons.search, size: 16, color: colorScheme.onSurfaceVariant),
-                        prefixIconConstraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: colorScheme.outline),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-                      ),
-                      onChanged: widget.onQueryChanged,
-                    ),
-                  ),
-                  Flexible(
-                    child: filtered.isEmpty
-                        ? Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Text(
-                              'No models found',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          )
-                        : ListView.separated(
-                            padding: const EdgeInsets.only(bottom: 4),
-                            shrinkWrap: true,
-                            itemCount: filtered.length,
-                            separatorBuilder: (context, index) => Divider(
-                              height: 1,
-                              thickness: 0.5,
-                              color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-                            ),
-                            itemBuilder: (context, index) {
-                              final model = filtered[index];
-                              final isSelected = model.qualifiedId == widget.selectedId;
-                              return InkWell(
-                                onTap: () => widget.onSelected(model),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                  color: isSelected
-                                      ? colorScheme.primaryContainer.withValues(alpha: 0.3)
-                                      : null,
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              model.displayName,
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                                                color: colorScheme.onSurface,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              model.providerName,
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                color: colorScheme.onSurfaceVariant,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      if (isSelected)
-                                        Icon(
-                                          Icons.check,
-                                          size: 16,
-                                          color: colorScheme.primary,
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 18),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
             ),
           ),
-        ),
-      ],
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              controller: TextEditingController(text: _query),
+              autofocus: true,
+              style: TextStyle(fontSize: 14, color: theme.colorScheme.onSurface),
+              decoration: InputDecoration(
+                hintText: 'Search models\u2026',
+                prefixIcon: const Icon(Icons.search, size: 18),
+                prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              ),
+              onChanged: (v) => setState(() => _query = v),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.45,
+            ),
+            child: filtered.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(
+                      'No models found',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    shrinkWrap: true,
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, _) => Divider(
+                      height: 1,
+                      thickness: 0.5,
+                      color: theme.colorScheme.outlineVariant,
+                    ),
+                    itemBuilder: (context, index) {
+                      final model = filtered[index];
+                      final isSelected = model.qualifiedId == widget.selectedId;
+
+                      return InkWell(
+                        onTap: () => widget.onSelected(model),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
+                          color: isSelected
+                              ? colors.accent.withValues(alpha: 0.08)
+                              : null,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      model.displayName,
+                                      style: TextStyle(
+                                        fontFamily: colors.mono,
+                                        fontSize: 13,
+                                        fontWeight: isSelected
+                                            ? FontWeight.w600
+                                            : FontWeight.w400,
+                                        color: theme.colorScheme.onSurface,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      model.providerName,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: theme.colorScheme.onSurfaceVariant,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (isSelected)
+                                Icon(
+                                  Icons.check,
+                                  size: 16,
+                                  color: colors.accent,
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }

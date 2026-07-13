@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:samantha/app/theme.dart';
 import 'package:samantha/features/chat/presentation/widgets/thinking_block.dart';
 
 void main() {
-  Widget wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
+  Widget wrap(Widget child) => MaterialApp(
+        theme: AppTheme.dark(),
+        home: Scaffold(body: child),
+      );
 
   const reasoning = 'The user said hey, which is a casual greeting.';
   const animationDuration = Duration(milliseconds: 200);
@@ -79,6 +83,7 @@ void main() {
     testWidgets('renders a static label when animations are disabled',
         (tester) async {
       await tester.pumpWidget(MaterialApp(
+        theme: AppTheme.dark(),
         home: MediaQuery(
           data: const MediaQueryData(disableAnimations: true),
           child: const Scaffold(

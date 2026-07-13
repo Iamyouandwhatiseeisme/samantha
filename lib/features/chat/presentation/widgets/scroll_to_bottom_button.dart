@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:samantha/app/theme.dart';
 
 class ScrollToBottomButton extends StatelessWidget {
   const ScrollToBottomButton({required this.onPressed, super.key});
@@ -9,8 +10,9 @@ class ScrollToBottomButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final theme = Theme.of(context);
-    final bgColor = theme.colorScheme.surfaceContainerHighest;
+    final bgColor = theme.colorScheme.surfaceContainerHigh;
     final fgColor = theme.colorScheme.onSurface;
 
     return Center(
@@ -19,18 +21,22 @@ class ScrollToBottomButton extends StatelessWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
+            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
             child: Container(
               clipBehavior: Clip.antiAlias,
-              padding: const EdgeInsets.only(top: 8, bottom: 8, left: 16, right: 18),
+              padding: const EdgeInsets.only(top: 8, bottom: 8, left: 14, right: 16),
               decoration: BoxDecoration(
-                color: bgColor.withValues(alpha: 0.8),
+                color: bgColor.withValues(alpha: 0.7),
                 borderRadius: const BorderRadius.all(Radius.circular(100)),
+                border: Border.all(
+                  color: theme.colorScheme.outlineVariant,
+                  width: 0.5,
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
@@ -38,13 +44,15 @@ class ScrollToBottomButton extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.arrow_downward, size: 18, color: fgColor),
+                  Icon(Icons.arrow_downward, size: 16, color: colors.accent),
                   const SizedBox(width: 6),
                   Text(
-                    'Scroll to bottom',
+                    'Jump to latest',
                     style: TextStyle(
-                      color: fgColor,
+                      fontFamily: colors.mono,
+                      fontSize: 11,
                       fontWeight: FontWeight.w500,
+                      color: fgColor,
                     ),
                   ),
                 ],

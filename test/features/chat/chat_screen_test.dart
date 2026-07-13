@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:samantha/app/theme.dart';
+import 'package:samantha/app/theme_mode_cubit.dart';
 import 'package:samantha/features/chat/data/chat_repository.dart';
 import 'package:samantha/features/chat/data/chat_socket_client.dart';
 import 'package:samantha/features/chat/presentation/chat_screen.dart';
@@ -44,8 +46,12 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: BlocProvider<ChatCubit>.value(
-          value: cubit,
+        theme: AppTheme.dark(),
+        home: MultiBlocProvider(
+          providers: [
+            BlocProvider<ChatCubit>.value(value: cubit),
+            BlocProvider<ThemeModeCubit>.value(value: ThemeModeCubit()),
+          ],
           child: const ChatScreen(),
         ),
       ),

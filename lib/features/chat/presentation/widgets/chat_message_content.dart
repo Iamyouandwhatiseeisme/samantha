@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:samantha/features/chat/domain/entities.dart';
+import 'package:samantha/features/chat/presentation/widgets/code_block.dart';
 import 'package:samantha/features/chat/presentation/widgets/pulse_dot.dart';
+import 'package:samantha/features/chat/presentation/widgets/terminal_cursor.dart';
 import 'package:samantha/features/chat/presentation/widgets/thinking_block.dart';
 import 'package:samantha/features/chat/presentation/widgets/tool_result_chip.dart';
 
 class _ContentSegment {
   final String text;
   final bool isCode;
-  const _ContentSegment({required this.text, required this.isCode});
+  final String language;
+
+  const _ContentSegment({
+    required this.text,
+    required this.isCode,
+    this.language = '',
+  });
 }
 
 class ChatMessageContent extends StatelessWidget {
@@ -57,7 +65,7 @@ class ChatMessageContent extends StatelessWidget {
                 const PulseDot(),
                 const SizedBox(width: 8),
                 const ShimmerText(
-                  'Thinking…',
+                  'Thinking\u2026',
                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                 ),
               ],
@@ -70,21 +78,17 @@ class ChatMessageContent extends StatelessWidget {
 
       if (segments.isEmpty) {
         children.add(
-          isStreaming
-              ? Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Flexible(child: Text(content)),
-                    const SizedBox(width: 4),
-                    const SizedBox(
-                      width: 12,
-                      height: 12,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  ],
-                )
-              : Text(content),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Flexible(child: Text(content)),
+              if (isStreaming) ...[
+                const SizedBox(width: 2),
+                const TerminalCursor(),
+              ],
+            ],
+          ),
         );
       } else {
         children.add(
@@ -94,20 +98,20 @@ class ChatMessageContent extends StatelessWidget {
             children: [
               for (final seg in segments)
                 if (seg.isCode)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: _CollapsibleCodeBlock(code: seg.text),
+                  CodeBlock(
+                    key: ValueKey('code-${seg.text.hashCode}'),
+                    code: seg.text,
+                    language: seg.language,
                   )
                 else
-                  Padding(padding: const EdgeInsets.symmetric(vertical: 1), child: Text(seg.text)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 1),
+                    child: Text(seg.text),
+                  ),
               if (isStreaming)
                 const Padding(
-                  padding: EdgeInsets.only(top: 4),
-                  child: SizedBox(
-                    width: 12,
-                    height: 12,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
+                  padding: EdgeInsets.only(top: 2),
+                  child: TerminalCursor(),
                 ),
             ],
           ),
@@ -140,94 +144,17 @@ class ChatMessageContent extends StatelessWidget {
           segments.add(_ContentSegment(text: '```$trimmed```', isCode: false));
           continue;
         }
-        final lang = trimmed.substring(0, firstLineEnd).trim();
-        if (lang == 'sh' || lang == 'bash') {
-          final code = trimmed.substring(firstLineEnd + 1);
-          segments.add(_ContentSegment(text: code, isCode: true));
-        } else {
-          segments.add(_ContentSegment(text: '```$trimmed```', isCode: false));
-        }
+        final lang = trimmed.substring(0, firstLineEnd).trim().toLowerCase();
+        final code = trimmed.substring(firstLineEnd + 1).trimRight();
+        if (code.isEmpty) continue;
+        segments.add(_ContentSegment(text: code, isCode: true, language: lang));
       } else {
-        if (parts[i].isNotEmpty) {
-          segments.add(_ContentSegment(text: parts[i], isCode: false));
+        if (parts[i].trim().isNotEmpty) {
+          segments.add(_ContentSegment(text: parts[i].trim(), isCode: false));
         }
       }
     }
 
     return segments;
-  }
-}
-
-class _CollapsibleCodeBlock extends StatefulWidget {
-  final String code;
-  const _CollapsibleCodeBlock({required this.code});
-
-  @override
-  State<_CollapsibleCodeBlock> createState() => _CollapsibleCodeBlockState();
-}
-
-class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
-  bool _expanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colorScheme.outlineVariant),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          InkWell(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-            onTap: () => setState(() => _expanded = !_expanded),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Row(
-                children: [
-                  Icon(Icons.terminal, size: 16, color: colorScheme.primary),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Shell Command',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.primary,
-                    ),
-                  ),
-                  const Spacer(),
-                  Icon(
-                    _expanded ? Icons.expand_less : Icons.expand_more,
-                    size: 20,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          AnimatedCrossFade(
-            firstChild: const SizedBox.shrink(),
-            secondChild: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              child: Text(
-                widget.code,
-                style: TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 13,
-                  color: colorScheme.onSurface,
-                ),
-              ),
-            ),
-            crossFadeState: _expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 200),
-          ),
-        ],
-      ),
-    );
   }
 }

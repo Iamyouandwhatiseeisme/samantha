@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:samantha/app/theme.dart';
 import 'package:samantha/features/chat/domain/entities.dart';
 import 'package:samantha/features/chat/presentation/widgets/collapsible_block.dart';
 
@@ -27,28 +28,37 @@ class ToolResultChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final colors = AppColors.of(context);
+    final theme = Theme.of(context);
     final hasContent = result.content != null;
 
     if (!hasContent) {
       return Padding(
-        padding: const EdgeInsets.only(top: 6),
+        padding: const EdgeInsets.only(top: 4),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
           decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerLow,
+            color: colors.success.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+            border: Border.all(
+              color: colors.success.withValues(alpha: 0.2),
+              width: 0.5,
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.check_circle_outline, size: 14, color: colorScheme.primary),
+              Icon(Icons.check_circle, size: 12, color: colors.success),
               const SizedBox(width: 6),
               Flexible(
                 child: Text(
                   '${result.tool}: ${result.description}',
-                  style: TextStyle(fontSize: 12, color: colorScheme.primary),
+                  style: TextStyle(
+                    fontFamily: colors.mono,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: theme.colorScheme.onSurface,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -59,13 +69,10 @@ class ToolResultChip extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.only(top: 4),
       child: CollapsibleBlock(
         icon: _icon,
-        label: Text(
-          '${result.tool}: ${result.description}',
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-        ),
+        label: Text('${result.tool}: ${result.description}'),
         child: _ToolResultContent(content: result.content!),
       ),
     );
@@ -78,7 +85,8 @@ class _TodoContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final colors = AppColors.of(context);
+    final theme = Theme.of(context);
 
     final doneCount = todos.where((t) => t.status == 'completed').length;
 
@@ -88,38 +96,41 @@ class _TodoContent extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(Icons.checklist, size: 14, color: colorScheme.primary),
+            Icon(Icons.checklist, size: 13, color: theme.colorScheme.onSurfaceVariant),
             const SizedBox(width: 4),
             Text(
-              'Todo list ($doneCount/${todos.length} done)',
+              '$doneCount/${todos.length} done',
               style: TextStyle(
+                fontFamily: colors.mono,
                 fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         ...todos.map(
           (todo) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
+            padding: const EdgeInsets.symmetric(vertical: 1),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
                   padding: const EdgeInsets.only(top: 1),
-                  child: SizedBox(width: 18, height: 18, child: _TodoCheckbox(status: todo.status)),
+                  child: SizedBox(width: 16, height: 16, child: _TodoCheckbox(status: todo.status)),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Flexible(
                   child: Text(
                     todo.content,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontFamily: colors.mono,
+                      fontSize: 11,
+                      height: 1.4,
                       color: todo.status == 'completed'
-                          ? colorScheme.onSurfaceVariant.withValues(alpha: 0.9)
-                          : colorScheme.onSurface,
+                          ? theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7)
+                          : theme.colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -138,12 +149,19 @@ class _ToolResultContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final theme = Theme.of(context);
     return switch (content) {
       TodoToolContent(todos: final todos) => _TodoContent(todos: todos),
       RawToolContent(content: final c) => SelectableText(
-        c,
-        style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-      ),
+          c,
+          style: TextStyle(
+            fontFamily: colors.mono,
+            fontSize: 12,
+            height: 1.4,
+            color: theme.colorScheme.onSurface,
+          ),
+        ),
     };
   }
 }
@@ -154,16 +172,16 @@ class _TodoCheckbox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final colors = AppColors.of(context);
     switch (status) {
       case 'completed':
-        return Icon(Icons.check_circle, size: 18, color: colorScheme.primary);
+        return Icon(Icons.check_circle, size: 15, color: colors.success);
       case 'in_progress':
-        return Icon(Icons.pending, size: 18, color: colorScheme.tertiary);
+        return Icon(Icons.pending, size: 15, color: Theme.of(context).colorScheme.tertiary);
       case 'cancelled':
-        return Icon(Icons.cancel, size: 18, color: colorScheme.error);
+        return Icon(Icons.cancel, size: 15, color: colors.error);
       default:
-        return Icon(Icons.radio_button_unchecked, size: 18, color: colorScheme.onSurfaceVariant);
+        return Icon(Icons.radio_button_unchecked, size: 15, color: Theme.of(context).colorScheme.onSurfaceVariant);
     }
   }
 }

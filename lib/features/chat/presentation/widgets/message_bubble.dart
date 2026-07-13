@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:samantha/app/theme.dart';
 import 'package:samantha/features/chat/domain/chat_message_formatting.dart';
 import 'package:samantha/features/chat/domain/entities.dart';
 import 'package:samantha/features/chat/presentation/widgets/chat_message_content.dart';
@@ -11,20 +12,39 @@ class MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final theme = Theme.of(context);
     final footerParts = msg.buildFooterParts();
+    final maxWidth = MediaQuery.of(context).size.width * 0.82;
 
     return Column(
       crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          margin: const EdgeInsets.symmetric(vertical: 4.0),
-          padding: const EdgeInsets.all(12.0),
+          margin: const EdgeInsets.symmetric(vertical: 3),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: isUser ? Theme.of(context).colorScheme.primaryContainer : null,
-            borderRadius: BorderRadius.circular(12.0),
+            color: isUser ? colors.userSurface : colors.agentSurface,
+            borderRadius: isUser
+                ? const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                    bottomLeft: Radius.circular(16),
+                    bottomRight: Radius.circular(4),
+                  )
+                : const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                    bottomLeft: Radius.circular(4),
+                    bottomRight: Radius.circular(16),
+                  ),
+            border: Border.all(
+              color: isUser ? colors.userBorder : colors.agentBorder,
+              width: 0.5,
+            ),
           ),
-          constraints: isUser ? BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75) : null,
+          constraints: BoxConstraints(maxWidth: maxWidth),
           child: ChatMessageContent(
             messageId: msg.id,
             content: msg.content,
@@ -36,10 +56,14 @@ class MessageBubble extends StatelessWidget {
         ),
         if (!isUser && footerParts.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.only(left: 12, top: 2),
+            padding: const EdgeInsets.only(left: 4, top: 2),
             child: Text(
-              footerParts.join(' \u00B7 '),
-              style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant),
+              footerParts.join('  \u00B7  '),
+              style: TextStyle(
+                fontFamily: colors.mono,
+                fontSize: 10,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
       ],

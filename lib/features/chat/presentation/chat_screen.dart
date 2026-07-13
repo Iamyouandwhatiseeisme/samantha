@@ -136,29 +136,30 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return ClipRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.02),
+            color: theme.colorScheme.surface.withValues(alpha: 0.5),
             border: Border(
               bottom: BorderSide(
-                color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
                 width: 0.5,
               ),
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.only(left: 4),
+            padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
             child: Row(
               children: [
                 _IconButton(icon: Icons.arrow_back, onPressed: () => context.router.pop()),
-                SizedBox(width: 8),
+                SizedBox(width: 4),
                 Expanded(child: ModelTextField()),
-                SizedBox(width: 8),
+                SizedBox(width: 4),
                 const StatusDot(),
-                const SizedBox(width: 8),
+                const SizedBox(width: 4),
                 BlocBuilder<ThemeModeCubit, ThemeMode>(
                   builder: (context, themeMode) {
                     return _IconButton(

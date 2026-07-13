@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:samantha/app/theme.dart';
 
 const _animationDuration = Duration(milliseconds: 200);
 
@@ -35,15 +36,17 @@ class _CollapsibleBlockState extends State<CollapsibleBlock> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final colors = AppColors.of(context);
+    final theme = Theme.of(context);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(top: 6, bottom: 4),
       decoration: BoxDecoration(
-        color: widget.backgroundColor ?? colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
+        color: widget.backgroundColor ?? theme.colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: widget.borderColor ?? colorScheme.outlineVariant.withValues(alpha: 0.5),
+          color: widget.borderColor ?? theme.colorScheme.outlineVariant,
+          width: 0.5,
         ),
       ),
       child: Column(
@@ -54,20 +57,30 @@ class _CollapsibleBlockState extends State<CollapsibleBlock> {
             borderRadius: BorderRadius.circular(8),
             onTap: () => setState(() => _expanded = !_expanded),
             child: Padding(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
               child: Row(
                 children: [
-                  Icon(widget.icon, size: 14, color: colorScheme.onSurfaceVariant),
+                  Icon(widget.icon, size: 13, color: theme.colorScheme.onSurfaceVariant),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: DefaultTextStyle.merge(
+                      child: widget.label,
+                      style: TextStyle(
+                        fontFamily: colors.mono,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
                   const SizedBox(width: 4),
-                  Flexible(child: DefaultTextStyle.merge(child: widget.label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600))),
-                  const Spacer(),
                   AnimatedRotation(
                     turns: _expanded ? 0.25 : 0,
                     duration: _animationDuration,
                     child: Icon(
                       Icons.chevron_right,
-                      size: 16,
-                      color: colorScheme.onSurfaceVariant,
+                      size: 14,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -80,11 +93,13 @@ class _CollapsibleBlockState extends State<CollapsibleBlock> {
             alignment: Alignment.topCenter,
             child: _expanded
                 ? Padding(
-                    padding: const EdgeInsets.fromLTRB(26, 0, 8, 8),
+                    padding: const EdgeInsets.fromLTRB(24, 0, 10, 8),
                     child: DefaultTextStyle.merge(
                       style: TextStyle(
+                        fontFamily: colors.mono,
                         fontSize: 12,
-                        color: colorScheme.onSurfaceVariant,
+                        height: 1.4,
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                       child: widget.child,
                     ),
