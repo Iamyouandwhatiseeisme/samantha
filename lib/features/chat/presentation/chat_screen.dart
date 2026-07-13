@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -134,28 +136,44 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ColoredBox(
-      color: Theme.of(context).colorScheme.surface,
-      child: Padding(
-        padding: const EdgeInsets.only(left: 4),
-        child: Row(
-          children: [
-            _IconButton(icon: Icons.arrow_back, onPressed: () => context.router.pop()),
-            SizedBox(width: 8),
-            Expanded(child: ModelTextField()),
-            SizedBox(width: 8),
-            const StatusDot(),
-            const SizedBox(width: 8),
-            BlocBuilder<ThemeModeCubit, ThemeMode>(
-              builder: (context, themeMode) {
-                return _IconButton(
-                  icon: themeMode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode,
-                  onPressed: () => context.read<ThemeModeCubit>().toggle(),
-                );
-              },
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.02),
+            border: Border(
+              bottom: BorderSide(
+                color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
+                width: 0.5,
+              ),
             ),
-            _IconButton(icon: Icons.refresh, onPressed: () => context.read<ChatCubit>().connect()),
-          ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Row(
+              children: [
+                _IconButton(icon: Icons.arrow_back, onPressed: () => context.router.pop()),
+                SizedBox(width: 8),
+                Expanded(child: ModelTextField()),
+                SizedBox(width: 8),
+                const StatusDot(),
+                const SizedBox(width: 8),
+                BlocBuilder<ThemeModeCubit, ThemeMode>(
+                  builder: (context, themeMode) {
+                    return _IconButton(
+                      icon: themeMode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode,
+                      onPressed: () => context.read<ThemeModeCubit>().toggle(),
+                    );
+                  },
+                ),
+                _IconButton(
+                  icon: Icons.refresh,
+                  onPressed: () => context.read<ChatCubit>().connect(),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
