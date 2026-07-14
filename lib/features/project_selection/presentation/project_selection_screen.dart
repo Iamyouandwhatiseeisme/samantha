@@ -102,47 +102,95 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
           ],
         ),
       ),
-      body: _buildBody(),
+      body: _BodyContent(
+        loading: _loading,
+        error: _error,
+        onRetry: _loadData,
+        onBackToSettings: () => context.router.pop(),
+        tabController: _tabController,
+        projects: _projects,
+        selectedProject: _selectedProject,
+        onSelectProject: (project) => setState(() {
+          _selectedProject = project;
+          _selectedSession = null;
+        }),
+        onRefresh: _loadData,
+        sessions: _sessions,
+        selectedSession: _selectedSession,
+        onSelectSession: (session) {
+          setState(() {
+            _selectedSession = session;
+            _selectedProject = null;
+          });
+          _continue();
+        },
+        onSubmit: _continue,
+      ),
     );
   }
 
-  Widget _buildBody() {
-    if (_loading) {
+}
+
+class _BodyContent extends StatelessWidget {
+  final bool loading;
+  final String? error;
+  final VoidCallback onRetry;
+  final VoidCallback onBackToSettings;
+  final TabController tabController;
+  final List<OpenCodeProject> projects;
+  final OpenCodeProject? selectedProject;
+  final void Function(OpenCodeProject) onSelectProject;
+  final VoidCallback onRefresh;
+  final List<OpenCodeSession> sessions;
+  final OpenCodeSession? selectedSession;
+  final void Function(OpenCodeSession) onSelectSession;
+  final VoidCallback onSubmit;
+
+  const _BodyContent({
+    required this.loading,
+    this.error,
+    required this.onRetry,
+    required this.onBackToSettings,
+    required this.tabController,
+    required this.projects,
+    this.selectedProject,
+    required this.onSelectProject,
+    required this.onRefresh,
+    required this.sessions,
+    this.selectedSession,
+    required this.onSelectSession,
+    required this.onSubmit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (_error != null) {
+    if (error != null) {
       return _ErrorView(
-        message: _error!,
-        onRetry: _loadData,
-        onBackToSettings: () => context.router.pop(),
+        message: error!,
+        onRetry: onRetry,
+        onBackToSettings: onBackToSettings,
       );
     }
     return Column(
       children: [
         Expanded(
           child: TabBarView(
-            controller: _tabController,
+            controller: tabController,
             children: [
               _ProjectListView(
-                projects: _projects,
-                selectedProject: _selectedProject,
-                onSelectProject: (project) => setState(() {
-                  _selectedProject = project;
-                  _selectedSession = null;
-                }),
-                onRefresh: _loadData,
+                projects: projects,
+                selectedProject: selectedProject,
+                onSelectProject: onSelectProject,
+                onRefresh: onRefresh,
               ),
               _SessionListView(
-                sessions: _sessions,
-                selectedSession: _selectedSession,
-                onSelectSession: (session) {
-                  setState(() {
-                    _selectedSession = session;
-                    _selectedProject = null;
-                  });
-                  _continue();
-                },
-                onRefresh: _loadData,
+                sessions: sessions,
+                selectedSession: selectedSession,
+                onSelectSession: onSelectSession,
+                onRefresh: onRefresh,
               ),
             ],
           ),
@@ -151,14 +199,14 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeOut,
           alignment: Alignment.bottomCenter,
-          child: _tabController.index == 0
+          child: tabController.index == 0
               ? SafeArea(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _selectedProject != null ? _continue : null,
+                        onPressed: selectedProject != null ? onSubmit : null,
                         child: const Text('New Session'),
                       ),
                     ),
