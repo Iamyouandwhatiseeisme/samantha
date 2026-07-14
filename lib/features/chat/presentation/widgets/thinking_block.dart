@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:samantha/common/extensions/duration_x.dart';
 import 'package:samantha/features/chat/presentation/widgets/collapsible_block.dart';
 
 const _shimmerPeriod = Duration(milliseconds: 1100);
@@ -91,16 +92,11 @@ class ThinkingBlock extends StatelessWidget {
     this.duration,
   });
 
-  static String _formatDuration(Duration d) {
-    if (d.inMinutes >= 1) return '${d.inMinutes}m ${d.inSeconds % 60}s';
-    return '${(d.inMilliseconds / 1000).toStringAsFixed(1)}s';
-  }
-
   String get _label {
     if (isThinking) return 'Thinking…';
     final d = duration;
     if (d == null || d == Duration.zero) return 'Thought';
-    return 'Thought for ${_formatDuration(d)}';
+    return 'Thought for ${d.toShortText()}';
   }
 
   @override
