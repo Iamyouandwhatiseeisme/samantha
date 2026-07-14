@@ -1,30 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:samantha/app/theme.dart';
+import 'package:samantha/common/extensions/string_x.dart';
 import 'package:samantha/features/chat/domain/entities.dart';
 import 'package:samantha/features/chat/presentation/widgets/collapsible_block.dart';
 
 class ToolResultChip extends StatelessWidget {
   final ToolResult result;
   const ToolResultChip({super.key, required this.result});
-
-  IconData get _icon {
-    switch (result.tool) {
-      case 'read':
-        return Icons.menu_book;
-      case 'write':
-        return Icons.edit;
-      case 'edit':
-        return Icons.edit_note;
-      case 'bash':
-        return Icons.terminal;
-      case 'glob':
-        return Icons.search;
-      case 'grep':
-        return Icons.find_in_page;
-      default:
-        return Icons.build;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +53,7 @@ class ToolResultChip extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 4),
       child: CollapsibleBlock(
-        icon: _icon,
+        icon: result.tool.toToolIcon,
         label: Text('${result.tool}: ${result.description}'),
         child: _ToolResultContent(content: result.content!),
       ),

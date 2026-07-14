@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:samantha/app/theme.dart';
+import 'package:samantha/common/extensions/string_x.dart';
 
 class ToolStatusBanner extends StatelessWidget {
   final String tool;
@@ -32,7 +33,7 @@ class ToolStatusBanner extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          Icon(_toolIcon(tool), size: 14, color: theme.colorScheme.onSurfaceVariant),
+          Icon(tool.toToolIcon, size: 14, color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(width: 6),
           Expanded(
             child: Text(
@@ -49,24 +50,5 @@ class ToolStatusBanner extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  IconData _toolIcon(String tool) {
-    switch (tool) {
-      case 'read':
-        return Icons.menu_book;
-      case 'write':
-        return Icons.edit;
-      case 'edit':
-        return Icons.edit_note;
-      case 'bash':
-        return Icons.terminal;
-      case 'glob':
-        return Icons.search;
-      case 'grep':
-        return Icons.find_in_page;
-      default:
-        return Icons.build;
-    }
   }
 }
