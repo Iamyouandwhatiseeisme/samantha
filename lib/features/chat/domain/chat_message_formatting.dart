@@ -1,3 +1,4 @@
+import 'package:samantha/common/extensions/duration_x.dart';
 import 'package:samantha/features/chat/domain/entities.dart';
 
 extension ChatMessageFormatting on ChatMessage {
@@ -13,7 +14,7 @@ extension ChatMessageFormatting on ChatMessage {
       parts.add('\$${cost!.toStringAsFixed(4)}');
     }
     if (duration != null && duration!.inSeconds > 0) {
-      parts.add(_formatDuration(duration!));
+      parts.add(duration!.toShortText());
     }
     return parts;
   }
@@ -23,11 +24,5 @@ extension ChatMessageFormatting on ChatMessage {
       return '${(count / 1000).toStringAsFixed(1)}k';
     }
     return count.toString();
-  }
-
-  String _formatDuration(Duration d) {
-    if (d.inSeconds < 60) return '${d.inSeconds}s';
-    if (d.inMinutes < 60) return '${d.inMinutes}m';
-    return '${d.inMinutes}m ${d.inSeconds % 60}s';
   }
 }
