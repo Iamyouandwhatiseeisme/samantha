@@ -105,7 +105,7 @@ class _CodeBlockState extends State<CodeBlock> {
                   ? Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
-                      children: lines.map((line) => _DiffLine(line: line, colors: colors)).toList(),
+                      children: lines.map((line) => _HighlightedDiffLine(line: line, colors: colors)).toList(),
                     )
                   : SelectableText(
                       widget.code,
@@ -125,11 +125,11 @@ class _CodeBlockState extends State<CodeBlock> {
 
 }
 
-class _DiffLine extends StatelessWidget {
+class _HighlightedDiffLine extends StatelessWidget {
   final String line;
   final AppColors colors;
 
-  const _DiffLine({required this.line, required this.colors});
+  const _HighlightedDiffLine({required this.line, required this.colors});
 
   @override
   Widget build(BuildContext context) {

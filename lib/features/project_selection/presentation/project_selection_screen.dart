@@ -102,7 +102,7 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
           ],
         ),
       ),
-      body: _BodyContent(
+      body: _ProjectSelectionBody(
         loading: _loading,
         error: _error,
         onRetry: _loadData,
@@ -131,7 +131,7 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
 
 }
 
-class _BodyContent extends StatelessWidget {
+class _ProjectSelectionBody extends StatelessWidget {
   final bool loading;
   final String? error;
   final VoidCallback onRetry;
@@ -146,7 +146,7 @@ class _BodyContent extends StatelessWidget {
   final void Function(OpenCodeSession) onSelectSession;
   final VoidCallback onSubmit;
 
-  const _BodyContent({
+  const _ProjectSelectionBody({
     required this.loading,
     this.error,
     required this.onRetry,
