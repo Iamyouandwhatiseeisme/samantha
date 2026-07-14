@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:samantha/common/extensions/date_time_x.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:samantha/features/chat/domain/entities.dart';
 import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
@@ -289,7 +290,7 @@ class _MessageListState extends State<MessageList> {
                                     child: Opacity(
                                       opacity: fraction,
                                       child: Text(
-                                        _formatTime(msg.timestamp),
+                                        msg.timestamp.toTimeString(),
                                         style: TextStyle(
                                           fontSize: 10,
                                           color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -327,12 +328,6 @@ class _MessageListState extends State<MessageList> {
         ],
       ),
     );
-  }
-
-  String _formatTime(DateTime dt) {
-    final h = dt.hour.toString().padLeft(2, '0');
-    final m = dt.minute.toString().padLeft(2, '0');
-    return '$h:$m';
   }
 }
 
