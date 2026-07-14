@@ -1,10 +1,3 @@
-import { IncomingMessage, ServerResponse } from "http";
-interface BridgeConfig {
-    port: number;
-    authToken: string;
-    opencodeServeUrl: string;
-    restartOpencodeServe: (cwd?: string) => Promise<void>;
-}
-export declare function createBridgeServer(config: BridgeConfig): import("http").Server<typeof IncomingMessage, typeof ServerResponse>;
-export {};
+import { BridgeConfig } from "./types";
+export declare function createBridgeServer(config: BridgeConfig): import("http").Server<typeof import("http").IncomingMessage, typeof import("http").ServerResponse>;
 //# sourceMappingURL=server.d.ts.map

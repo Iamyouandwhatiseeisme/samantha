@@ -1,0 +1,7 @@
+export interface BridgeConfig {
+    port: number;
+    authToken: string;
+    opencodeServeUrl: string;
+    restartOpencodeServe: (cwd?: string) => Promise<void>;
+}
+//# sourceMappingURL=types.d.ts.map
