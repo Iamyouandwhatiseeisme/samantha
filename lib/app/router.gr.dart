@@ -43,6 +43,22 @@ class ConnectionSettingsRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [DashboardScreen]
+class DashboardRoute extends PageRouteInfo<void> {
+  const DashboardRoute({List<PageRouteInfo>? children})
+    : super(DashboardRoute.name, initialChildren: children);
+
+  static const String name = 'DashboardRoute';
+
+  static PageInfo page = PageInfo(
+    name,
+    builder: (data) {
+      return const DashboardScreen();
+    },
+  );
+}
+
+/// generated route for
 /// [ProjectSelectionScreen]
 class ProjectSelectionRoute extends PageRouteInfo<void> {
   const ProjectSelectionRoute({List<PageRouteInfo>? children})
