@@ -6,6 +6,7 @@ import 'package:samantha/app/theme.dart';
 import 'package:samantha/features/chat/domain/chat_message_formatting.dart';
 import 'package:samantha/features/chat/domain/entities.dart';
 import 'package:samantha/features/chat/presentation/widgets/chat_message_content.dart';
+import 'package:samantha/features/chat/presentation/widgets/copy_icon.dart';
 
 class MessageBubble extends StatefulWidget {
   final ChatMessage msg;
@@ -67,7 +68,7 @@ class _MessageBubbleState extends State<MessageBubble> {
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (isUser) _CopyIcon(visible: copyVisible, copied: _copied, onTap: _copy),
+            if (isUser) CopyIcon(visible: copyVisible, copied: _copied, onTap: _copy),
             Flexible(
               child: GestureDetector(
                 onTap: hasContent ? _revealCopy : null,
@@ -107,7 +108,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                 ),
               ),
             ),
-            if (!isUser) _CopyIcon(visible: copyVisible, copied: _copied, onTap: _copy),
+            if (!isUser) CopyIcon(visible: copyVisible, copied: _copied, onTap: _copy),
           ],
         ),
         if (!isUser && footerParts.isNotEmpty)
@@ -127,39 +128,3 @@ class _MessageBubbleState extends State<MessageBubble> {
   }
 }
 
-class _CopyIcon extends StatelessWidget {
-  final bool visible;
-  final bool copied;
-  final VoidCallback onTap;
-
-  const _CopyIcon({
-    required this.visible,
-    required this.copied,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    final theme = Theme.of(context);
-
-    return AnimatedOpacity(
-      opacity: visible ? 1.0 : 0.0,
-      duration: const Duration(milliseconds: 200),
-      child: IgnorePointer(
-        ignoring: !visible,
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 7, left: 6, right: 6),
-          child: GestureDetector(
-            onTap: onTap,
-            child: Icon(
-              copied ? Icons.check : Icons.copy,
-              size: 15,
-              color: copied ? colors.success : theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}

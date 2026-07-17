@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:samantha/app/theme.dart';
-import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
 
 class FlatModel {
   final String qualifiedId;
