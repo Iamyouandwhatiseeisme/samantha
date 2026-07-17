@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:samantha/app/theme.dart';
 import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
 import 'package:samantha/features/chat/presentation/state/chat_state.dart';
+import 'package:samantha/features/chat/presentation/widgets/pulsing_dot.dart';
 
 class _TitleState {
   final ChatConnectionStatus connectionStatus;
@@ -44,7 +45,7 @@ class StatusDot extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (isPulsing)
-                _PulsingDot(color: dotColor)
+                PulsingDot(color: dotColor)
               else
                 Container(
                   width: 7,
@@ -87,44 +88,3 @@ class StatusDot extends StatelessWidget {
   }
 }
 
-class _PulsingDot extends StatefulWidget {
-  final Color color;
-  const _PulsingDot({required this.color});
-
-  @override
-  State<_PulsingDot> createState() => _PulsingDotState();
-}
-
-class _PulsingDotState extends State<_PulsingDot> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))
-      ..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) {
-        return Opacity(
-          opacity: 0.4 + 0.6 * _controller.value,
-          child: Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(color: widget.color, shape: BoxShape.circle),
-          ),
-        );
-      },
-    );
-  }
-}
