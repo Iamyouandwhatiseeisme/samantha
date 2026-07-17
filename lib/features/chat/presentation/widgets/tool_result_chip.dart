@@ -3,6 +3,7 @@ import 'package:samantha/app/theme.dart';
 import 'package:samantha/common/extensions/string_x.dart';
 import 'package:samantha/features/chat/domain/entities.dart';
 import 'package:samantha/features/chat/presentation/widgets/collapsible_block.dart';
+import 'package:samantha/features/chat/presentation/widgets/tool_result_content.dart';
 
 class ToolResultChip extends StatelessWidget {
   final ToolResult result;
@@ -55,7 +56,7 @@ class ToolResultChip extends StatelessWidget {
       child: CollapsibleBlock(
         icon: result.tool.toToolIcon,
         label: Text('${result.tool}: ${result.description}'),
-        child: _ToolResultContent(content: result.content!),
+        child: ToolResultContent(content: result.content!),
       ),
     );
   }
