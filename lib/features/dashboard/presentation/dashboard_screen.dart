@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:samantha/app/router.dart';
 import 'package:samantha/app/theme.dart';
 
 @RoutePage()
@@ -32,6 +33,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       if (status == AnimationStatus.completed) {
         setState(() => _drawingComplete = true);
         _glowController.repeat(reverse: true);
+        _navigateToNext();
       }
     });
 
@@ -52,6 +54,12 @@ class _DashboardScreenState extends State<DashboardScreen>
     _drawController.dispose();
     _glowController.dispose();
     super.dispose();
+  }
+
+  Future<void> _navigateToNext() async {
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (!mounted) return;
+    context.router.replace(const ConnectionSettingsRoute());
   }
 
   @override
