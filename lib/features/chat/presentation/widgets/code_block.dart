@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:samantha/app/theme.dart';
+import 'package:samantha/features/chat/presentation/widgets/highlighted_diff_line.dart';
 
 class CodeBlock extends StatefulWidget {
   final String code;
@@ -105,7 +106,7 @@ class _CodeBlockState extends State<CodeBlock> {
                   ? Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
-                      children: lines.map((line) => _HighlightedDiffLine(line: line, colors: colors)).toList(),
+                      children: lines.map((line) => HighlightedDiffLine(line: line, colors: colors)).toList(),
                     )
                   : SelectableText(
                       widget.code,
@@ -125,47 +126,3 @@ class _CodeBlockState extends State<CodeBlock> {
 
 }
 
-class _HighlightedDiffLine extends StatelessWidget {
-  final String line;
-  final AppColors colors;
-
-  const _HighlightedDiffLine({required this.line, required this.colors});
-
-  @override
-  Widget build(BuildContext context) {
-    final isAdd = line.startsWith('+');
-    final isRemove = line.startsWith('-');
-    final isHunk = line.startsWith('@@');
-
-    Color? bg;
-    Color? fg;
-    if (isAdd) {
-      bg = colors.diffAddBg;
-      fg = colors.diffAdd;
-    } else if (isRemove) {
-      bg = colors.diffRemoveBg;
-      fg = colors.diffRemove;
-    } else if (isHunk) {
-      fg = Theme.of(context).colorScheme.tertiary;
-    }
-
-    return DecoratedBox(
-      decoration: BoxDecoration(color: bg),
-      child: Padding(
-        padding: EdgeInsets.only(
-          left: isAdd || isRemove ? 0 : 4,
-          right: 8,
-        ),
-        child: Text(
-          line,
-          style: TextStyle(
-            fontFamily: colors.mono,
-            fontSize: 13,
-            height: 1.5,
-            color: fg ?? Theme.of(context).colorScheme.onSurface,
-          ),
-        ),
-      ),
-    );
-  }
-}
