@@ -7,6 +7,8 @@ class ThemeModeCubit extends Cubit<ThemeMode> {
     _load();
   }
 
+  ThemeModeCubit.initial(ThemeMode mode) : super(mode);
+
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
     final value = prefs.getString('themeMode');

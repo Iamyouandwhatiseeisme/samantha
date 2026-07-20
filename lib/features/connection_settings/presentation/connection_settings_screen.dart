@@ -2,8 +2,8 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:samantha/app/router.dart';
+import 'package:samantha/app/settings_wrapper.dart';
 import 'package:samantha/app/theme.dart';
-import 'package:samantha/app/theme_mode_cubit.dart';
 import 'package:samantha/common/extensions/context_x.dart';
 import 'package:samantha/features/connection_settings/presentation/state/connection_settings_cubit.dart';
 import 'package:samantha/features/connection_settings/presentation/state/connection_settings_state.dart';
@@ -45,6 +45,40 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
     super.dispose();
   }
 
+  void _showLanguagePicker(BuildContext context) {
+    final current = context.selectedLocale;
+
+    final languages = <({Locale? locale, String label, String flag})>[
+      (locale: null, label: 'System', flag: '🌐'),
+      (locale: const Locale('en'), label: 'English', flag: '🇬🇧'),
+      (locale: const Locale('ka'), label: 'ქართული', flag: '🇬🇪'),
+    ];
+
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: languages.map((lang) {
+              final isSelected = current?.languageCode == lang.locale?.languageCode;
+              return ListTile(
+                leading: Text(lang.flag, style: const TextStyle(fontSize: 20)),
+                title: Text(lang.label),
+                trailing: isSelected ? const Icon(Icons.check, color: Colors.orange) : null,
+                onTap: () {
+                  context.setLocale(lang.locale);
+                  Navigator.of(ctx).pop();
+                },
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
@@ -66,16 +100,18 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
           appBar: AppBar(
             title: Text(context.l10n.connectionSettings),
             actions: [
-              BlocBuilder<ThemeModeCubit, ThemeMode>(
-                builder: (context, themeMode) {
-                  return IconButton(
-                    icon: Icon(
-                      themeMode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode,
-                      size: 20,
-                    ),
-                    onPressed: () => context.read<ThemeModeCubit>().toggle(),
-                  );
-                },
+              IconButton(
+                icon: const Icon(Icons.language, size: 20),
+                onPressed: () => _showLanguagePicker(context),
+              ),
+              IconButton(
+                icon: Icon(
+                  context.themeMode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode,
+                  size: 20,
+                ),
+                onPressed: () => context.setThemeMode(
+                  context.themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark,
+                ),
               ),
             ],
           ),
