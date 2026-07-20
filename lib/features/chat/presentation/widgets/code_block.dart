@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:highlight/highlight.dart' show highlight, Node;
 import 'package:samantha/app/theme.dart';
 import 'package:samantha/common/extensions/context_x.dart';
+import 'package:samantha/common/syntax_highlight.dart';
+import 'package:samantha/common/syntax_highlight_theme.dart';
 import 'package:samantha/features/chat/presentation/widgets/highlighted_diff_line.dart';
 
 class CodeBlock extends StatefulWidget {
@@ -109,15 +112,7 @@ class _CodeBlockState extends State<CodeBlock> {
                       mainAxisSize: MainAxisSize.min,
                       children: lines.map((line) => HighlightedDiffLine(line: line, colors: colors)).toList(),
                     )
-                  : SelectableText(
-                      widget.code,
-                      style: TextStyle(
-                        fontFamily: colors.mono,
-                        fontSize: 13,
-                        height: 1.5,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                    ),
+                  : _buildHighlightedCode(widget.code, widget.language, colors, theme.colorScheme),
             ),
           ),
         ],
@@ -125,5 +120,40 @@ class _CodeBlockState extends State<CodeBlock> {
     );
   }
 
-}
+  Widget _buildHighlightedCode(String code, String language, AppColors colors, ColorScheme scheme) {
+    final theme = buildHighlightTheme(colors, scheme);
+    final lang = resolveLanguage(language);
+    final result = highlight.parse(code, language: lang.isNotEmpty ? lang : null);
+    final nodes = result.nodes ?? const [];
 
+    return RichText(
+      text: TextSpan(
+        children: _buildTextSpans(nodes, theme),
+      ),
+    );
+  }
+
+  List<TextSpan> _buildTextSpans(List<Node> nodes, Map<String, TextStyle> theme) {
+    final spans = <TextSpan>[];
+
+    for (final node in nodes) {
+      if (node.value != null) {
+        final className = node.className;
+        final style = className != null ? theme['hljs-$className'] : theme['root'];
+        spans.add(TextSpan(text: node.value, style: style));
+      }
+      if (node.children != null && node.children!.isNotEmpty) {
+        final className = node.className;
+        final style = className != null ? theme['hljs-$className'] : theme['root'];
+        spans.add(
+          TextSpan(
+            children: _buildTextSpans(node.children!, theme),
+            style: style,
+          ),
+        );
+      }
+    }
+
+    return spans;
+  }
+}
