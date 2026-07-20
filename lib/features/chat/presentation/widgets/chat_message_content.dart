@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:samantha/common/extensions/context_x.dart';
 import 'package:samantha/features/chat/domain/entities.dart';
 import 'package:samantha/features/chat/presentation/widgets/code_block.dart';
 import 'package:samantha/features/chat/presentation/widgets/pulse_dot.dart';
@@ -64,9 +65,9 @@ class ChatMessageContent extends StatelessWidget {
               children: [
                 const PulseDot(),
                 const SizedBox(width: 8),
-                const ShimmerText(
-                  'Thinking\u2026',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                ShimmerText(
+                  context.l10n.thinking,
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                 ),
               ],
             ),

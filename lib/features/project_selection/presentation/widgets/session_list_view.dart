@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:samantha/common/extensions/context_x.dart';
 import 'package:samantha/features/project_selection/data/project_api.dart';
 
 class SessionListView extends StatelessWidget {
@@ -25,17 +26,17 @@ class SessionListView extends StatelessWidget {
             children: [
               const Icon(Icons.history, size: 48),
               const SizedBox(height: 16),
-              Text('No previous sessions', style: Theme.of(context).textTheme.titleMedium),
+              Text(context.l10n.noPreviousSessions, style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
-              const Text(
-                'Sessions from your opencode server\nwill appear here.',
+              Text(
+                context.l10n.noSessionsDescription,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
               FilledButton.icon(
                 onPressed: onRefresh,
                 icon: const Icon(Icons.refresh),
-                label: const Text('Refresh'),
+                label: Text(context.l10n.refresh),
               ),
             ],
           ),

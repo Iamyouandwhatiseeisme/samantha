@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:samantha/app/theme.dart';
+import 'package:samantha/common/extensions/context_x.dart';
 import 'package:samantha/features/chat/presentation/widgets/highlighted_diff_line.dart';
 
 class CodeBlock extends StatefulWidget {
@@ -54,7 +55,7 @@ class _CodeBlockState extends State<CodeBlock> {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  widget.language.isNotEmpty ? widget.language : 'code',
+                  widget.language.isNotEmpty ? widget.language : context.l10n.code,
                   style: TextStyle(
                     fontFamily: colors.mono,
                     fontSize: 11,
@@ -84,7 +85,7 @@ class _CodeBlockState extends State<CodeBlock> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          _copied ? 'Copied' : 'Copy',
+                          _copied ? context.l10n.copied : context.l10n.copy,
                           style: TextStyle(
                             fontFamily: colors.mono,
                             fontSize: 10,

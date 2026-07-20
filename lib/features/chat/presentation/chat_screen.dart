@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:samantha/common/extensions/context_x.dart';
 import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
 import 'package:samantha/features/chat/presentation/state/chat_state.dart';
 import 'package:samantha/features/chat/presentation/widgets/chat_top_bar.dart';
@@ -104,22 +105,22 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: const Text('Permission Required'),
-        content: Text(title.isNotEmpty ? title : 'Allow this action?'),
+        title: Text(context.l10n.permissionRequired),
+        content: Text(title.isNotEmpty ? title : context.l10n.allowThisAction),
         actions: [
           TextButton(
             onPressed: () {
               ctx.read<ChatCubit>().respondToPermission(false);
               Navigator.of(ctx).pop();
             },
-            child: const Text('Deny'),
+            child: Text(context.l10n.deny),
           ),
           FilledButton(
             onPressed: () {
               ctx.read<ChatCubit>().respondToPermission(true);
               Navigator.of(ctx).pop();
             },
-            child: const Text('Allow'),
+            child: Text(context.l10n.allow),
           ),
         ],
       ),

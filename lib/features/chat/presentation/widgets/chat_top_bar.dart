@@ -4,6 +4,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:samantha/app/theme.dart';
+import 'package:samantha/common/extensions/context_x.dart';
 import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
 import 'package:samantha/features/chat/presentation/state/chat_state.dart';
 
@@ -35,7 +36,7 @@ class ChatTopBar extends StatelessWidget {
                 Expanded(
                   child: BlocBuilder<ChatCubit, ChatState>(
                     builder: (context, state) {
-                      final title = state.sessionName ?? 'Chat';
+                      final title = state.sessionName ?? context.l10n.fallbackSessionTitle;
                       final lastActivity = state.lastActivity;
 
                       return Column(

@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:samantha/app/theme.dart';
+import 'package:samantha/common/extensions/context_x.dart';
 import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
 import 'package:samantha/features/chat/presentation/state/chat_state.dart';
 import 'package:samantha/features/chat/presentation/widgets/model_text_field.dart';
@@ -62,7 +63,7 @@ class MessageInput extends StatelessWidget {
                             minLines: 1,
                             maxLines: 6,
                             decoration: InputDecoration(
-                              hintText: 'Message\u2026',
+                              hintText: context.l10n.messageHint,
                               hintStyle: TextStyle(
                                 color: theme.colorScheme.onSurfaceVariant,
                                 fontSize: 14,

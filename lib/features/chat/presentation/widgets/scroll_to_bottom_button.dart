@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:samantha/app/theme.dart';
+import 'package:samantha/common/extensions/context_x.dart';
 
 class ScrollToBottomButton extends StatelessWidget {
   const ScrollToBottomButton({required this.onPressed, super.key});
@@ -47,7 +48,7 @@ class ScrollToBottomButton extends StatelessWidget {
                   Icon(Icons.arrow_downward, size: 16, color: colors.accent),
                   const SizedBox(width: 6),
                   Text(
-                    'Jump to latest',
+                    context.l10n.jumpToLatest,
                     style: TextStyle(
                       fontFamily: colors.mono,
                       fontSize: 11,

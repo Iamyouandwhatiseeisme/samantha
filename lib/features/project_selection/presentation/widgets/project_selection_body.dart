@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:samantha/common/extensions/context_x.dart';
 import 'package:samantha/features/project_selection/data/project_api.dart';
 import 'package:samantha/features/project_selection/presentation/widgets/error_view.dart';
 import 'package:samantha/features/project_selection/presentation/widgets/project_list_view.dart';
@@ -78,9 +79,9 @@ class ProjectSelectionBody extends StatelessWidget {
                     padding: const EdgeInsets.all(16),
                     child: SizedBox(
                       width: double.infinity,
-                      child: ElevatedButton(
+                        child: ElevatedButton(
                         onPressed: selectedProject != null ? onSubmit : null,
-                        child: const Text('New Session'),
+                        child: Text(context.l10n.newSession),
                       ),
                     ),
                   ),

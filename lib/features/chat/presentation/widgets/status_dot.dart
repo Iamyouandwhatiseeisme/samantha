@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:samantha/app/theme.dart';
+import 'package:samantha/common/extensions/context_x.dart';
 import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
 import 'package:samantha/features/chat/presentation/state/chat_state.dart';
 import 'package:samantha/features/chat/presentation/widgets/pulsing_dot.dart';
@@ -25,11 +26,23 @@ class StatusDot extends StatelessWidget {
         currentProjectPath: state.currentProjectPath,
       ),
       builder: (context, titleState) {
-        final (label, dotColor, isPulsing) = switch (titleState.connectionStatus) {
-          ChatConnectionStatus.connected => ('connected', colors.success, false),
-          ChatConnectionStatus.streaming => ('streaming', colors.accent, true),
-          ChatConnectionStatus.connecting => ('connecting', const Color(0xFFF59E0B), true),
-          ChatConnectionStatus.disconnected => ('offline', colors.error, false),
+        final label = switch (titleState.connectionStatus) {
+          ChatConnectionStatus.connected => context.l10n.statusConnected,
+          ChatConnectionStatus.streaming => context.l10n.statusStreaming,
+          ChatConnectionStatus.connecting => context.l10n.statusConnecting,
+          ChatConnectionStatus.disconnected => context.l10n.statusOffline,
+        };
+        final dotColor = switch (titleState.connectionStatus) {
+          ChatConnectionStatus.connected => colors.success,
+          ChatConnectionStatus.streaming => colors.accent,
+          ChatConnectionStatus.connecting => const Color(0xFFF59E0B),
+          ChatConnectionStatus.disconnected => colors.error,
+        };
+        final isPulsing = switch (titleState.connectionStatus) {
+          ChatConnectionStatus.connected => false,
+          ChatConnectionStatus.streaming => true,
+          ChatConnectionStatus.connecting => true,
+          ChatConnectionStatus.disconnected => false,
         };
 
         final repoName = titleState.currentProjectPath?.split('/').last;

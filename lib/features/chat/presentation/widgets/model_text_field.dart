@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:samantha/app/theme.dart';
+import 'package:samantha/common/extensions/context_x.dart';
 import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
 import 'package:samantha/features/chat/presentation/state/chat_state.dart';
 import 'package:samantha/features/chat/presentation/widgets/model_picker_sheet.dart';
@@ -45,7 +46,7 @@ class _ModelTextFieldState extends State<ModelTextField> {
   }
 
   String _labelFor(String? selectedId, List<FlatModel> all) {
-    if (selectedId == null) return 'Select model';
+    if (selectedId == null) return context.l10n.selectModelFallback;
     final match = all.where((m) => m.qualifiedId == selectedId);
     if (match.isEmpty) return selectedId.split('/').last;
     return match.first.displayName;

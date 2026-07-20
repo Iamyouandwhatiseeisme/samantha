@@ -1,4 +1,7 @@
-String formatErrorMessage(String raw) {
+import 'package:samantha/common/extensions/context_x.dart';
+import 'package:flutter/widgets.dart';
+
+String formatErrorMessage(String raw, BuildContext context) {
   final lower = raw.toLowerCase();
 
   if (lower.contains('connection refused') ||
@@ -6,32 +9,32 @@ String formatErrorMessage(String raw) {
       lower.contains('connection failed') ||
       lower.contains('no route to host') ||
       lower.contains('network is unreachable')) {
-    return 'Could not reach the server';
+    return context.l10n.errorCouldNotReachServer;
   }
 
   if (lower.contains('timed out') || lower.contains('timeout')) {
-    return 'Server did not respond in time';
+    return context.l10n.errorServerDidNotRespond;
   }
 
   if (lower.contains('authentication failed') || lower.contains('auth failed')) {
-    return 'Invalid auth token';
+    return context.l10n.errorInvalidAuthToken;
   }
 
   if (lower.contains('not configured')) {
-    return 'Please enter your connection details';
+    return context.l10n.errorEnterConnectionDetails;
   }
 
   if (lower.contains('websocket') && lower.contains('failed')) {
-    return 'Could not establish connection';
+    return context.l10n.errorCouldNotEstablishConnection;
   }
 
   if (lower.contains('invalid response') || lower.contains('failed to parse')) {
-    return 'Received invalid response from server';
+    return context.l10n.errorInvalidResponseFromServer;
   }
 
   if (lower.contains('connection lost') || lower.contains('stream closed')) {
-    return 'Connection lost';
+    return context.l10n.errorConnectionLost;
   }
 
-  return 'Something went wrong. Please try again.';
+  return context.l10n.errorSomethingWentWrong;
 }

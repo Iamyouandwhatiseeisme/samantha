@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:samantha/app/theme.dart';
+import 'package:samantha/common/extensions/context_x.dart';
 import 'package:samantha/features/chat/data/error_message.dart';
 import 'package:samantha/features/connection_settings/presentation/state/connection_settings_state.dart';
 
@@ -26,7 +27,7 @@ class ConnectionTestResult extends StatelessWidget {
               Icon(Icons.check_circle, size: 16, color: colors.success),
               const SizedBox(width: 8),
               Text(
-                'Connection successful',
+                context.l10n.connectionSuccessful,
                 style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface),
               ),
             ],
@@ -45,7 +46,7 @@ class ConnectionTestResult extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  formatErrorMessage(message),
+                  formatErrorMessage(message, context),
                   style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface),
                 ),
               ),

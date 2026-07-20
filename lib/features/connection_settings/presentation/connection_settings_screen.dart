@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:samantha/app/router.dart';
 import 'package:samantha/app/theme.dart';
 import 'package:samantha/app/theme_mode_cubit.dart';
+import 'package:samantha/common/extensions/context_x.dart';
 import 'package:samantha/features/connection_settings/presentation/state/connection_settings_cubit.dart';
 import 'package:samantha/features/connection_settings/presentation/state/connection_settings_state.dart';
 import 'package:samantha/features/connection_settings/presentation/widgets/connection_test_result.dart';
@@ -63,7 +64,7 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Connection Settings'),
+            title: Text(context.l10n.connectionSettings),
             actions: [
               BlocBuilder<ThemeModeCubit, ThemeMode>(
                 builder: (context, themeMode) {
@@ -86,9 +87,9 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
                 TextField(
                   controller: _hostController,
                   enabled: state is! ConnectionSettingsTesting,
-                  decoration: const InputDecoration(
-                    labelText: 'Host / Tailscale IP',
-                    hintText: '100.101.102.103 or laptop.tailnet.ts.net',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.hostTailscaleIp,
+                    hintText: context.l10n.hostHint,
                   ),
                   onChanged: (v) => context.read<ConnectionSettingsCubit>().updateHost(v),
                 ),
@@ -97,9 +98,9 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
                   controller: _authTokenController,
                   enabled: state is! ConnectionSettingsTesting,
                   obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Auth Token',
-                    hintText: 'Set by BRIDGE_AUTH_TOKEN env var',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.authToken,
+                    hintText: context.l10n.authTokenHint,
                   ),
                   onChanged: (v) => context.read<ConnectionSettingsCubit>().updateAuthToken(v),
                 ),
@@ -130,7 +131,7 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
                                 ),
                               )
                             : Text(
-                                'Test Connection',
+                                context.l10n.testConnection,
                                 style: TextStyle(
                                   fontFamily: colors.mono,
                                   fontSize: 13,
@@ -156,7 +157,7 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
                                 context.read<ConnectionSettingsCubit>().testConnection(host);
                               },
                         child: Text(
-                          'Save & Connect',
+                          context.l10n.saveAndConnect,
                           style: TextStyle(
                             fontFamily: colors.mono,
                             fontSize: 13,

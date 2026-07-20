@@ -2,6 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:samantha/app/injection.dart';
 import 'package:samantha/app/router.dart';
+import 'package:samantha/common/extensions/context_x.dart';
 import 'package:samantha/features/connection_settings/data/connection_settings_repository.dart';
 import 'package:samantha/features/project_selection/data/project_api.dart';
 import 'package:samantha/features/project_selection/presentation/widgets/project_selection_body.dart';
@@ -92,13 +93,13 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Samantha'),
+        title: Text(context.l10n.appName),
         bottom: TabBar(
           controller: _tabController,
           indicatorSize: TabBarIndicatorSize.tab,
-          tabs: const [
-            Tab(icon: Icon(Icons.folder), text: 'Repository'),
-            Tab(icon: Icon(Icons.history), text: 'Session'),
+          tabs: [
+            Tab(icon: const Icon(Icons.folder), text: context.l10n.tabRepository),
+            Tab(icon: const Icon(Icons.history), text: context.l10n.tabSession),
           ],
         ),
       ),

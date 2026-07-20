@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:samantha/app/theme.dart';
+import 'package:samantha/common/extensions/context_x.dart';
 import 'package:samantha/features/chat/domain/entities.dart';
 
 class TodoContent extends StatelessWidget {
@@ -22,7 +23,7 @@ class TodoContent extends StatelessWidget {
             Icon(Icons.checklist, size: 13, color: theme.colorScheme.onSurfaceVariant),
             const SizedBox(width: 4),
             Text(
-              '$doneCount/${todos.length} done',
+              context.l10n.todosDone(doneCount, todos.length),
               style: TextStyle(
                 fontFamily: colors.mono,
                 fontSize: 11,

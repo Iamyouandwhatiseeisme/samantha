@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:samantha/app/theme.dart';
+import 'package:samantha/common/extensions/context_x.dart';
 import 'package:samantha/features/chat/data/error_message.dart';
 import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
 
@@ -29,7 +30,7 @@ class ErrorBanner extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              formatErrorMessage(message),
+              formatErrorMessage(message, context),
               style: TextStyle(
                 fontSize: 12,
                 color: theme.colorScheme.onSurface,
@@ -45,7 +46,7 @@ class ErrorBanner extends StatelessWidget {
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
-                'RETRY',
+                context.l10n.retryButton,
                 style: TextStyle(
                   fontFamily: colors.mono,
                   fontSize: 10,

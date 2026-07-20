@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:samantha/common/extensions/context_x.dart';
 import 'package:samantha/features/project_selection/data/project_api.dart';
 
 class ProjectListView extends StatelessWidget {
@@ -25,17 +26,17 @@ class ProjectListView extends StatelessWidget {
             children: [
               const Icon(Icons.folder_off, size: 48),
               const SizedBox(height: 16),
-              Text('No repositories found', style: Theme.of(context).textTheme.titleMedium),
+              Text(context.l10n.noRepositoriesFound, style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
-              const Text(
-                'Make sure opencode is running and has discovered\nyour git repositories.',
+              Text(
+                context.l10n.noRepositoriesDescription,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
               FilledButton.icon(
                 onPressed: onRefresh,
                 icon: const Icon(Icons.refresh),
-                label: const Text('Refresh'),
+                label: Text(context.l10n.refresh),
               ),
             ],
           ),

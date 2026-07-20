@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:samantha/common/extensions/context_x.dart';
 import 'package:samantha/features/chat/data/error_message.dart';
 
 class ErrorView extends StatelessWidget {
@@ -23,10 +24,10 @@ class ErrorView extends StatelessWidget {
           children: [
             Icon(Icons.error_outline, size: 48, color: colorScheme.error),
             const SizedBox(height: 16),
-            Text('Failed to load data', style: Theme.of(context).textTheme.titleMedium),
+            Text(context.l10n.failedToLoadData, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             Text(
-              formatErrorMessage(message),
+              formatErrorMessage(message, context),
               textAlign: TextAlign.center,
               style: TextStyle(color: colorScheme.onSurfaceVariant),
             ),
@@ -34,12 +35,12 @@ class ErrorView extends StatelessWidget {
             FilledButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
+              label: Text(context.l10n.retry),
             ),
             const SizedBox(height: 8),
             TextButton(
               onPressed: onBackToSettings,
-              child: const Text('Back to Settings'),
+              child: Text(context.l10n.backToSettings),
             ),
           ],
         ),

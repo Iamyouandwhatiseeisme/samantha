@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:samantha/common/extensions/context_x.dart';
 import 'package:samantha/common/extensions/duration_x.dart';
 import 'package:samantha/features/chat/presentation/widgets/collapsible_block.dart';
 
@@ -92,11 +93,11 @@ class ThinkingBlock extends StatelessWidget {
     this.duration,
   });
 
-  String get _label {
-    if (isThinking) return 'Thinking…';
+  String _label(BuildContext context) {
+    if (isThinking) return context.l10n.thinking;
     final d = duration;
-    if (d == null || d == Duration.zero) return 'Thought';
-    return 'Thought for ${d.toShortText()}';
+    if (d == null || d == Duration.zero) return context.l10n.thought;
+    return context.l10n.thoughtWithDuration(d.toShortText());
   }
 
   @override
@@ -106,9 +107,9 @@ class ThinkingBlock extends StatelessWidget {
     return CollapsibleBlock(
       icon: Icons.psychology,
       label: isThinking
-          ? ShimmerText(_label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600))
+          ? ShimmerText(_label(context), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600))
           : Text(
-              _label,
+              _label(context),
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: colorScheme.onSurfaceVariant),
             ),
       child: SelectableText(

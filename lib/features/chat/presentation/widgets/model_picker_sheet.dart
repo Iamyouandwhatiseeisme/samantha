@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:samantha/app/theme.dart';
+import 'package:samantha/common/extensions/context_x.dart';
 
 class FlatModel {
   final String qualifiedId;
@@ -54,7 +55,7 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
             child: Row(
               children: [
                 Text(
-                  'Select Model',
+                  context.l10n.selectModel,
                   style: theme.textTheme.titleMedium,
                 ),
                 const Spacer(),
@@ -72,7 +73,7 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
               autofocus: true,
               style: TextStyle(fontSize: 14, color: theme.colorScheme.onSurface),
               decoration: InputDecoration(
-                hintText: 'Search models\u2026',
+                hintText: context.l10n.searchModels,
                 prefixIcon: const Icon(Icons.search, size: 18),
                 prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
               ),
@@ -88,7 +89,7 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
                 ? Padding(
                     padding: const EdgeInsets.all(24),
                     child: Text(
-                      'No models found',
+                      context.l10n.noModelsFound,
                       style: TextStyle(
                         fontSize: 13,
                         color: theme.colorScheme.onSurfaceVariant,
