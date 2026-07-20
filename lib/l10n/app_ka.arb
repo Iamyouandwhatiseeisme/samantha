@@ -1,0 +1,75 @@
+{
+  "@@locale": "ka",
+  "appName": "სამანტა",
+  "tabRepository": "რეპოზიტორია",
+  "tabSession": "სესია",
+  "newSession": "ახალი სესია",
+  "failedToLoadData": "მონაცემების ჩატვირთვა ვერ მოხერხდა",
+  "retry": "გამეორება",
+  "backToSettings": "პარამეტრებში დაბრუნება",
+  "noRepositoriesFound": "რეპოზიტორიები ვერ მოიძებნა",
+  "noRepositoriesDescription": "დარწმუნდით, რომ opencode გაშვებულია და აღმოაჩინა\nთქვენი git რეპოზიტორიები.",
+  "refresh": "განახლება",
+  "noPreviousSessions": "წინა სესიები არ არის",
+  "noSessionsDescription": "თქვენი opencode სერვერის სესიები\nაქ გამოჩნდება.",
+  "connectionSettings": "კავშირის პარამეტრები",
+  "hostTailscaleIp": "ჰოსტი / Tailscale IP",
+  "hostHint": "100.101.102.103 ან laptop.tailnet.ts.net",
+  "authToken": "ავტორიზაციის ტოკენი",
+  "authTokenHint": "იყენებს BRIDGE_AUTH_TOKEN გარემოს ცვლადს",
+  "testConnection": "კავშირის შემოწმება",
+  "saveAndConnect": "შენახვა და დაკავშირება",
+  "connectionSuccessful": "კავშირი წარმატებით დამყარდა",
+  "permissionRequired": "ნებართვაა საჭირო",
+  "allowThisAction": "დაუშვათ ეს მოქმედება?",
+  "deny": "უარყოფა",
+  "allow": "დაშვება",
+  "chat": "ჩატი",
+  "messageHint": "შეტყობინება…",
+  "selectModel": "მოდელის არჩევა",
+  "searchModels": "მოდელების ძიება…",
+  "noModelsFound": "მოდელები ვერ მოიძებნა",
+  "statusConnected": "დაკავშირებულია",
+  "statusStreaming": "სტრიმინგი",
+  "statusConnecting": "მიმდინარეობს დაკავშირება",
+  "statusOffline": "ოფლაინ",
+  "retryButton": "გამეორება",
+  "thinking": "ფიქრი…",
+  "thought": "აზრი",
+  "thoughtWithDuration": "ფიქრობდა {duration}",
+  "copy": "კოპირება",
+  "copied": "დაკოპირდა",
+  "todosDone": "{doneCount}/{totalCount} შესრულებულია",
+  "jumpToLatest": "ბოლოზე გადასვლა",
+  "errorCouldNotReachServer": "სერვერთან დაკავშირება ვერ მოხერხდა",
+  "errorServerDidNotRespond": "სერვერმა დროულად არ უპასუხა",
+  "errorInvalidAuthToken": "არასწორი ავტორიზაციის ტოკენი",
+  "errorEnterConnectionDetails": "გთხოვთ, შეიყვანოთ კავშირის მონაცემები",
+  "errorCouldNotEstablishConnection": "კავშირის დამყარება ვერ მოხერხდა",
+  "errorInvalidResponseFromServer": "სერვერიდან მიღებულ იქნა არასწორი პასუხი",
+  "errorConnectionLost": "კავშირი დაიკარგა",
+  "errorSomethingWentWrong": "რაღაც არასწორად წავიდა. გთხოვთ, სცადოთ თავიდან.",
+  "minutesAgo": "წთ წინ",
+  "hoursAgo": "სთ წინ",
+  "daysAgo": "დ წინ",
+  "code": "კოდი",
+  "selectModelFallback": "მოდელის არჩევა",
+  "fallbackSessionTitle": "ჩატი",
+  "@thoughtWithDuration": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "@todosDone": {
+    "placeholders": {
+      "doneCount": {
+        "type": "int"
+      },
+      "totalCount": {
+        "type": "int"
+      }
+    }
+  }
+}
