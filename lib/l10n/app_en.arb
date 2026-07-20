@@ -1,0 +1,75 @@
+{
+  "@@locale": "en",
+  "appName": "Samantha",
+  "tabRepository": "Repository",
+  "tabSession": "Session",
+  "newSession": "New Session",
+  "failedToLoadData": "Failed to load data",
+  "retry": "Retry",
+  "backToSettings": "Back to Settings",
+  "noRepositoriesFound": "No repositories found",
+  "noRepositoriesDescription": "Make sure opencode is running and has discovered\nyour git repositories.",
+  "refresh": "Refresh",
+  "noPreviousSessions": "No previous sessions",
+  "noSessionsDescription": "Sessions from your opencode server\nwill appear here.",
+  "connectionSettings": "Connection Settings",
+  "hostTailscaleIp": "Host / Tailscale IP",
+  "hostHint": "100.101.102.103 or laptop.tailnet.ts.net",
+  "authToken": "Auth Token",
+  "authTokenHint": "Set by BRIDGE_AUTH_TOKEN env var",
+  "testConnection": "Test Connection",
+  "saveAndConnect": "Save & Connect",
+  "connectionSuccessful": "Connection successful",
+  "permissionRequired": "Permission Required",
+  "allowThisAction": "Allow this action?",
+  "deny": "Deny",
+  "allow": "Allow",
+  "chat": "Chat",
+  "messageHint": "Message…",
+  "selectModel": "Select Model",
+  "searchModels": "Search models…",
+  "noModelsFound": "No models found",
+  "statusConnected": "connected",
+  "statusStreaming": "streaming",
+  "statusConnecting": "connecting",
+  "statusOffline": "offline",
+  "retryButton": "RETRY",
+  "thinking": "Thinking…",
+  "thought": "Thought",
+  "thoughtWithDuration": "Thought for {duration}",
+  "copy": "Copy",
+  "copied": "Copied",
+  "todosDone": "{doneCount}/{totalCount} done",
+  "jumpToLatest": "Jump to latest",
+  "errorCouldNotReachServer": "Could not reach the server",
+  "errorServerDidNotRespond": "Server did not respond in time",
+  "errorInvalidAuthToken": "Invalid auth token",
+  "errorEnterConnectionDetails": "Please enter your connection details",
+  "errorCouldNotEstablishConnection": "Could not establish connection",
+  "errorInvalidResponseFromServer": "Received invalid response from server",
+  "errorConnectionLost": "Connection lost",
+  "errorSomethingWentWrong": "Something went wrong. Please try again.",
+  "minutesAgo": "m ago",
+  "hoursAgo": "h ago",
+  "daysAgo": "d ago",
+  "code": "code",
+  "selectModelFallback": "Select model",
+  "fallbackSessionTitle": "Chat",
+  "@thoughtWithDuration": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "@todosDone": {
+    "placeholders": {
+      "doneCount": {
+        "type": "int"
+      },
+      "totalCount": {
+        "type": "int"
+      }
+    }
+  }
+}
