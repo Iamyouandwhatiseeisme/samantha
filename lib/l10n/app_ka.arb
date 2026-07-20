@@ -55,6 +55,14 @@
   "code": "კოდი",
   "selectModelFallback": "მოდელის არჩევა",
   "fallbackSessionTitle": "ჩატი",
+  "messageActionsRetry": "გამეორება",
+  "messageActionsEdit": "რედაქტირება",
+  "messageActionsCopyCode": "კოდის კოპირება",
+  "messageActionsBranch": "აქიდან განშტოება",
+  "editMessageTitle": "შეტყობინების რედაქტირება",
+  "editMessageSave": "შენახვა და ხელახლა გაგზავნა",
+  "editMessageCancel": "გაუქმება",
+  "codeCopied": "კოდი კოპირებულია ბუფერში",
   "@thoughtWithDuration": {
     "placeholders": {
       "duration": {

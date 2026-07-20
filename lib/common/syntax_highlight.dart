@@ -11,6 +11,7 @@ import 'package:highlight/languages/javascript.dart';
 import 'package:highlight/languages/json.dart';
 import 'package:highlight/languages/kotlin.dart';
 import 'package:highlight/languages/markdown.dart';
+import 'package:highlight/languages/plaintext.dart';
 import 'package:highlight/languages/python.dart';
 import 'package:highlight/languages/rust.dart';
 import 'package:highlight/languages/sql.dart';
@@ -39,6 +40,7 @@ void registerHighlightLanguages() {
   highlight.registerLanguage('diff', diff);
   highlight.registerLanguage('markdown', markdown);
   highlight.registerLanguage('graphql', graphql);
+  highlight.registerLanguage('plaintext', plaintext);
 }
 
 String resolveLanguage(String? label) {

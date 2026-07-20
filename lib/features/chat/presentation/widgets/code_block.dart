@@ -123,7 +123,7 @@ class _CodeBlockState extends State<CodeBlock> {
   Widget _buildHighlightedCode(String code, String language, AppColors colors, ColorScheme scheme) {
     final theme = buildHighlightTheme(colors, scheme);
     final lang = resolveLanguage(language);
-    final result = highlight.parse(code, language: lang.isNotEmpty ? lang : null);
+    final result = highlight.parse(code, language: lang.isNotEmpty ? lang : 'plaintext');
     final nodes = result.nodes ?? const [];
 
     return RichText(

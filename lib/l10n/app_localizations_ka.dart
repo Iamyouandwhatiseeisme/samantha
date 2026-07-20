@@ -182,4 +182,28 @@ class AppLocalizationsKa extends AppLocalizations {
 
   @override
   String get fallbackSessionTitle => 'ჩატი';
+
+  @override
+  String get messageActionsRetry => 'გამეორება';
+
+  @override
+  String get messageActionsEdit => 'რედაქტირება';
+
+  @override
+  String get messageActionsCopyCode => 'კოდის კოპირება';
+
+  @override
+  String get messageActionsBranch => 'აქიდან განშტოება';
+
+  @override
+  String get editMessageTitle => 'შეტყობინების რედაქტირება';
+
+  @override
+  String get editMessageSave => 'შენახვა და ხელახლა გაგზავნა';
+
+  @override
+  String get editMessageCancel => 'გაუქმება';
+
+  @override
+  String get codeCopied => 'კოდი კოპირებულია ბუფერში';
 }

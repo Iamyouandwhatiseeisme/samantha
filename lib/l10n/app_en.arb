@@ -55,6 +55,14 @@
   "code": "code",
   "selectModelFallback": "Select model",
   "fallbackSessionTitle": "Chat",
+  "messageActionsRetry": "Retry",
+  "messageActionsEdit": "Edit",
+  "messageActionsCopyCode": "Copy Code",
+  "messageActionsBranch": "Branch from Here",
+  "editMessageTitle": "Edit Message",
+  "editMessageSave": "Save & Resend",
+  "editMessageCancel": "Cancel",
+  "codeCopied": "Code copied to clipboard",
   "@thoughtWithDuration": {
     "placeholders": {
       "duration": {

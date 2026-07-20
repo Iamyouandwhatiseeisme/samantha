@@ -2,11 +2,16 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:samantha/app/theme.dart';
+import 'package:samantha/common/extensions/context_x.dart';
 import 'package:samantha/features/chat/domain/chat_message_formatting.dart';
 import 'package:samantha/features/chat/domain/entities.dart';
+import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
 import 'package:samantha/features/chat/presentation/widgets/chat_message_content.dart';
 import 'package:samantha/features/chat/presentation/widgets/copy_icon.dart';
+import 'package:samantha/features/chat/presentation/widgets/message_action_menu.dart';
+import 'package:samantha/features/chat/presentation/widgets/message_edit_dialog.dart';
 
 class MessageBubble extends StatefulWidget {
   final ChatMessage msg;
@@ -49,6 +54,127 @@ class _MessageBubbleState extends State<MessageBubble> {
     });
   }
 
+  void _showActionMenu(TapDownDetails details) {
+    final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final Offset position = details.globalPosition;
+
+    showGeneralDialog<void>(
+      context: context,
+      barrierColor: Colors.transparent,
+      barrierDismissible: true,
+      barrierLabel: 'Message actions',
+      transitionDuration: const Duration(milliseconds: 150),
+      pageBuilder: (ctx, anim1, anim2) {
+        return Stack(
+          children: [
+            GestureDetector(
+              onTap: () => Navigator.of(ctx).pop(),
+              behavior: HitTestBehavior.opaque,
+              child: Container(color: Colors.transparent),
+            ),
+            Positioned(
+              left: _clampX(position.dx - 90, overlay.size.width),
+              top: _clampY(position.dy - 20, overlay.size.height),
+              child: MessageActionMenu(
+                message: widget.msg,
+                isUser: widget.isUser,
+                onRetry: () {
+                  Navigator.of(ctx).pop();
+                  context.read<ChatCubit>().retryMessage(widget.msg.id);
+                },
+                onEdit: () {
+                  Navigator.of(ctx).pop();
+                  _showEditDialog();
+                },
+                onCopyCode: () {
+                  Navigator.of(ctx).pop();
+                  _copyCodeBlocks();
+                },
+                onBranch: () {
+                  Navigator.of(ctx).pop();
+                  context.read<ChatCubit>().branchFromMessage(widget.msg.id);
+                },
+              ),
+            ),
+          ],
+        );
+      },
+      transitionBuilder: (ctx, anim1, anim2, child) {
+        return FadeTransition(
+          opacity: anim1,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.8, end: 1.0).animate(CurvedAnimation(parent: anim1, curve: Curves.easeOut)),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  double _clampX(double x, double maxWidth) {
+    return x.clamp(8.0, maxWidth - 188.0);
+  }
+
+  double _clampY(double y, double maxHeight) {
+    return y.clamp(8.0, maxHeight - 200.0);
+  }
+
+  void _showEditDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => MessageEditDialog(
+        initialContent: widget.msg.content,
+        onSave: (newContent) {
+          context.read<ChatCubit>().editMessage(widget.msg.id, newContent);
+        },
+      ),
+    );
+  }
+
+  void _copyCodeBlocks() {
+    final codeBlocks = _extractCodeBlocks(widget.msg.content);
+    if (codeBlocks.isEmpty) return;
+
+    final codeText = codeBlocks.join('\n\n');
+    Clipboard.setData(ClipboardData(text: codeText));
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          context.l10n.codeCopied,
+          style: TextStyle(fontFamily: AppColors.of(context).mono, fontSize: 12),
+        ),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  List<String> _extractCodeBlocks(String content) {
+    if (!content.contains('```')) return [];
+
+    final parts = content.split('```');
+    final blocks = <String>[];
+
+    for (int i = 0; i < parts.length; i++) {
+      if (i.isOdd) {
+        final trimmed = parts[i];
+        final firstLineEnd = trimmed.indexOf('\n');
+        if (firstLineEnd == -1) {
+          blocks.add('```${trimmed.trim()}```');
+        } else {
+          final lang = trimmed.substring(0, firstLineEnd).trim();
+          final code = trimmed.substring(firstLineEnd + 1).trim();
+          if (code.isNotEmpty) {
+            blocks.add('```$lang\n$code\n```');
+          }
+        }
+      }
+    }
+
+    return blocks;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
@@ -72,6 +198,7 @@ class _MessageBubbleState extends State<MessageBubble> {
             Flexible(
               child: GestureDetector(
                 onTap: hasContent ? _revealCopy : null,
+                onLongPressStart: (_) => _showActionMenu(TapDownDetails(globalPosition: Offset.zero)),
                 behavior: HitTestBehavior.opaque,
                 child: Container(
                   margin: const EdgeInsets.symmetric(vertical: 3),
@@ -127,4 +254,3 @@ class _MessageBubbleState extends State<MessageBubble> {
     );
   }
 }
-

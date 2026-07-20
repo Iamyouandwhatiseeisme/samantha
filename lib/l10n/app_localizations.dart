@@ -427,6 +427,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Chat'**
   String get fallbackSessionTitle;
+
+  /// No description provided for @messageActionsRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get messageActionsRetry;
+
+  /// No description provided for @messageActionsEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get messageActionsEdit;
+
+  /// No description provided for @messageActionsCopyCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Code'**
+  String get messageActionsCopyCode;
+
+  /// No description provided for @messageActionsBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Branch from Here'**
+  String get messageActionsBranch;
+
+  /// No description provided for @editMessageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Message'**
+  String get editMessageTitle;
+
+  /// No description provided for @editMessageSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save & Resend'**
+  String get editMessageSave;
+
+  /// No description provided for @editMessageCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get editMessageCancel;
+
+  /// No description provided for @codeCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Code copied to clipboard'**
+  String get codeCopied;
 }
 
 class _AppLocalizationsDelegate

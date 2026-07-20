@@ -182,4 +182,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get fallbackSessionTitle => 'Chat';
+
+  @override
+  String get messageActionsRetry => 'Retry';
+
+  @override
+  String get messageActionsEdit => 'Edit';
+
+  @override
+  String get messageActionsCopyCode => 'Copy Code';
+
+  @override
+  String get messageActionsBranch => 'Branch from Here';
+
+  @override
+  String get editMessageTitle => 'Edit Message';
+
+  @override
+  String get editMessageSave => 'Save & Resend';
+
+  @override
+  String get editMessageCancel => 'Cancel';
+
+  @override
+  String get codeCopied => 'Code copied to clipboard';
 }

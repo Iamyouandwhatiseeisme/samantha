@@ -396,6 +396,142 @@ class ChatCubit extends Cubit<ChatState> {
     _repository.setModel(model);
   }
 
+  void retryMessage(String messageId) {
+    final idx = state.messages.indexWhere((m) => m.id == messageId);
+    if (idx == -1) return;
+
+    final msg = state.messages[idx];
+    if (msg.role == ChatRole.user && idx + 1 < state.messages.length) {
+      final assistantMsg = state.messages[idx + 1];
+      if (assistantMsg.role == ChatRole.assistant) {
+        final newMessages = state.messages.sublist(0, idx + 1);
+        newMessages.add(assistantMsg.copyWith(
+          content: '',
+          thinkingContent: '',
+          thinkingDuration: null,
+          toolResults: [],
+          isStreaming: true,
+          duration: null,
+          inputTokens: null,
+          outputTokens: null,
+          cost: null,
+        ));
+
+        emit(state.copyWith(
+          messages: newMessages,
+          connectionStatus: ChatConnectionStatus.streaming,
+          clearToolName: true,
+          clearToolStatus: true,
+        ));
+
+        _repository.send(msg.content, model: state.selectedModel);
+      }
+    } else if (msg.role == ChatRole.assistant && !msg.isStreaming) {
+      final userIdx = idx - 1;
+      if (userIdx >= 0 && state.messages[userIdx].role == ChatRole.user) {
+        final userMsg = state.messages[userIdx];
+        final newMessages = state.messages.sublist(0, idx);
+        newMessages.add(msg.copyWith(
+          content: '',
+          thinkingContent: '',
+          thinkingDuration: null,
+          toolResults: [],
+          isStreaming: true,
+          duration: null,
+          inputTokens: null,
+          outputTokens: null,
+          cost: null,
+        ));
+
+        emit(state.copyWith(
+          messages: newMessages,
+          connectionStatus: ChatConnectionStatus.streaming,
+          clearToolName: true,
+          clearToolStatus: true,
+        ));
+
+        _repository.send(userMsg.content, model: state.selectedModel);
+      }
+    }
+  }
+
+  void editMessage(String messageId, String newContent) {
+    final idx = state.messages.indexWhere((m) => m.id == messageId);
+    if (idx == -1 || newContent.trim().isEmpty) return;
+
+    final newMessages = state.messages.sublist(0, idx);
+    final editedUser = state.messages[idx].copyWith(content: newContent.trim());
+    newMessages.add(editedUser);
+    newMessages.add(ChatMessage(
+      id: '${DateTime.now().millisecondsSinceEpoch}_ai',
+      role: ChatRole.assistant,
+      isStreaming: true,
+    ));
+
+    emit(state.copyWith(
+      messages: newMessages,
+      inputText: '',
+      connectionStatus: ChatConnectionStatus.streaming,
+      clearToolName: true,
+      clearToolStatus: true,
+      clearPermissionId: true,
+      clearPermissionTitle: true,
+    ));
+
+    _repository.send(newContent.trim(), model: state.selectedModel);
+  }
+
+  void branchFromMessage(String messageId) {
+    final idx = state.messages.indexWhere((m) => m.id == messageId);
+    if (idx == -1) return;
+
+    final isUserMessage = state.messages[idx].role == ChatRole.user;
+    final cutIndex = isUserMessage ? idx + 1 : idx;
+
+    final newMessages = state.messages.sublist(0, cutIndex);
+
+    if (!isUserMessage && newMessages.isNotEmpty && newMessages.last.role == ChatRole.user) {
+      final lastUser = newMessages.last;
+      newMessages.add(ChatMessage(
+        id: '${DateTime.now().millisecondsSinceEpoch}_ai',
+        role: ChatRole.assistant,
+        isStreaming: true,
+      ));
+
+      emit(state.copyWith(
+        messages: newMessages,
+        connectionStatus: ChatConnectionStatus.streaming,
+        clearToolName: true,
+        clearToolStatus: true,
+      ));
+
+      _repository.send(lastUser.content, model: state.selectedModel);
+    } else if (isUserMessage && cutIndex < state.messages.length) {
+      final assistantMsg = state.messages[cutIndex];
+      newMessages.add(assistantMsg.copyWith(
+        content: '',
+        thinkingContent: '',
+        thinkingDuration: null,
+        toolResults: [],
+        isStreaming: true,
+        duration: null,
+        inputTokens: null,
+        outputTokens: null,
+        cost: null,
+      ));
+
+      emit(state.copyWith(
+        messages: newMessages,
+        connectionStatus: ChatConnectionStatus.streaming,
+        clearToolName: true,
+        clearToolStatus: true,
+      ));
+
+      final userMsg = state.messages[idx];
+      _repository.send(userMsg.content, model: state.selectedModel);
+    }
+  }
+
   void disconnect() {
     _reconnectTimer?.cancel();
     _eventSubscription?.cancel();
