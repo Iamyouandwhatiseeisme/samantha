@@ -56,6 +56,7 @@ class ToolResultChip extends StatelessWidget {
       child: CollapsibleBlock(
         icon: result.tool.toToolIcon,
         label: Text('${result.tool}: ${result.description}'),
+        summary: result.content!.summary,
         child: ToolResultContent(content: result.content!),
       ),
     );

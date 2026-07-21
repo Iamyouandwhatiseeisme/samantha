@@ -10,6 +10,7 @@ class CollapsibleBlock extends StatefulWidget {
   final bool initialExpanded;
   final Color? backgroundColor;
   final Color? borderColor;
+  final String? summary;
 
   const CollapsibleBlock({
     super.key,
@@ -19,6 +20,7 @@ class CollapsibleBlock extends StatefulWidget {
     this.initialExpanded = false,
     this.backgroundColor,
     this.borderColor,
+    this.summary,
   });
 
   @override
@@ -73,6 +75,17 @@ class _CollapsibleBlockState extends State<CollapsibleBlock> {
                       ),
                     ),
                   ),
+                  if (!_expanded && widget.summary != null) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      widget.summary!,
+                      style: TextStyle(
+                        fontFamily: colors.mono,
+                        fontSize: 10,
+                        color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ],
                   const SizedBox(width: 4),
                   AnimatedRotation(
                     turns: _expanded ? 0.25 : 0,

@@ -97,4 +97,23 @@ class TodoItem {
   });
 }
 
+extension ToolContentSummary on ToolContent {
+  String get summary {
+    return switch (this) {
+      RawToolContent(content: final c) => _textSummary(c),
+      TodoToolContent(todos: final todos) => '${todos.length} todo${todos.length == 1 ? '' : 's'}',
+    };
+  }
+
+  String _textSummary(String text) {
+    if (text.isEmpty) return 'empty';
+    final lines = text.split('\n').length;
+    final bytes = text.length;
+    if (bytes < 1024) return '$lines line${lines == 1 ? '' : 's'}';
+    final kb = bytes / 1024;
+    if (kb < 10) return '${kb.toStringAsFixed(1)} KB';
+    return '${(kb / 1024).toStringAsFixed(1)} MB';
+  }
+}
+
 enum ChatRole { user, assistant }
