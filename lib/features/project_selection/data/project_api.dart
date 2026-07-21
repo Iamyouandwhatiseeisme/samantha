@@ -25,6 +25,7 @@ class OpenCodeSession {
   final String title;
   final String directory;
   final int createdAt;
+  final String? parentId;
   final int inputTokens;
   final double cost;
   final double contextPercent;
@@ -35,6 +36,7 @@ class OpenCodeSession {
     required this.title,
     required this.directory,
     required this.createdAt,
+    this.parentId,
     this.inputTokens = 0,
     this.cost = 0,
     this.contextPercent = 0,
@@ -48,6 +50,7 @@ class OpenCodeSession {
       title: json['title'] as String? ?? 'Untitled',
       directory: json['directory'] as String? ?? '',
       createdAt: (time['created'] as num?)?.toInt() ?? 0,
+      parentId: json['parent_id'] as String?,
       inputTokens: (json['inputTokens'] as num?)?.toInt() ?? 0,
       cost: (json['cost'] as num?)?.toDouble() ?? 0,
       contextPercent: (json['contextPercent'] as num?)?.toDouble() ?? 0,
@@ -78,6 +81,66 @@ class OpenCodeSession {
     if (contextPercent < 0.1) return '<0.1%';
     return '${contextPercent.toStringAsFixed(1)}%';
   }
+
+  bool get isBranch => parentId != null && parentId!.isNotEmpty;
+}
+
+class SessionTreeNode {
+  final OpenCodeSession session;
+  final int depth;
+  final bool isLastInGroup;
+  final bool hasChildren;
+
+  const SessionTreeNode({
+    required this.session,
+    required this.depth,
+    required this.isLastInGroup,
+    required this.hasChildren,
+  });
+}
+
+List<SessionTreeNode> buildSessionTree(List<OpenCodeSession> sessions) {
+  final byId = <String, OpenCodeSession>{};
+  final children = <String, List<OpenCodeSession>>{};
+  final roots = <OpenCodeSession>[];
+
+  for (final s in sessions) {
+    byId[s.id] = s;
+  }
+
+  for (final s in sessions) {
+    if (s.isBranch && byId.containsKey(s.parentId)) {
+      children.putIfAbsent(s.parentId!, () => []).add(s);
+    } else {
+      roots.add(s);
+    }
+  }
+
+  for (final childList in children.values) {
+    childList.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+  }
+  roots.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
+  final result = <SessionTreeNode>[];
+
+  void addNode(OpenCodeSession session, int depth, bool isLastInGroup) {
+    final childList = children[session.id] ?? [];
+    result.add(SessionTreeNode(
+      session: session,
+      depth: depth,
+      isLastInGroup: isLastInGroup,
+      hasChildren: childList.isNotEmpty,
+    ));
+    for (int i = 0; i < childList.length; i++) {
+      addNode(childList[i], depth + 1, i == childList.length - 1);
+    }
+  }
+
+  for (int i = 0; i < roots.length; i++) {
+    addNode(roots[i], 0, i == roots.length - 1);
+  }
+
+  return result;
 }
 
 @injectable
