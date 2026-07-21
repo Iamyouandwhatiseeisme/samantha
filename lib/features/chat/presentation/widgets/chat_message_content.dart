@@ -26,6 +26,7 @@ class ChatMessageContent extends StatelessWidget {
   final Duration? thinkingDuration;
   final bool isStreaming;
   final List<ToolResult> toolResults;
+  final List<ChatImage> images;
 
   const ChatMessageContent({
     super.key,
@@ -35,6 +36,7 @@ class ChatMessageContent extends StatelessWidget {
     this.thinkingDuration,
     required this.isStreaming,
     this.toolResults = const [],
+    this.images = const [],
   });
 
   @override
@@ -51,6 +53,34 @@ class ChatMessageContent extends StatelessWidget {
           text: thinkingContent,
           isThinking: isThinking,
           duration: thinkingDuration,
+        ),
+      );
+    }
+
+    for (final image in images) {
+      children.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.network(
+              image.url,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  height: 100,
+                  alignment: Alignment.center,
+                  child: Text(
+                    'Failed to load image',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
         ),
       );
     }

@@ -231,6 +231,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                     thinkingDuration: msg.thinkingDuration,
                     isStreaming: msg.isStreaming,
                     toolResults: msg.toolResults,
+                    images: msg.images,
                   ),
                 ),
               ),

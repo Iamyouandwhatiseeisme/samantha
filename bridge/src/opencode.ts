@@ -278,6 +278,35 @@ export class OpencodeProcess extends EventEmitter {
         this.emit("error", new Error((msg.message as string) ?? "Unknown error"));
         break;
 
+      case "image": {
+        const data = msg.data as Record<string, unknown> | undefined;
+        if (data?.url) {
+          this.emit("image", {
+            url: data.url,
+            mime_type: data.mime_type,
+            filename: data.filename,
+          });
+        }
+        break;
+      }
+
+      case "binary": {
+        const data = msg.data as Record<string, unknown> | undefined;
+        if (data?.data) {
+          const mimeType = (data.mime_type as string) ?? "image/png";
+          const base64 = data.data as string;
+          const filename = typeof data.path === "string"
+            ? (data.path as string).split("/").pop()
+            : undefined;
+          this.emit("image", {
+            url: `data:${mimeType};base64,${base64}`,
+            mime_type: mimeType,
+            filename,
+          });
+        }
+        break;
+      }
+
       default:
         console.log(`[bridge:opencode] unknown msg type: ${msg.type}`, JSON.stringify(msg));
         break;

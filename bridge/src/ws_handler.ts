@@ -49,6 +49,12 @@ export function setupWebSocket(wss: WebSocketServer, config: BridgeConfig) {
         }
       });
 
+      opencode.on("image", (data: any) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "image", ...data }));
+        }
+      });
+
       opencode.on("permission", (data: any) => {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(
@@ -270,6 +276,11 @@ export function setupWebSocket(wss: WebSocketServer, config: BridgeConfig) {
                 description: string;
                 content?: string;
               }> = [];
+              const images: Array<{
+                url: string;
+                mime_type?: string;
+                filename?: string;
+              }> = [];
 
               for (const p of Array.isArray(parts) ? parts : []) {
                 if (p.type === "text" && p.text) {
@@ -290,6 +301,19 @@ export function setupWebSocket(wss: WebSocketServer, config: BridgeConfig) {
                   const description = formatToolDesc(toolName, input, status);
                   const content = extractToolContent(toolName, input, state);
                   toolResults.push({ tool: toolName, description, content });
+                } else if (p.type === "image_url" && p.data?.url) {
+                  images.push({
+                    url: p.data.url,
+                    mime_type: p.data.mime_type,
+                  });
+                } else if (p.type === "binary" && p.data?.data) {
+                  const mimeType = p.data.mime_type ?? "image/png";
+                  const base64 = p.data.data;
+                  images.push({
+                    url: `data:${mimeType};base64,${base64}`,
+                    mime_type: mimeType,
+                    filename: p.data.path ? p.data.path.split("/").pop() : undefined,
+                  });
                 }
               }
 
@@ -308,6 +332,7 @@ export function setupWebSocket(wss: WebSocketServer, config: BridgeConfig) {
                 thinkingContent,
                 thinkingMs: thinkingMs > 0 ? thinkingMs : undefined,
                 toolResults,
+                images,
                 duration,
                 inputTokens,
                 outputTokens,

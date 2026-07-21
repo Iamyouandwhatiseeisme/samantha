@@ -9,6 +9,7 @@ class ChatMessage {
   final Duration? thinkingDuration;
   final bool isStreaming;
   final List<ToolResult> toolResults;
+  final List<ChatImage> images;
   final Duration? duration;
   final int? inputTokens;
   final int? outputTokens;
@@ -23,6 +24,7 @@ class ChatMessage {
     this.thinkingDuration,
     this.isStreaming = false,
     this.toolResults = const [],
+    this.images = const [],
     this.duration,
     this.inputTokens,
     this.outputTokens,
@@ -38,6 +40,7 @@ class ChatMessage {
     Duration? thinkingDuration,
     bool? isStreaming,
     List<ToolResult>? toolResults,
+    List<ChatImage>? images,
     Duration? duration,
     int? inputTokens,
     int? outputTokens,
@@ -52,6 +55,7 @@ class ChatMessage {
       thinkingDuration: thinkingDuration ?? this.thinkingDuration,
       isStreaming: isStreaming ?? this.isStreaming,
       toolResults: toolResults ?? this.toolResults,
+      images: images ?? this.images,
       duration: duration ?? this.duration,
       inputTokens: inputTokens ?? this.inputTokens,
       outputTokens: outputTokens ?? this.outputTokens,
@@ -94,6 +98,17 @@ class TodoItem {
     required this.content,
     required this.status,
     this.priority = 'medium',
+  });
+}
+
+class ChatImage {
+  final String url;
+  final String? mimeType;
+  final String? filename;
+  const ChatImage({
+    required this.url,
+    this.mimeType,
+    this.filename,
   });
 }
 

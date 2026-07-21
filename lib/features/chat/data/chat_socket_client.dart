@@ -91,6 +91,13 @@ class PermissionRequestEvent extends ChatEvent {
   PermissionRequestEvent({required this.id, this.title = ''});
 }
 
+class ImageEvent extends ChatEvent {
+  final String url;
+  final String? mimeType;
+  final String? filename;
+  ImageEvent({required this.url, this.mimeType, this.filename});
+}
+
 @injectable
 class ChatSocketClient {
   WebSocketChannel? _channel;
@@ -182,6 +189,12 @@ class ChatSocketClient {
             _eventController.add(PermissionRequestEvent(
               id: parsed['id'] ?? '',
               title: parsed['title'] ?? '',
+            ));
+          case 'image':
+            _eventController.add(ImageEvent(
+              url: parsed['url'] ?? '',
+              mimeType: parsed['mime_type'],
+              filename: parsed['filename'],
             ));
           }
         } catch (_) {}

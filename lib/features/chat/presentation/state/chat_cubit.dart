@@ -135,6 +135,8 @@ class ChatCubit extends Cubit<ChatState> {
             _handleTool(tool, status, title ?? description, content: content);
           case PermissionRequestEvent(:final id, :final title):
             _handlePermission(id, title);
+          case ImageEvent(:final url, :final mimeType, :final filename):
+            _handleImage(url, mimeType, filename);
         }
       },
       onError: (err) {
@@ -293,6 +295,20 @@ class ChatCubit extends Cubit<ChatState> {
     ));
   }
 
+  void _handleImage(String url, String? mimeType, String? filename) {
+    final messages = List<ChatMessage>.from(state.messages);
+    final streamingMessage = _takeStreamingMessage(messages);
+
+    messages.add(streamingMessage.copyWith(
+      images: [...streamingMessage.images, ChatImage(url: url, mimeType: mimeType, filename: filename)],
+    ));
+
+    emit(state.copyWith(
+      messages: messages,
+      connectionStatus: ChatConnectionStatus.streaming,
+    ));
+  }
+
   void respondToPermission(bool allow) {
     final id = state.currentPermissionId;
     if (id == null) return;
@@ -373,6 +389,23 @@ class ChatCubit extends Cubit<ChatState> {
         timestamp = DateTime.fromMillisecondsSinceEpoch(rawTs);
       }
 
+      final List<ChatImage> images = [];
+      final rawImages = m['images'];
+      if (rawImages is List) {
+        for (final img in rawImages) {
+          if (img is Map) {
+            final url = img['url'] as String?;
+            if (url != null && url.isNotEmpty) {
+              images.add(ChatImage(
+                url: url,
+                mimeType: img['mime_type'] as String?,
+                filename: img['filename'] as String?,
+              ));
+            }
+          }
+        }
+      }
+
       return ChatMessage(
         id: DateTime.now().millisecondsSinceEpoch.toString() + content.hashCode.toString(),
         role: role,
@@ -380,6 +413,7 @@ class ChatCubit extends Cubit<ChatState> {
         thinkingContent: thinkingContent,
         thinkingDuration: thinkingDuration,
         toolResults: toolResults,
+        images: images,
         duration: duration,
         inputTokens: inputTokens,
         outputTokens: outputTokens,
