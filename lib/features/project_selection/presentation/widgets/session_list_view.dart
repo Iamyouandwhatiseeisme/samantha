@@ -87,14 +87,6 @@ class _SessionTreeTile extends StatelessWidget {
           color: selected
               ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
               : null,
-          border: selected
-              ? Border(
-                  left: BorderSide(
-                    color: theme.colorScheme.primary,
-                    width: 3,
-                  ),
-                )
-              : null,
         ),
         padding: EdgeInsets.only(left: depth * 20.0),
         child: Padding(
