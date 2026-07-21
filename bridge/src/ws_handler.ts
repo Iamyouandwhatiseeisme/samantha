@@ -387,17 +387,26 @@ export function setupWebSocket(wss: WebSocketServer, config: BridgeConfig) {
 
       switch (msg?.type) {
         case "prompt":
-          if (typeof msg.content === "string") {
-            console.log(`[bridge] received prompt: ${msg.content.trim()}`);
+          if (typeof msg.content === "string" || Array.isArray(msg.attachments)) {
+            console.log(`[bridge] received prompt: ${(msg.content ?? "").trim()}`);
             if (opencode) {
               if (!events) {
                 createEvents();
               }
+              const attachments = Array.isArray(msg.attachments)
+                ? msg.attachments.map((a: any) => ({
+                    name: a.name as string,
+                    mime_type: a.mime_type as string | undefined,
+                    data: a.data as string,
+                    size: a.size as number | undefined,
+                  }))
+                : undefined;
               opencode
                 .write(
-                  msg.content.trim(),
+                  msg.content?.trim() ?? "",
                   msg.model ?? currentModel ?? undefined,
                   currentProjectPath ?? undefined,
+                  attachments,
                 )
                 .catch((err: Error) => {
                   console.error(`[bridge] prompt failed: ${err.message}`);

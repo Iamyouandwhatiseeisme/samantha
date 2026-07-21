@@ -112,6 +112,19 @@ class ChatImage {
   });
 }
 
+class PendingAttachment {
+  final String name;
+  final String mimeType;
+  final String base64Data;
+  final int sizeBytes;
+  const PendingAttachment({
+    required this.name,
+    required this.mimeType,
+    required this.base64Data,
+    required this.sizeBytes,
+  });
+}
+
 extension ToolContentSummary on ToolContent {
   String get summary {
     return switch (this) {

@@ -2,6 +2,13 @@ import { EventEmitter } from "events";
 import { spawn, ChildProcess } from "child_process";
 import { request as httpRequest } from "http";
 
+export interface Attachment {
+  name: string;
+  mime_type?: string;
+  data: string;
+  size?: number;
+}
+
 export interface ToolEvent {
   tool: string;
   status: string;
@@ -97,7 +104,59 @@ export class OpencodeProcess extends EventEmitter {
     return this.sessionId;
   }
 
-  async write(prompt: string, model?: string, projectPath?: string): Promise<void> {
+  /**
+   * Send file attachments to the session via the serve API before running the prompt.
+   * Each attachment is posted as a message with a binary part containing base64 data.
+   */
+  private async sendAttachments(sessionId: string, attachments: Attachment[]): Promise<void> {
+    const url = new URL(`/session/${sessionId}/message`, this.serveUrl);
+    const parts = attachments.map((a) => ({
+      type: "binary",
+      data: {
+        path: a.name,
+        mime_type: a.mime_type ?? "application/octet-stream",
+        data: a.data,
+      },
+    }));
+
+    const payload = JSON.stringify({
+      role: "user",
+      parts,
+    });
+
+    return new Promise((resolve, reject) => {
+      const target = new URL(url.href);
+      const req = httpRequest(
+        {
+          hostname: target.hostname,
+          port: target.port,
+          path: `${target.pathname}${target.search}`,
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": Buffer.byteLength(payload),
+          },
+        },
+        (res) => {
+          let data = "";
+          res.on("data", (chunk) => (data += chunk));
+          res.on("end", () => {
+            if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+              console.log(`[bridge:opencode] sent ${attachments.length} attachment(s)`);
+              resolve();
+            } else {
+              reject(new Error(`Failed to send attachments: ${res.statusCode} ${data}`));
+            }
+          });
+        },
+      );
+      req.on("error", reject);
+      req.write(payload);
+      req.end();
+    });
+  }
+
+  async write(prompt: string, model?: string, projectPath?: string, attachments?: Attachment[]): Promise<void> {
     if (this.process) {
       this.stop();
     }
@@ -105,6 +164,10 @@ export class OpencodeProcess extends EventEmitter {
 
     const sessionId = await this.ensureSession(projectPath);
     this.emit("session", sessionId);
+
+    if (attachments && attachments.length > 0) {
+      await this.sendAttachments(sessionId, attachments);
+    }
 
     const args = ["run", "--format", "json", "--auto", "--attach", this.serveUrl];
     if (model) {

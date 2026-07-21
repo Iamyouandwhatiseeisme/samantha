@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:injectable/injectable.dart';
+import 'package:samantha/features/chat/domain/entities.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 sealed class ChatEvent {}
@@ -208,12 +209,21 @@ class ChatSocketClient {
     );
   }
 
-  void sendPrompt(String content, {String? model}) {
+  void sendPrompt(String content, {String? model, List<PendingAttachment> attachments = const []}) {
     if (_channel != null) {
       final msg = <String, dynamic>{'type': 'prompt', 'content': content};
       if (model != null) {
         msg['model'] = model;
         debugPrint('[Bridge] Sending prompt with model: $model');
+      }
+      if (attachments.isNotEmpty) {
+        msg['attachments'] = attachments.map((a) => {
+          'name': a.name,
+          'mime_type': a.mimeType,
+          'data': a.base64Data,
+          'size': a.sizeBytes,
+        }).toList();
+        debugPrint('[Bridge] Sending prompt with ${attachments.length} attachment(s)');
       }
       _channel!.sink.add(jsonEncode(msg));
     }

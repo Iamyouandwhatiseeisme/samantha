@@ -24,7 +24,7 @@ class ChatCubit extends Cubit<ChatState> {
 
   void sendMessage() {
     final text = state.inputText.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty && state.attachments.isEmpty) return;
 
     final messageId = DateTime.now().millisecondsSinceEpoch.toString();
     final userMessage = ChatMessage(
@@ -48,9 +48,27 @@ class ChatCubit extends Cubit<ChatState> {
       clearToolStatus: true,
       clearPermissionId: true,
       clearPermissionTitle: true,
+      clearAttachments: true,
     ));
 
-    _repository.send(text, model: state.selectedModel);
+    _repository.send(text, model: state.selectedModel, attachments: state.attachments);
+  }
+
+  void addAttachment(PendingAttachment attachment) {
+    emit(state.copyWith(
+      attachments: [...state.attachments, attachment],
+    ));
+  }
+
+  void removeAttachment(int index) {
+    if (index < 0 || index >= state.attachments.length) return;
+    final updated = List<PendingAttachment>.from(state.attachments);
+    updated.removeAt(index);
+    emit(state.copyWith(attachments: updated));
+  }
+
+  void clearAttachments() {
+    emit(state.copyWith(clearAttachments: true));
   }
 
   void stopGeneration() {

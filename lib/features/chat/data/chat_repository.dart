@@ -26,8 +26,8 @@ class ChatRepository {
     await _socketClient.connect(host, token);
   }
 
-  void send(String prompt, {String? model}) =>
-      _socketClient.sendPrompt(prompt, model: model);
+  void send(String prompt, {String? model, List<PendingAttachment> attachments = const []}) =>
+      _socketClient.sendPrompt(prompt, model: model, attachments: attachments);
 
   void stop() => _socketClient.stop();
 

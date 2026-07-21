@@ -16,6 +16,7 @@ class ChatState {
   final String? currentToolStatus;
   final String? currentPermissionId;
   final String? currentPermissionTitle;
+  final List<PendingAttachment> attachments;
 
   const ChatState({
     this.messages = const [],
@@ -31,6 +32,7 @@ class ChatState {
     this.currentToolStatus,
     this.currentPermissionId,
     this.currentPermissionTitle,
+    this.attachments = const [],
   });
 
   ChatState copyWith({
@@ -56,6 +58,8 @@ class ChatState {
     bool clearPermissionId = false,
     String? currentPermissionTitle,
     bool clearPermissionTitle = false,
+    List<PendingAttachment>? attachments,
+    bool clearAttachments = false,
   }) {
     return ChatState(
       messages: messages ?? this.messages,
@@ -71,6 +75,7 @@ class ChatState {
       currentToolStatus: clearToolStatus ? null : (currentToolStatus ?? this.currentToolStatus),
       currentPermissionId: clearPermissionId ? null : (currentPermissionId ?? this.currentPermissionId),
       currentPermissionTitle: clearPermissionTitle ? null : (currentPermissionTitle ?? this.currentPermissionTitle),
+      attachments: clearAttachments ? const [] : (attachments ?? this.attachments),
     );
   }
 }
