@@ -25,6 +25,8 @@ class _SearchableListState extends State<SearchableList> with SingleTickerProvid
   late AnimationController _animationController;
   late Animation<double> _animation;
 
+  static const _pullThreshold = 40.0;
+
   @override
   void initState() {
     super.initState();
@@ -74,7 +76,7 @@ class _SearchableListState extends State<SearchableList> with SingleTickerProvid
     if (notification is ScrollUpdateNotification && notification.metrics.pixels <= 0) {
       if (notification.dragDetails != null && notification.dragDetails!.delta.dy > 0) {
         _overscrollAccumulator += notification.dragDetails!.delta.dy;
-        if (_overscrollAccumulator > 40) {
+        if (_overscrollAccumulator > _pullThreshold) {
           _showSearch();
           return true;
         }
@@ -105,7 +107,39 @@ class _SearchableListState extends State<SearchableList> with SingleTickerProvid
                 onClear: _hideSearch,
               ),
             ),
+          if (!_searchVisible) const _PullCue(),
           Expanded(child: widget.child),
+        ],
+      ),
+    );
+  }
+}
+
+class _PullCue extends StatelessWidget {
+  const _PullCue();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.search,
+            size: 14,
+            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            'Pull down to search',
+            style: TextStyle(
+              fontSize: 12,
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
