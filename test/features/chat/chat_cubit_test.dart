@@ -6,11 +6,14 @@ import 'package:samantha/features/chat/data/chat_repository.dart';
 import 'package:samantha/features/chat/data/chat_socket_client.dart';
 import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
 import 'package:samantha/features/chat/presentation/state/chat_state.dart';
+import 'package:samantha/features/notification/service/notification_service.dart';
 
 class MockChatRepository extends Mock implements ChatRepository {}
+class MockNotificationService extends Mock implements NotificationService {}
 
 void main() {
   late MockChatRepository repository;
+  late MockNotificationService notificationService;
   late StreamController<ChatEvent> eventController;
 
   setUp(() {
@@ -20,6 +23,7 @@ void main() {
     registerFallbackValue(AuthFailedEvent(''));
 
     repository = MockChatRepository();
+    notificationService = MockNotificationService();
     eventController = StreamController<ChatEvent>.broadcast();
 
     when(() => repository.events).thenAnswer((_) => eventController.stream);
@@ -29,6 +33,7 @@ void main() {
     when(() => repository.getSessionName()).thenAnswer((_) async => null);
     when(() => repository.setProject(any())).thenReturn(null);
     when(() => repository.setSession(any(), any())).thenReturn(null);
+    when(() => notificationService.shouldNotifyOnCompletion).thenReturn(false);
   });
 
   tearDown(() {
@@ -42,7 +47,7 @@ void main() {
         when(() => repository.connect()).thenAnswer((_) async {});
         when(() => repository.isConnected).thenReturn(true);
       },
-      build: () => ChatCubit(repository),
+      build: () => ChatCubit(repository, notificationService),
       act: (cubit) => cubit.connect(),
       expect: () => [
         isA<ChatState>()
@@ -60,7 +65,7 @@ void main() {
         when(() => repository.connect())
             .thenThrow(Exception('Connection refused'));
       },
-      build: () => ChatCubit(repository),
+      build: () => ChatCubit(repository, notificationService),
       act: (cubit) => cubit.connect(),
       expect: () => [
         isA<ChatState>()
@@ -79,7 +84,7 @@ void main() {
       setUp: () {
         when(() => repository.send(any())).thenReturn(null);
       },
-      build: () => ChatCubit(repository),
+      build: () => ChatCubit(repository, notificationService),
       seed: () => const ChatState(
         connectionStatus: ChatConnectionStatus.connected,
         inputText: 'Hello, world!',
@@ -98,7 +103,7 @@ void main() {
 
     blocTest<ChatCubit, ChatState>(
       'does not send empty messages',
-      build: () => ChatCubit(repository),
+      build: () => ChatCubit(repository, notificationService),
       act: (cubit) => cubit.sendMessage(),
       expect: () => [],
     );
@@ -109,7 +114,7 @@ void main() {
         when(() => repository.connect()).thenAnswer((_) async {});
         when(() => repository.isConnected).thenReturn(true);
       },
-      build: () => ChatCubit(repository),
+      build: () => ChatCubit(repository, notificationService),
       act: (cubit) async {
         await cubit.connect();
         eventController.add(TokenEvent('Hello '));
@@ -142,7 +147,7 @@ void main() {
         when(() => repository.connect()).thenAnswer((_) async {});
         when(() => repository.isConnected).thenReturn(true);
       },
-      build: () => ChatCubit(repository),
+      build: () => ChatCubit(repository, notificationService),
       act: (cubit) async {
         await cubit.connect();
         // A turn with a tool call produces one reasoning block per step.
@@ -179,7 +184,7 @@ void main() {
         when(() => repository.connect()).thenAnswer((_) async {});
         when(() => repository.isConnected).thenReturn(true);
       },
-      build: () => ChatCubit(repository),
+      build: () => ChatCubit(repository, notificationService),
       act: (cubit) async {
         await cubit.connect();
         eventController.add(ThinkingEvent('Hmm.'));
@@ -201,7 +206,7 @@ void main() {
         when(() => repository.connect()).thenAnswer((_) async {});
         when(() => repository.isConnected).thenReturn(true);
       },
-      build: () => ChatCubit(repository),
+      build: () => ChatCubit(repository, notificationService),
       act: (cubit) async {
         await cubit.connect();
         eventController.add(TokenEvent('Hello'));
@@ -230,7 +235,7 @@ void main() {
 
     blocTest<ChatCubit, ChatState>(
       'disconnect() sets status to disconnected',
-      build: () => ChatCubit(repository),
+      build: () => ChatCubit(repository, notificationService),
       seed: () => const ChatState(
           connectionStatus: ChatConnectionStatus.connected),
       act: (cubit) => cubit.disconnect(),
@@ -247,7 +252,7 @@ void main() {
         when(() => repository.connect()).thenAnswer((_) async {});
         when(() => repository.isConnected).thenReturn(true);
       },
-      build: () => ChatCubit(repository),
+      build: () => ChatCubit(repository, notificationService),
       seed: () => const ChatState(
           connectionStatus: ChatConnectionStatus.connected),
       act: (cubit) async {

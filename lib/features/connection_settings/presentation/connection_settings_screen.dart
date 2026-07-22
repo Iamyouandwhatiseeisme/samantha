@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:samantha/app/injection.dart';
 import 'package:samantha/app/router.dart';
 import 'package:samantha/app/settings_wrapper.dart';
 import 'package:samantha/app/theme.dart';
@@ -8,6 +9,8 @@ import 'package:samantha/common/extensions/context_x.dart';
 import 'package:samantha/features/connection_settings/presentation/state/connection_settings_cubit.dart';
 import 'package:samantha/features/connection_settings/presentation/state/connection_settings_state.dart';
 import 'package:samantha/features/connection_settings/presentation/widgets/connection_test_result.dart';
+import 'package:samantha/features/notification/data/notification_settings_repository.dart';
+import 'package:samantha/features/notification/service/notification_service.dart';
 
 @RoutePage()
 class ConnectionSettingsScreen extends StatefulWidget {
@@ -35,6 +38,47 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
         }
       default:
         break;
+    }
+  }
+
+  Future<void> _requestNotificationPermissionIfNeeded() async {
+    final settingsRepo = getIt<NotificationSettingsRepository>();
+    if (settingsRepo.hasPermissionBeenRequested()) return;
+
+    if (!mounted) return;
+
+    final shouldAsk = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(context.l10n.notificationPermissionTitle),
+        content: Text(context.l10n.notificationPermissionMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Not now'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Enable'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldAsk != true || !mounted) return;
+
+    final notificationService = getIt<NotificationService>();
+    final granted = await notificationService.requestPermission();
+
+    if (!mounted) return;
+
+    if (granted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.l10n.notificationPermissionGranted),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -90,6 +134,7 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
           _syncFromState(state);
         }
         if (state is ConnectionSettingsTestSuccess) {
+          _requestNotificationPermissionIfNeeded();
           context.router.push(const ProjectSelectionRoute());
         }
       },

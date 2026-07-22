@@ -226,5 +226,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shareConversation => 'Share conversation';
 
   @override
+  String get notificationPermissionTitle => 'Enable Notifications?';
+
+  @override
+  String get notificationPermissionMessage =>
+      'Get notified when a long AI response completes while the app is in the background.';
+
+  @override
+  String get notificationPermissionGranted => 'Notifications enabled';
+
+  @override
+  String get notificationPermissionDenied => 'Notifications disabled';
+
+  @override
   String get codeCopied => 'Code copied to clipboard';
 }

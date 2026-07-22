@@ -6,17 +6,19 @@ import 'package:samantha/features/chat/data/chat_repository.dart';
 import 'package:samantha/features/chat/data/chat_socket_client.dart';
 import 'package:samantha/features/chat/domain/entities.dart';
 import 'package:samantha/features/chat/presentation/state/chat_state.dart';
+import 'package:samantha/features/notification/service/notification_service.dart';
 
 @injectable
 class ChatCubit extends Cubit<ChatState> {
   final ChatRepository _repository;
+  final NotificationService _notificationService;
   StreamSubscription<ChatEvent>? _eventSubscription;
   Timer? _reconnectTimer;
   int _reconnectAttempt = 0;
   bool _authFailed = false;
   bool _userSelectedModel = false;
 
-  ChatCubit(this._repository) : super(const ChatState());
+  ChatCubit(this._repository, this._notificationService) : super(const ChatState());
 
   void updateInput(String text) {
     emit(state.copyWith(inputText: text));
@@ -267,6 +269,10 @@ class ChatCubit extends Cubit<ChatState> {
       clearPermissionId: true,
       clearPermissionTitle: true,
     ));
+
+    if (_notificationService.shouldNotifyOnCompletion) {
+      _notificationService.sendCompletionNotification();
+    }
 
     _reconnectAttempt = 0;
   }

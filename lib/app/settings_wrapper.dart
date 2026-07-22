@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:samantha/app/injection.dart';
 import 'package:samantha/app/router.dart';
 import 'package:samantha/app/theme.dart';
 import 'package:samantha/app/theme_mode_cubit.dart';
+import 'package:samantha/features/notification/service/notification_service.dart';
 import 'package:samantha/l10n/app_localizations.dart';
 
 class SettingsWrapper extends StatefulWidget {
@@ -16,7 +18,7 @@ class SettingsWrapper extends StatefulWidget {
   State<SettingsWrapper> createState() => _SettingsWrapperState();
 }
 
-class _SettingsWrapperState extends State<SettingsWrapper> {
+class _SettingsWrapperState extends State<SettingsWrapper> with WidgetsBindingObserver {
   ThemeMode _themeMode = ThemeMode.dark;
   Locale? _locale;
   late final RouterConfig<Object> _routerConfig;
@@ -26,6 +28,28 @@ class _SettingsWrapperState extends State<SettingsWrapper> {
     super.initState();
     _routerConfig = AppRouter().config();
     _loadSettings();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final notificationService = getIt<NotificationService>();
+
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+        notificationService.markStreamingOnBackground();
+      case AppLifecycleState.resumed:
+        notificationService.markForeground();
+      default:
+        break;
+    }
   }
 
   Future<void> _loadSettings() async {

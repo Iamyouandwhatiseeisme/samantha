@@ -69,6 +69,10 @@
   "exportAsMarkdown": "Markdown",
   "exportAsText": "ტექსტი",
   "shareConversation": "ჩატის გაზიარება",
+  "notificationPermissionTitle": "ჩაირთოს შეტყობინებები?",
+  "notificationPermissionMessage": "მიიღეთ შეტყობინება, როდესაც ხელოვნური ინტელექტის პასუხი დასრულდება აპის ფონურ რეჟიმში ყოფნისას.",
+  "notificationPermissionGranted": "შეტყობინებები ჩართულია",
+  "notificationPermissionDenied": "შეტყობინებები გამორთულია",
   "codeCopied": "კოდი კოპირებულია ბუფერში",
   "@thoughtWithDuration": {
     "placeholders": {

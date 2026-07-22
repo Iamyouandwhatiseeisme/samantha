@@ -69,6 +69,10 @@
   "exportAsMarkdown": "Markdown",
   "exportAsText": "Plain text",
   "shareConversation": "Share conversation",
+  "notificationPermissionTitle": "Enable Notifications?",
+  "notificationPermissionMessage": "Get notified when a long AI response completes while the app is in the background.",
+  "notificationPermissionGranted": "Notifications enabled",
+  "notificationPermissionDenied": "Notifications disabled",
   "codeCopied": "Code copied to clipboard",
   "@thoughtWithDuration": {
     "placeholders": {

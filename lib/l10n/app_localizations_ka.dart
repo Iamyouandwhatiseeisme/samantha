@@ -226,5 +226,18 @@ class AppLocalizationsKa extends AppLocalizations {
   String get shareConversation => 'ჩატის გაზიარება';
 
   @override
+  String get notificationPermissionTitle => 'ჩაირთოს შეტყობინებები?';
+
+  @override
+  String get notificationPermissionMessage =>
+      'მიიღეთ შეტყობინება, როდესაც ხელოვნური ინტელექტის პასუხი დასრულდება აპის ფონურ რეჟიმში ყოფნისას.';
+
+  @override
+  String get notificationPermissionGranted => 'შეტყობინებები ჩართულია';
+
+  @override
+  String get notificationPermissionDenied => 'შეტყობინებები გამორთულია';
+
+  @override
   String get codeCopied => 'კოდი კოპირებულია ბუფერში';
 }

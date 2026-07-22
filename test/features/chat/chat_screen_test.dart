@@ -9,15 +9,19 @@ import 'package:samantha/features/chat/data/chat_repository.dart';
 import 'package:samantha/features/chat/data/chat_socket_client.dart';
 import 'package:samantha/features/chat/presentation/chat_screen.dart';
 import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
+import 'package:samantha/features/notification/service/notification_service.dart';
 
 class MockChatRepository extends Mock implements ChatRepository {}
+class MockNotificationService extends Mock implements NotificationService {}
 
 void main() {
   late MockChatRepository repository;
+  late MockNotificationService notificationService;
   late StreamController<ChatEvent> eventController;
 
   setUp(() {
     repository = MockChatRepository();
+    notificationService = MockNotificationService();
     eventController = StreamController<ChatEvent>.broadcast();
     when(() => repository.events).thenAnswer((_) => eventController.stream);
     when(() => repository.disconnect()).thenAnswer((_) async {});
@@ -27,6 +31,7 @@ void main() {
     when(() => repository.getSessionId()).thenAnswer((_) async => null);
     when(() => repository.setProject(any())).thenReturn(null);
     when(() => repository.setSession(any(), any())).thenReturn(null);
+    when(() => notificationService.shouldNotifyOnCompletion).thenReturn(false);
   });
 
   tearDown(() {
@@ -35,7 +40,7 @@ void main() {
 
   testWidgets('ChatScreen renders messages without layout assertion',
       (tester) async {
-    final cubit = ChatCubit(repository);
+    final cubit = ChatCubit(repository, notificationService);
     addTearDown(cubit.close);
 
     // Seed two user messages to exercise the ListView layout.

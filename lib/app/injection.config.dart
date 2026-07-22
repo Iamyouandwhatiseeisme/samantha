@@ -22,6 +22,9 @@ import '../features/connection_settings/data/connection_settings_repository.dart
     as _i533;
 import '../features/connection_settings/presentation/state/connection_settings_cubit.dart'
     as _i99;
+import '../features/notification/data/notification_settings_repository.dart'
+    as _i70;
+import '../features/notification/service/notification_service.dart' as _i388;
 import '../features/project_selection/data/project_api.dart' as _i596;
 import 'module.dart' as _i946;
 
@@ -46,11 +49,17 @@ Future<_i174.GetIt> init(
   gh.lazySingleton<_i533.ConnectionSettingsRepository>(
     () => _i533.ConnectionSettingsRepository(gh<_i460.SharedPreferences>()),
   );
+  gh.lazySingleton<_i70.NotificationSettingsRepository>(
+    () => _i70.NotificationSettingsRepository(gh<_i460.SharedPreferences>()),
+  );
   gh.factory<_i99.ConnectionSettingsCubit>(
     () => _i99.ConnectionSettingsCubit(
       gh<_i533.ConnectionSettingsRepository>(),
       gh<_i100.ConnectionApi>(),
     ),
+  );
+  gh.lazySingleton<_i388.NotificationService>(
+    () => _i388.NotificationService(gh<_i70.NotificationSettingsRepository>()),
   );
   gh.lazySingleton<_i320.ChatRepository>(
     () => _i320.ChatRepository(
@@ -59,7 +68,10 @@ Future<_i174.GetIt> init(
     ),
   );
   gh.factory<_i713.ChatCubit>(
-    () => _i713.ChatCubit(gh<_i320.ChatRepository>()),
+    () => _i713.ChatCubit(
+      gh<_i320.ChatRepository>(),
+      gh<_i388.NotificationService>(),
+    ),
   );
   return getIt;
 }

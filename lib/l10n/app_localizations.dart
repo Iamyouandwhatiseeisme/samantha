@@ -512,6 +512,30 @@ abstract class AppLocalizations {
   /// **'Share conversation'**
   String get shareConversation;
 
+  /// No description provided for @notificationPermissionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Notifications?'**
+  String get notificationPermissionTitle;
+
+  /// No description provided for @notificationPermissionMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Get notified when a long AI response completes while the app is in the background.'**
+  String get notificationPermissionMessage;
+
+  /// No description provided for @notificationPermissionGranted.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications enabled'**
+  String get notificationPermissionGranted;
+
+  /// No description provided for @notificationPermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications disabled'**
+  String get notificationPermissionDenied;
+
   /// No description provided for @codeCopied.
   ///
   /// In en, this message translates to:
