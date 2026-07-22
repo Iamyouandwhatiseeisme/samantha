@@ -7,6 +7,7 @@ import 'package:samantha/app/theme.dart';
 import 'package:samantha/common/extensions/context_x.dart';
 import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
 import 'package:samantha/features/chat/presentation/state/chat_state.dart';
+import 'package:samantha/features/chat/presentation/widgets/export_sheet.dart';
 
 class ChatTopBar extends StatelessWidget {
   const ChatTopBar({super.key});
@@ -70,6 +71,20 @@ class ChatTopBar extends StatelessWidget {
                 ChatIconButton(
                   icon: Icons.refresh,
                   onPressed: () => context.read<ChatCubit>().connect(),
+                ),
+                BlocBuilder<ChatCubit, ChatState>(
+                  builder: (context, state) {
+                    final hasMessages = state.messages.isNotEmpty;
+                    return ChatIconButton(
+                      icon: Icons.share,
+                      onPressed: hasMessages
+                          ? () => showModalBottomSheet(
+                                context: context,
+                                builder: (_) => ExportSheet(messages: state.messages),
+                              )
+                          : null,
+                    );
+                  },
                 ),
               ],
             ),

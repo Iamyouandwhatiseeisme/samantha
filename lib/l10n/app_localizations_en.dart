@@ -214,5 +214,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noResultsFound => 'No results found';
 
   @override
+  String get exportConversation => 'Export conversation';
+
+  @override
+  String get exportAsMarkdown => 'Markdown';
+
+  @override
+  String get exportAsText => 'Plain text';
+
+  @override
+  String get shareConversation => 'Share conversation';
+
+  @override
   String get codeCopied => 'Code copied to clipboard';
 }

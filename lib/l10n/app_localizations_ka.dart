@@ -214,5 +214,17 @@ class AppLocalizationsKa extends AppLocalizations {
   String get noResultsFound => 'შედეგები ვერ მოიძებნა';
 
   @override
+  String get exportConversation => 'ჩატის ექსპორტი';
+
+  @override
+  String get exportAsMarkdown => 'Markdown';
+
+  @override
+  String get exportAsText => 'ტექსტი';
+
+  @override
+  String get shareConversation => 'ჩატის გაზიარება';
+
+  @override
   String get codeCopied => 'კოდი კოპირებულია ბუფერში';
 }

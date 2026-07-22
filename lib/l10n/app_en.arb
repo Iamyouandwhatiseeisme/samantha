@@ -65,6 +65,10 @@
   "searchSessions": "Search sessions…",
   "searchProjects": "Search repositories…",
   "noResultsFound": "No results found",
+  "exportConversation": "Export conversation",
+  "exportAsMarkdown": "Markdown",
+  "exportAsText": "Plain text",
+  "shareConversation": "Share conversation",
   "codeCopied": "Code copied to clipboard",
   "@thoughtWithDuration": {
     "placeholders": {

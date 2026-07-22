@@ -65,6 +65,10 @@
   "searchSessions": "სესიების ძიება…",
   "searchProjects": "რეპოზიტორიების ძიება…",
   "noResultsFound": "შედეგები ვერ მოიძებნა",
+  "exportConversation": "ჩატის ექსპორტი",
+  "exportAsMarkdown": "Markdown",
+  "exportAsText": "ტექსტი",
+  "shareConversation": "ჩატის გაზიარება",
   "codeCopied": "კოდი კოპირებულია ბუფერში",
   "@thoughtWithDuration": {
     "placeholders": {

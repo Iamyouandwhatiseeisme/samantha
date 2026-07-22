@@ -488,6 +488,30 @@ abstract class AppLocalizations {
   /// **'No results found'**
   String get noResultsFound;
 
+  /// No description provided for @exportConversation.
+  ///
+  /// In en, this message translates to:
+  /// **'Export conversation'**
+  String get exportConversation;
+
+  /// No description provided for @exportAsMarkdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Markdown'**
+  String get exportAsMarkdown;
+
+  /// No description provided for @exportAsText.
+  ///
+  /// In en, this message translates to:
+  /// **'Plain text'**
+  String get exportAsText;
+
+  /// No description provided for @shareConversation.
+  ///
+  /// In en, this message translates to:
+  /// **'Share conversation'**
+  String get shareConversation;
+
   /// No description provided for @codeCopied.
   ///
   /// In en, this message translates to:
