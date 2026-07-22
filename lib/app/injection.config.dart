@@ -26,6 +26,7 @@ import '../features/notification/data/notification_settings_repository.dart'
     as _i70;
 import '../features/notification/service/notification_service.dart' as _i388;
 import '../features/project_selection/data/project_api.dart' as _i596;
+import '../services/background_task_service.dart' as _i826;
 import 'module.dart' as _i946;
 
 // initializes the registration of main-scope dependencies inside of GetIt
@@ -37,6 +38,7 @@ Future<_i174.GetIt> init(
   final gh = _i526.GetItHelper(getIt, environment, environmentFilter);
   final appModule = _$AppModule();
   gh.factory<_i865.ChatSocketClient>(() => _i865.ChatSocketClient());
+  gh.factory<_i826.BackgroundTaskService>(() => _i826.BackgroundTaskService());
   gh.lazySingleton<_i361.Dio>(() => appModule.dio);
   await gh.lazySingletonAsync<_i460.SharedPreferences>(
     () => appModule.prefs,
@@ -71,6 +73,7 @@ Future<_i174.GetIt> init(
     () => _i713.ChatCubit(
       gh<_i320.ChatRepository>(),
       gh<_i388.NotificationService>(),
+      gh<_i826.BackgroundTaskService>(),
     ),
   );
   return getIt;

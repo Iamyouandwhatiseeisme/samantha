@@ -7,18 +7,22 @@ import 'package:samantha/features/chat/data/chat_socket_client.dart';
 import 'package:samantha/features/chat/domain/entities.dart';
 import 'package:samantha/features/chat/presentation/state/chat_state.dart';
 import 'package:samantha/features/notification/service/notification_service.dart';
+import 'package:samantha/services/background_task_service.dart';
 
 @injectable
 class ChatCubit extends Cubit<ChatState> {
   final ChatRepository _repository;
   final NotificationService _notificationService;
+  final BackgroundTaskService _backgroundTask;
   StreamSubscription<ChatEvent>? _eventSubscription;
   Timer? _reconnectTimer;
   int _reconnectAttempt = 0;
   bool _authFailed = false;
   bool _userSelectedModel = false;
+  bool _backgrounded = false;
+  bool _wasStreamingBeforeBackground = false;
 
-  ChatCubit(this._repository, this._notificationService) : super(const ChatState());
+  ChatCubit(this._repository, this._notificationService, this._backgroundTask) : super(const ChatState());
 
   void updateInput(String text) {
     emit(state.copyWith(inputText: text));
@@ -344,6 +348,7 @@ class ChatCubit extends Cubit<ChatState> {
   }
 
   void _attemptReconnect() {
+    if (_backgrounded) return;
     _reconnectTimer?.cancel();
     const maxDelay = Duration(seconds: 30);
     final delay = Duration(
@@ -595,6 +600,47 @@ class ChatCubit extends Cubit<ChatState> {
     _eventSubscription?.cancel();
     _repository.disconnect();
     emit(state.copyWith(connectionStatus: ChatConnectionStatus.disconnected));
+  }
+
+  void onAppPaused() {
+    _backgrounded = true;
+    _wasStreamingBeforeBackground = state.connectionStatus == ChatConnectionStatus.streaming;
+    _reconnectTimer?.cancel();
+    _notificationService.markStreamingOnBackground();
+
+    if (_wasStreamingBeforeBackground) {
+      _backgroundTask.begin();
+    }
+  }
+
+  Future<void> onAppResumed() async {
+    _backgrounded = false;
+    _notificationService.markForeground();
+    await _backgroundTask.end();
+
+    if (!_repository.isConnected) {
+      _eventSubscription?.cancel();
+      _reconnectTimer?.cancel();
+      _repository.disconnect();
+
+      if (_wasStreamingBeforeBackground) {
+        final messages = List<ChatMessage>.from(state.messages);
+        if (messages.isNotEmpty &&
+            messages.last.role == ChatRole.assistant &&
+            messages.last.isStreaming) {
+          messages.removeLast();
+        }
+        emit(state.copyWith(
+          messages: messages,
+          connectionStatus: ChatConnectionStatus.disconnected,
+          clearToolName: true,
+          clearToolStatus: true,
+        ));
+      }
+
+      await connect();
+      _wasStreamingBeforeBackground = false;
+    }
   }
 
   @override

@@ -65,20 +65,20 @@ by area and ordered by priority within each group.
       and a tree-aware list rather than a flat list.
 - [ ] **Session management.** Add the ability to delete and rename sessions
       from the project selection screen.
-- [ ] **Search within conversation.** Pull-down gesture on the chat list
+- [x] **Search within conversation.** Pull-down gesture on the chat list
       reveals a search bar that filters messages by text content.
-- [ ] **Export / share conversation.** Add a share button that exports the
+- [x] **Export / share conversation.** Add a share button that exports the
       conversation as markdown or plain text.
 
 ---
 
 ## Mobile-specific
 
-- [ ] **Background socket survival.** The WebSocket dies when the app goes to
+- [x] **Background socket survival.** The WebSocket dies when the app goes to
       background on iOS. Add a background mode (or a graceful pause/resume
       that re-attaches to the session on foreground) so a long agentic run
       doesn't silently disconnect.
-- [ ] **Completion notification.** If the app is backgrounded during a long
+- [x] **Completion notification.** If the app is backgrounded during a long
       turn, send a local notification when the response finishes.
 - [ ] **Offline message queue.** If the connection drops, typed messages are
       lost. Queue unsent messages and retry on reconnect.

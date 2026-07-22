@@ -6,6 +6,7 @@ import 'package:samantha/app/injection.dart';
 import 'package:samantha/app/router.dart';
 import 'package:samantha/app/theme.dart';
 import 'package:samantha/app/theme_mode_cubit.dart';
+import 'package:samantha/features/chat/presentation/state/chat_cubit.dart';
 import 'package:samantha/features/notification/service/notification_service.dart';
 import 'package:samantha/l10n/app_localizations.dart';
 
@@ -40,13 +41,15 @@ class _SettingsWrapperState extends State<SettingsWrapper> with WidgetsBindingOb
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final notificationService = getIt<NotificationService>();
+    final chatCubit = getIt<ChatCubit>();
 
     switch (state) {
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
-        notificationService.markStreamingOnBackground();
+        chatCubit.onAppPaused();
       case AppLifecycleState.resumed:
         notificationService.markForeground();
+        chatCubit.onAppResumed();
       default:
         break;
     }
