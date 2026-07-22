@@ -62,6 +62,9 @@
   "editMessageTitle": "შეტყობინების რედაქტირება",
   "editMessageSave": "შენახვა და ხელახლა გაგზავნა",
   "editMessageCancel": "გაუქმება",
+  "searchSessions": "სესიების ძიება…",
+  "searchProjects": "რეპოზიტორიების ძიება…",
+  "noResultsFound": "შედეგები ვერ მოიძებნა",
   "codeCopied": "კოდი კოპირებულია ბუფერში",
   "@thoughtWithDuration": {
     "placeholders": {

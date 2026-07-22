@@ -9,6 +9,7 @@ class SessionListView extends StatelessWidget {
   final VoidCallback onRefresh;
   final ValueChanged<OpenCodeSession>? onDeleteSession;
   final ValueChanged<OpenCodeSession>? onRenameSession;
+  final String? searchQuery;
 
   const SessionListView({
     required this.sessions,
@@ -17,31 +18,40 @@ class SessionListView extends StatelessWidget {
     required this.onRefresh,
     this.onDeleteSession,
     this.onRenameSession,
+    this.searchQuery,
   });
 
   @override
   Widget build(BuildContext context) {
     if (sessions.isEmpty) {
+      final isSearching = searchQuery != null && searchQuery!.isNotEmpty;
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.history, size: 48),
+              Icon(isSearching ? Icons.search_off : Icons.history, size: 48),
               const SizedBox(height: 16),
-              Text(context.l10n.noPreviousSessions, style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                isSearching ? context.l10n.noResultsFound : context.l10n.noPreviousSessions,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(height: 8),
               Text(
-                context.l10n.noSessionsDescription,
+                isSearching
+                    ? '${context.l10n.noResultsFound} "${searchQuery!}"'
+                    : context.l10n.noSessionsDescription,
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 24),
-              FilledButton.icon(
-                onPressed: onRefresh,
-                icon: const Icon(Icons.refresh),
-                label: Text(context.l10n.refresh),
-              ),
+              if (!isSearching) ...[
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: onRefresh,
+                  icon: const Icon(Icons.refresh),
+                  label: Text(context.l10n.refresh),
+                ),
+              ],
             ],
           ),
         ),

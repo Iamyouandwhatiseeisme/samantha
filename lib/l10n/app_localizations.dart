@@ -470,6 +470,24 @@ abstract class AppLocalizations {
   /// **'Cancel'**
   String get editMessageCancel;
 
+  /// No description provided for @searchSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Search sessions…'**
+  String get searchSessions;
+
+  /// No description provided for @searchProjects.
+  ///
+  /// In en, this message translates to:
+  /// **'Search repositories…'**
+  String get searchProjects;
+
+  /// No description provided for @noResultsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No results found'**
+  String get noResultsFound;
+
   /// No description provided for @codeCopied.
   ///
   /// In en, this message translates to:

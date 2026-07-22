@@ -27,6 +27,20 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
   OpenCodeSession? _selectedSession;
   bool _loading = true;
   String? _error;
+  String _projectSearchQuery = '';
+  String _sessionSearchQuery = '';
+
+  List<OpenCodeProject> get _filteredProjects {
+    if (_projectSearchQuery.isEmpty) return _projects;
+    final q = _projectSearchQuery.toLowerCase();
+    return _projects.where((p) => p.displayName.toLowerCase().contains(q) || p.worktree.toLowerCase().contains(q)).toList();
+  }
+
+  List<OpenCodeSession> get _filteredSessions {
+    if (_sessionSearchQuery.isEmpty) return _sessions;
+    final q = _sessionSearchQuery.toLowerCase();
+    return _sessions.where((s) => s.displayName.toLowerCase().contains(q) || s.directory.toLowerCase().contains(q) || s.title.toLowerCase().contains(q)).toList();
+  }
 
   @override
   void initState() {
@@ -224,14 +238,14 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
         onRetry: _loadData,
         onBackToSettings: () => context.router.pop(),
         tabController: _tabController,
-        projects: _projects,
+        projects: _filteredProjects,
         selectedProject: _selectedProject,
         onSelectProject: (project) => setState(() {
           _selectedProject = project;
           _selectedSession = null;
         }),
         onRefresh: _loadData,
-        sessions: _sessions,
+        sessions: _filteredSessions,
         selectedSession: _selectedSession,
         onSelectSession: (session) {
           setState(() {
@@ -243,6 +257,10 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
         onDeleteSession: _deleteSession,
         onRenameSession: _renameSession,
         onSubmit: _continue,
+        projectSearchQuery: _projectSearchQuery,
+        sessionSearchQuery: _sessionSearchQuery,
+        onProjectSearchChanged: (query) => setState(() => _projectSearchQuery = query),
+        onSessionSearchChanged: (query) => setState(() => _sessionSearchQuery = query),
       ),
     );
   }

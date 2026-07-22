@@ -205,5 +205,14 @@ class AppLocalizationsKa extends AppLocalizations {
   String get editMessageCancel => 'გაუქმება';
 
   @override
+  String get searchSessions => 'სესიების ძიება…';
+
+  @override
+  String get searchProjects => 'რეპოზიტორიების ძიება…';
+
+  @override
+  String get noResultsFound => 'შედეგები ვერ მოიძებნა';
+
+  @override
   String get codeCopied => 'კოდი კოპირებულია ბუფერში';
 }

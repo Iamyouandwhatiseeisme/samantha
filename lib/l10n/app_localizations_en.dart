@@ -205,5 +205,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editMessageCancel => 'Cancel';
 
   @override
+  String get searchSessions => 'Search sessions…';
+
+  @override
+  String get searchProjects => 'Search repositories…';
+
+  @override
+  String get noResultsFound => 'No results found';
+
+  @override
   String get codeCopied => 'Code copied to clipboard';
 }

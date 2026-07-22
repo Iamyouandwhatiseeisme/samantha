@@ -62,6 +62,9 @@
   "editMessageTitle": "Edit Message",
   "editMessageSave": "Save & Resend",
   "editMessageCancel": "Cancel",
+  "searchSessions": "Search sessions…",
+  "searchProjects": "Search repositories…",
+  "noResultsFound": "No results found",
   "codeCopied": "Code copied to clipboard",
   "@thoughtWithDuration": {
     "placeholders": {
