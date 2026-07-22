@@ -19,6 +19,7 @@ class SearchableList extends StatefulWidget {
 
 class _SearchableListState extends State<SearchableList> with SingleTickerProviderStateMixin {
   bool _searchVisible = false;
+  double _overscrollAccumulator = 0;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
   late AnimationController _animationController;
@@ -48,6 +49,7 @@ class _SearchableListState extends State<SearchableList> with SingleTickerProvid
   void _showSearch() {
     setState(() {
       _searchVisible = true;
+      _overscrollAccumulator = 0;
     });
     _animationController.forward();
     _searchFocus.requestFocus();
@@ -66,23 +68,30 @@ class _SearchableListState extends State<SearchableList> with SingleTickerProvid
     });
   }
 
-  void _onSearchChanged(String value) {
-    widget.onSearchChanged(value);
+  bool _onScrollNotification(ScrollNotification notification) {
+    if (_searchVisible) return false;
+
+    if (notification is ScrollUpdateNotification && notification.metrics.pixels <= 0) {
+      if (notification.dragDetails != null && notification.dragDetails!.delta.dy > 0) {
+        _overscrollAccumulator += notification.dragDetails!.delta.dy;
+        if (_overscrollAccumulator > 40) {
+          _showSearch();
+          return true;
+        }
+      }
+    }
+
+    if (notification is ScrollEndNotification) {
+      _overscrollAccumulator = 0;
+    }
+
+    return false;
   }
 
   @override
   Widget build(BuildContext context) {
     return NotificationListener<ScrollNotification>(
-      onNotification: (notification) {
-        if (notification is OverscrollNotification &&
-            notification.overscroll < -30 &&
-            notification.metrics.pixels <= 0 &&
-            !_searchVisible) {
-          _showSearch();
-          return true;
-        }
-        return false;
-      },
+      onNotification: _onScrollNotification,
       child: Column(
         children: [
           if (_searchVisible)
@@ -92,7 +101,7 @@ class _SearchableListState extends State<SearchableList> with SingleTickerProvid
                 controller: _searchController,
                 focusNode: _searchFocus,
                 hint: widget.searchHint,
-                onChanged: _onSearchChanged,
+                onChanged: widget.onSearchChanged,
                 onClear: _hideSearch,
               ),
             ),
