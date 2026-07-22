@@ -72,13 +72,63 @@ class OpencodeProcess extends events_1.EventEmitter {
         console.log(`[bridge:opencode] created session: ${this.sessionId}`);
         return this.sessionId;
     }
-    async write(prompt, model, projectPath) {
+    /**
+     * Send file attachments to the session via the serve API before running the prompt.
+     * Each attachment is posted as a message with a binary part containing base64 data.
+     */
+    async sendAttachments(sessionId, attachments) {
+        const url = new URL(`/session/${sessionId}/message`, this.serveUrl);
+        const parts = attachments.map((a) => ({
+            type: "binary",
+            data: {
+                path: a.name,
+                mime_type: a.mime_type ?? "application/octet-stream",
+                data: a.data,
+            },
+        }));
+        const payload = JSON.stringify({
+            role: "user",
+            parts,
+        });
+        return new Promise((resolve, reject) => {
+            const target = new URL(url.href);
+            const req = (0, http_1.request)({
+                hostname: target.hostname,
+                port: target.port,
+                path: `${target.pathname}${target.search}`,
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Content-Length": Buffer.byteLength(payload),
+                },
+            }, (res) => {
+                let data = "";
+                res.on("data", (chunk) => (data += chunk));
+                res.on("end", () => {
+                    if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+                        console.log(`[bridge:opencode] sent ${attachments.length} attachment(s)`);
+                        resolve();
+                    }
+                    else {
+                        reject(new Error(`Failed to send attachments: ${res.statusCode} ${data}`));
+                    }
+                });
+            });
+            req.on("error", reject);
+            req.write(payload);
+            req.end();
+        });
+    }
+    async write(prompt, model, projectPath, attachments) {
         if (this.process) {
             this.stop();
         }
         this.stopping = false;
         const sessionId = await this.ensureSession(projectPath);
         this.emit("session", sessionId);
+        if (attachments && attachments.length > 0) {
+            await this.sendAttachments(sessionId, attachments);
+        }
         const args = ["run", "--format", "json", "--auto", "--attach", this.serveUrl];
         if (model) {
             args.push("--model", model);
@@ -243,6 +293,33 @@ class OpencodeProcess extends events_1.EventEmitter {
             case "error":
                 this.emit("error", new Error(msg.message ?? "Unknown error"));
                 break;
+            case "image": {
+                const data = msg.data;
+                if (data?.url) {
+                    this.emit("image", {
+                        url: data.url,
+                        mime_type: data.mime_type,
+                        filename: data.filename,
+                    });
+                }
+                break;
+            }
+            case "binary": {
+                const data = msg.data;
+                if (data?.data) {
+                    const mimeType = data.mime_type ?? "image/png";
+                    const base64 = data.data;
+                    const filename = typeof data.path === "string"
+                        ? data.path.split("/").pop()
+                        : undefined;
+                    this.emit("image", {
+                        url: `data:${mimeType};base64,${base64}`,
+                        mime_type: mimeType,
+                        filename,
+                    });
+                }
+                break;
+            }
             default:
                 console.log(`[bridge:opencode] unknown msg type: ${msg.type}`, JSON.stringify(msg));
                 break;

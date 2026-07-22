@@ -42,6 +42,11 @@ function setupWebSocket(wss, config) {
                     ws.send(JSON.stringify({ type: "tool", ...data }));
                 }
             });
+            opencode.on("image", (data) => {
+                if (ws.readyState === ws_1.WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: "image", ...data }));
+                }
+            });
             opencode.on("permission", (data) => {
                 if (ws.readyState === ws_1.WebSocket.OPEN) {
                     ws.send(JSON.stringify({
@@ -209,6 +214,7 @@ function setupWebSocket(wss, config) {
                     const thinkingSegments = [];
                     let thinkingMs = 0;
                     const toolResults = [];
+                    const images = [];
                     for (const p of Array.isArray(parts) ? parts : []) {
                         if (p.type === "text" && p.text) {
                             textSegments.push(p.text);
@@ -229,6 +235,21 @@ function setupWebSocket(wss, config) {
                             const content = (0, helpers_1.extractToolContent)(toolName, input, state);
                             toolResults.push({ tool: toolName, description, content });
                         }
+                        else if (p.type === "image_url" && p.data?.url) {
+                            images.push({
+                                url: p.data.url,
+                                mime_type: p.data.mime_type,
+                            });
+                        }
+                        else if (p.type === "binary" && p.data?.data) {
+                            const mimeType = p.data.mime_type ?? "image/png";
+                            const base64 = p.data.data;
+                            images.push({
+                                url: `data:${mimeType};base64,${base64}`,
+                                mime_type: mimeType,
+                                filename: p.data.path ? p.data.path.split("/").pop() : undefined,
+                            });
+                        }
                     }
                     const content = textSegments.join("\n\n");
                     const thinkingContent = thinkingSegments.join("\n\n");
@@ -244,6 +265,7 @@ function setupWebSocket(wss, config) {
                         thinkingContent,
                         thinkingMs: thinkingMs > 0 ? thinkingMs : undefined,
                         toolResults,
+                        images,
                         duration,
                         inputTokens,
                         outputTokens,
@@ -288,14 +310,22 @@ function setupWebSocket(wss, config) {
             }
             switch (msg?.type) {
                 case "prompt":
-                    if (typeof msg.content === "string") {
-                        console.log(`[bridge] received prompt: ${msg.content.trim()}`);
+                    if (typeof msg.content === "string" || Array.isArray(msg.attachments)) {
+                        console.log(`[bridge] received prompt: ${(msg.content ?? "").trim()}`);
                         if (opencode) {
                             if (!events) {
                                 createEvents();
                             }
+                            const attachments = Array.isArray(msg.attachments)
+                                ? msg.attachments.map((a) => ({
+                                    name: a.name,
+                                    mime_type: a.mime_type,
+                                    data: a.data,
+                                    size: a.size,
+                                }))
+                                : undefined;
                             opencode
-                                .write(msg.content.trim(), msg.model ?? currentModel ?? undefined, currentProjectPath ?? undefined)
+                                .write(msg.content?.trim() ?? "", msg.model ?? currentModel ?? undefined, currentProjectPath ?? undefined, attachments)
                                 .catch((err) => {
                                 console.error(`[bridge] prompt failed: ${err.message}`);
                                 if (ws.readyState === ws_1.WebSocket.OPEN) {

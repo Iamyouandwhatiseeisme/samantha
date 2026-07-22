@@ -39,6 +39,42 @@ const proxyGet = (path, res, opencodeServeUrl) => {
         res.end(JSON.stringify({ error: err.message }));
     });
 };
+const proxyRequest = (method, path, res, opencodeServeUrl, body) => {
+    const target = new URL(path, opencodeServeUrl);
+    const req = (0, http_1.request)({
+        hostname: target.hostname,
+        port: target.port,
+        path: `${target.pathname}${target.search}`,
+        method,
+        headers: {
+            "Content-Type": "application/json",
+            "Content-Length": body ? Buffer.byteLength(body) : 0,
+        },
+    }, (proxyRes) => {
+        let data = "";
+        proxyRes.on("data", (chunk) => (data += chunk));
+        proxyRes.on("end", () => {
+            res.writeHead(proxyRes.statusCode ?? 200, {
+                "Content-Type": "application/json",
+            });
+            res.end(data || "{}");
+        });
+    });
+    req.on("error", (err) => {
+        res.writeHead(502, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: err.message }));
+    });
+    if (body)
+        req.write(body);
+    req.end();
+};
+const handlePatchSession = (sessionId, req, res, opencodeServeUrl) => {
+    let body = "";
+    req.on("data", (chunk) => (body += chunk));
+    req.on("end", () => {
+        proxyRequest("PATCH", `/session/${sessionId}`, res, opencodeServeUrl, body);
+    });
+};
 const handleSessions = (res, config) => {
     const modelsUrl = new URL("/config/providers", config.opencodeServeUrl);
     (0, http_1.get)(modelsUrl.href, (modelsRes) => {
@@ -126,6 +162,16 @@ function createRequestHandler(config) {
         }
         if (req.method === "GET" && req.url === "/sessions") {
             handleSessions(res, config);
+            return;
+        }
+        if (req.method === "DELETE" && req.url?.startsWith("/session/")) {
+            const sessionId = req.url.split("/")[2];
+            proxyRequest("DELETE", `/session/${sessionId}`, res, config.opencodeServeUrl);
+            return;
+        }
+        if (req.method === "PATCH" && req.url?.startsWith("/session/")) {
+            const sessionId = req.url.split("/")[2];
+            handlePatchSession(sessionId, req, res, config.opencodeServeUrl);
             return;
         }
         res.writeHead(404);

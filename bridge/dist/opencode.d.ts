@@ -1,4 +1,10 @@
 import { EventEmitter } from "events";
+export interface Attachment {
+    name: string;
+    mime_type?: string;
+    data: string;
+    size?: number;
+}
 export interface ToolEvent {
     tool: string;
     status: string;
@@ -36,7 +42,12 @@ export declare class OpencodeProcess extends EventEmitter {
      * been published. This mirrors what `opencode run` does internally.
      */
     private ensureSession;
-    write(prompt: string, model?: string, projectPath?: string): Promise<void>;
+    /**
+     * Send file attachments to the session via the serve API before running the prompt.
+     * Each attachment is posted as a message with a binary part containing base64 data.
+     */
+    private sendAttachments;
+    write(prompt: string, model?: string, projectPath?: string, attachments?: Attachment[]): Promise<void>;
     private handleCliMessage;
     private formatToolDesc;
     private extractToolContent;
