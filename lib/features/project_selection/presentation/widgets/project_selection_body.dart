@@ -18,6 +18,8 @@ class ProjectSelectionBody extends StatelessWidget {
   final List<OpenCodeSession> sessions;
   final OpenCodeSession? selectedSession;
   final void Function(OpenCodeSession) onSelectSession;
+  final void Function(OpenCodeSession) onDeleteSession;
+  final void Function(OpenCodeSession) onRenameSession;
   final VoidCallback onSubmit;
 
   const ProjectSelectionBody({
@@ -33,6 +35,8 @@ class ProjectSelectionBody extends StatelessWidget {
     required this.sessions,
     this.selectedSession,
     required this.onSelectSession,
+    required this.onDeleteSession,
+    required this.onRenameSession,
     required this.onSubmit,
   });
 
@@ -65,6 +69,8 @@ class ProjectSelectionBody extends StatelessWidget {
                 selectedSession: selectedSession,
                 onSelectSession: onSelectSession,
                 onRefresh: onRefresh,
+                onDeleteSession: onDeleteSession,
+                onRenameSession: onRenameSession,
               ),
             ],
           ),

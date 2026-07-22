@@ -166,4 +166,15 @@ class ProjectApi {
         .map((j) => OpenCodeSession.fromJson(j as Map<String, dynamic>))
         .toList();
   }
+
+  Future<void> deleteSession(String host, String sessionId) async {
+    await _dio.delete('http://$host:8383/session/$sessionId');
+  }
+
+  Future<void> renameSession(String host, String sessionId, String title) async {
+    await _dio.patch(
+      'http://$host:8383/session/$sessionId',
+      data: {'title': title},
+    );
+  }
 }

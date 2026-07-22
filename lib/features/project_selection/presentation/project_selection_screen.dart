@@ -72,6 +72,121 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
     }
   }
 
+  Future<void> _deleteSession(OpenCodeSession session) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete session'),
+        content: Text('Are you sure you want to delete "${session.displayName}"? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final host = await _repository.getHost();
+      if (host == null) return;
+      await _api.deleteSession(host, session.id);
+      if (!mounted) return;
+      setState(() {
+        _sessions.removeWhere((s) => s.id == session.id);
+        if (_selectedSession?.id == session.id) {
+          _selectedSession = null;
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete session: $e'), behavior: SnackBarBehavior.floating),
+      );
+    }
+  }
+
+  Future<void> _renameSession(OpenCodeSession session) async {
+    final controller = TextEditingController(text: session.title == 'Untitled' ? '' : session.title);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Rename session'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'Enter new name',
+            border: OutlineInputBorder(),
+          ),
+          onSubmitted: (value) => Navigator.of(ctx).pop(value.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+            child: const Text('Rename'),
+          ),
+        ],
+      ),
+    );
+
+    controller.dispose();
+
+    if (result == null || result.isEmpty || !mounted) return;
+
+    try {
+      final host = await _repository.getHost();
+      if (host == null) return;
+      await _api.renameSession(host, session.id, result);
+      if (!mounted) return;
+      setState(() {
+        final idx = _sessions.indexWhere((s) => s.id == session.id);
+        if (idx != -1) {
+          _sessions[idx] = OpenCodeSession(
+            id: _sessions[idx].id,
+            title: result,
+            directory: _sessions[idx].directory,
+            createdAt: _sessions[idx].createdAt,
+            parentId: _sessions[idx].parentId,
+            inputTokens: _sessions[idx].inputTokens,
+            cost: _sessions[idx].cost,
+            contextPercent: _sessions[idx].contextPercent,
+            lastActivity: _sessions[idx].lastActivity,
+          );
+        }
+        if (_selectedSession?.id == session.id) {
+          _selectedSession = OpenCodeSession(
+            id: _selectedSession!.id,
+            title: result,
+            directory: _selectedSession!.directory,
+            createdAt: _selectedSession!.createdAt,
+            parentId: _selectedSession!.parentId,
+            inputTokens: _selectedSession!.inputTokens,
+            cost: _selectedSession!.cost,
+            contextPercent: _selectedSession!.contextPercent,
+            lastActivity: _selectedSession!.lastActivity,
+          );
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to rename session: $e'), behavior: SnackBarBehavior.floating),
+      );
+    }
+  }
+
   Future<void> _continue() async {
     if (_tabController.index == 0 && _selectedProject != null) {
       await _repository.saveProjectPath(_selectedProject!.worktree);
@@ -125,6 +240,8 @@ class _ProjectSelectionScreenState extends State<ProjectSelectionScreen>
           });
           _continue();
         },
+        onDeleteSession: _deleteSession,
+        onRenameSession: _renameSession,
         onSubmit: _continue,
       ),
     );

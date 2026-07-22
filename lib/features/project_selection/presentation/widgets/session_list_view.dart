@@ -7,12 +7,16 @@ class SessionListView extends StatelessWidget {
   final OpenCodeSession? selectedSession;
   final ValueChanged<OpenCodeSession> onSelectSession;
   final VoidCallback onRefresh;
+  final ValueChanged<OpenCodeSession>? onDeleteSession;
+  final ValueChanged<OpenCodeSession>? onRenameSession;
 
   const SessionListView({
     required this.sessions,
     required this.selectedSession,
     required this.onSelectSession,
     required this.onRefresh,
+    this.onDeleteSession,
+    this.onRenameSession,
   });
 
   @override
@@ -56,6 +60,8 @@ class SessionListView extends StatelessWidget {
           node: node,
           selected: selected,
           onTap: () => onSelectSession(session),
+          onDelete: onDeleteSession != null ? () => onDeleteSession!(session) : null,
+          onRename: onRenameSession != null ? () => onRenameSession!(session) : null,
         );
       },
     );
@@ -66,11 +72,15 @@ class _SessionTreeTile extends StatelessWidget {
   final SessionTreeNode node;
   final bool selected;
   final VoidCallback onTap;
+  final VoidCallback? onDelete;
+  final VoidCallback? onRename;
 
   const _SessionTreeTile({
     required this.node,
     required this.selected,
     required this.onTap,
+    this.onDelete,
+    this.onRename,
   });
 
   @override
@@ -160,6 +170,45 @@ class _SessionTreeTile extends StatelessWidget {
                   Icons.check_circle,
                   size: 18,
                   color: theme.colorScheme.primary,
+                ),
+              if (onDelete != null || onRename != null)
+                PopupMenuButton<String>(
+                  icon: Icon(
+                    Icons.more_vert,
+                    size: 18,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  padding: EdgeInsets.zero,
+                  itemBuilder: (context) => [
+                    if (onRename != null)
+                      const PopupMenuItem(
+                        value: 'rename',
+                        height: 36,
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit, size: 18),
+                            SizedBox(width: 8),
+                            Text('Rename'),
+                          ],
+                        ),
+                      ),
+                    if (onDelete != null)
+                      const PopupMenuItem(
+                        value: 'delete',
+                        height: 36,
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete, size: 18, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text('Delete', style: TextStyle(color: Colors.red)),
+                          ],
+                        ),
+                      ),
+                  ],
+                  onSelected: (value) {
+                    if (value == 'rename') onRename?.call();
+                    if (value == 'delete') onDelete?.call();
+                  },
                 ),
             ],
           ),
