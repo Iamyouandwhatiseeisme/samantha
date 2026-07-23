@@ -57,6 +57,8 @@ The bridge will start `opencode serve` automatically if it's not already
 running. See [bridge/README.md](bridge/README.md) for persistent setup
 options (launchd, systemd, pm2) and environment variables.
 
+comes with presefined bash script to properly runopencode
+
 ### 3. Build the Flutter App
 
 ```bash
