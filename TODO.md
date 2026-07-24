@@ -8,14 +8,14 @@ by area and ordered by priority within each group.
 ## Broken / non-functional
 
 - [ ] **Fix permission flow.** The bridge runs `opencode run --auto`
-      (`bridge/src/opencode.ts:109`), which auto-approves every tool call.
+      (`bridge/src/opencode.ts:172`), which auto-approves every tool call.
       `OpencodeProcess.reply()` is an empty no-op
-      (`bridge/src/opencode.ts:339-341`). The app has a permission dialog UI
-      (`chat_screen.dart:118`) and handles `PermissionRequestEvent`, but it
+      (`bridge/src/opencode.ts:455-457`). The app has a permission dialog UI
+      (`chat_screen.dart:103-128`) and handles `PermissionRequestEvent`, but it
       will never fire. Either remove `--auto` and wire `reply()` to the
       opencode serve permission API, or remove the permission UI entirely.
 - [ ] **Fix `set_model` to persist on the serve side.** The bridge just
-      stores `currentModel` locally (`server.ts:550-555`) and passes it as
+      stores `currentModel` locally (`ws_handler.ts:434-442`) and passes it as
       `--model` on the next `opencode run` invocation. It doesn't call any
       serve API to persist the choice for the active session.
 - [ ] **Fix `chat_cubit_test.dart`.** `sendMessage()` adds 2 messages (user +
@@ -30,71 +30,76 @@ by area and ordered by priority within each group.
 
 ## Missing core features
 
-- [ ] **Stop / abort a running turn.** The bridge has
-      `OpencodeProcess.stop()` (`opencode.ts:332`) but there's no `stop`
-      message type in the WebSocket protocol and no stop button in the UI.
-      Add a `stop` client→bridge message, wire it to `OpencodeProcess.stop()`,
-      and add a stop button to the input bar that replaces the send button
-      while streaming.
-- [ ] **Syntax highlighting in code blocks.** Code blocks are monospace-only.
-      Add a highlighting package (`flutter_highlight` or similar) and render
-      code with language-appropriate colors. The `CodeBlock` widget
-      (`code_block.dart`) already extracts the language label.
-- [ ] **Message actions: retry, edit, branch.** Long-press a message → action
-      menu with: retry (re-run from that point), edit (change the prompt and
-      re-run), copy code, branch from here (fork the session at that message).
-      opencode's serve API supports session forking.
-- [ ] **Collapsible tool output with line-count summary.** Tool output is
-      collapsible but defaults to expanded. Change the default to collapsed
-      with a summary like "127 lines" or "2.3 KB" and expand on tap. This is
-      the single highest-leverage difference from a consumer chat app for a
-      coding tool.
-- [ ] **Image rendering in messages.** `ChatMessage` (`entities.dart`) has no
-      image field. If opencode returns image parts they are silently dropped.
-      Add an image field to `ChatMessage`, handle image parts in the bridge's
-      `fetchSessionMessages` serializer (`server.ts:367-483`), and render
-      images in `ChatMessageContent`.
-- [ ] **File attachments in input.** No way to attach images or files to a
-      prompt. Add an attachment button to the input bar, encode images, and
-      send them via the WebSocket protocol.
+- [x] **Stop / abort a running turn.** Stop message in WS protocol
+      (`ws_handler.ts:444-456`), stop button in UI (`message_input.dart:147-164`),
+      `OpencodeProcess.stop()` (`opencode.ts:425-453`), `ChatSocketClient.stop()`
+      and `ChatCubit.stopGeneration()` all wired up.
+- [x] **Syntax highlighting in code blocks.** Uses `highlight: ^0.7.0` with
+      full RichText rendering and language-appropriate spans
+      (`code_block.dart:123-158`).
+- [x] **Message actions: retry, edit, branch.** Long-press triggers
+      `MessageActionMenu` with retry, edit, copy code, branch
+      (`message_bubble.dart:78-97`). `retryMessage()`, `editMessage()`,
+      `branchFromMessage()` implemented in `chat_cubit.dart:462-596`.
+- [x] **Collapsible tool output with line-count summary.** `CollapsibleBlock`
+      defaults to collapsed (`initialExpanded = false`) with summary showing
+      line count / KB / MB (`entities.dart:128-145`, `collapsible_block.dart:20`).
+- [x] **Image rendering in messages.** `ChatMessage` has `images` field
+      (`entities.dart:12`). Bridge extracts `image_url` and `binary` parts
+      (`ws_handler.ts:304-317`). Images rendered with `Image.network`
+      (`chat_message_content.dart:60-86`).
+- [x] **File attachments in input.** Attachment button with `file_picker`
+      integration (`message_input.dart:119-131, 202-234`). `PendingAttachment`
+      entity, sent via WS prompt, bridge handles and forwards to serve API.
 - [ ] **Agent selection.** opencode supports multiple agents (coder, task,
       etc.). Add an agent selector to the input bar or top bar and pass it
       through the bridge to the serve API.
-- [ ] **Session branching UI.** The project selection screen lists sessions
-      linearly. opencode sessions can branch — show "forked from" indicators
-      and a tree-aware list rather than a flat list.
-- [ ] **Session management.** Add the ability to delete and rename sessions
-      from the project selection screen.
+- [x] **Session branching UI.** Tree-aware session list with fork indicators
+      and "Branched session" label (`session_list_view.dart:61-77, 154-174`).
+      `buildSessionTree()` builds parent-child tree (`project_api.dart:102-144`).
+- [x] **Session management.** Delete with confirmation dialog and rename with
+      text field dialog from popup menu on session tiles
+      (`project_selection_screen.dart:89-202`, `session_list_view.dart:184-222`).
+      API endpoints: `DELETE /session/:id` and `PATCH /session/:id`
+      (`http_routes.ts:211-221`).
 - [x] **Search within conversation.** Pull-down gesture on the chat list
-      reveals a search bar that filters messages by text content.
-- [x] **Export / share conversation.** Add a share button that exports the
-      conversation as markdown or plain text.
+      reveals a search bar that filters messages by text content
+      (`message_list.dart:233-276`). Searches across `content`,
+      `thinkingContent`, and `toolResults`. Matching text is highlighted
+      with a primary-colored background (`chat_message_content.dart:164-211`).
+- [x] **Export / share conversation.** Share button in top bar
+      (`chat_top_bar.dart:78-87`), `ExportSheet` with markdown/plain text
+      options, `ConversationExporter` class, uses `share_plus`.
 
 ---
 
 ## Mobile-specific
 
-- [x] **Background socket survival.** The WebSocket dies when the app goes to
-      background on iOS. Add a background mode (or a graceful pause/resume
-      that re-attaches to the session on foreground) so a long agentic run
-      doesn't silently disconnect.
-- [x] **Completion notification.** If the app is backgrounded during a long
-      turn, send a local notification when the response finishes.
+- [x] **Background socket survival.** `BackgroundTaskService` with native
+      platform channel. `onAppPaused()` begins background task when streaming,
+      `onAppResumed()` ends task and reconnects (`chat_cubit.dart:605-644`).
+- [x] **Completion notification.** `NotificationService` with
+      `flutter_local_notifications`. Triggered on `_handleDone()` with
+      `shouldNotifyOnCompletion` logic and permission request flow.
 - [ ] **Offline message queue.** If the connection drops, typed messages are
       lost. Queue unsent messages and retry on reconnect.
-- [ ] **Reconnection to in-progress stream.** If the socket drops mid-stream
-      and reconnects, the app starts fresh. The session still exists on the
-      serve side — re-attach to the running turn by fetching session messages
-      and checking if the turn is still active.
+- [x] **Reconnection to in-progress stream.** On resume, the app reconnects,
+      calls `set_session` to re-attach, then queries `turn_status` from the
+      bridge (`ws_handler.ts:458-506`). The bridge checks the serve API for
+      incomplete tool calls in the last message. If the turn is still active,
+      the client keeps the streaming message and continues receiving tokens.
+      If the turn finished, `_handleTurnStatus()` (`chat_cubit.dart:340-363`)
+      finalizes the streaming message with the server's content and sets
+      status to connected.
 
 ---
 
 ## UX gaps from the design brief
 
-- [ ] **Swipe-left = copy, long-press = action menu.** Swipe-left currently
-      reveals timestamps only. The design brief specifies swipe-left = copy,
-      long-press = action menu (retry, edit, copy code, branch). Keep the
-      timestamp reveal on swipe but add long-press actions.
+- [ ] **Swipe-left = copy, long-press = action menu.** Long-press = action
+      menu is **done** (`message_bubble.dart:201`). Swipe-left still only
+      reveals timestamps (`message_list.dart:286-300`). Needs swipe-left =
+      copy gesture added per-message.
 - [ ] **Adaptive input layout.** The design brief specifies "compact input
       vs. expanded composer with attachment/context chips" depending on
       session type (quick question vs. long agentic run vs. reviewing a
@@ -105,27 +110,31 @@ by area and ordered by priority within each group.
 - [ ] **Command-line-style breadcrumbs for the active session.** The brief
       calls for this as a signature element alongside the terminal cursor.
       Show the session path / branch / model as a breadcrumb trail.
-- [ ] **Context chips should be interactive.** The repo + model chips above
-      the input are display-only. Make them tappable: repo chip opens project
-      selection, model chip opens the model picker bottom sheet.
+- [ ] **Context chips should be interactive.** Model chip **is** tappable
+      (opens picker, `model_text_field.dart:90-91`). Repo chip is
+      **display-only** (`status_dot.dart:70-78`) — needs to open project
+      selection when tapped.
 
 ---
 
 ## Bridge-side gaps
 
 - [ ] **Remove 500-char truncation on tool content.**
-      `extractToolContent` slices output to 500 characters (`server.ts:349`,
-      `opencode.ts:326`). Long file reads or shell output is silently cut
-      off. Send the full content and let the client collapse it.
+      `extractToolContent` slices output to 500 characters in 5 places:
+      `helpers.ts:96-97`, `opencode.ts:284, 296, 414, 419, 421`. Long file
+      reads or shell output is silently cut off. Send the full content and
+      let the client collapse it.
 - [ ] **Streaming tool output.** Tool output arrives as a single completed
       event. Long-running tools (multi-minute bash commands) show no progress.
       Stream intermediate output via the SSE event bus.
-- [ ] **Session messages fetch should include images.** The
-      `fetchSessionMessages` serializer (`server.ts:367-483`) only extracts
-      text, reasoning, and tool parts — no image parts.
+- [x] **Session messages fetch should include images.**
+      `fetchSessionMessages` extracts both `image_url` and `binary` parts
+      (`ws_handler.ts:304-317`) and includes them in the serialized response.
 - [ ] **Config proxy.** No `/config` proxy endpoint. The app can't view or
       change opencode configuration (tools enabled, system prompt, etc.).
-- [ ] **Health check should report serve status.** `/health` only reports the
-      bridge's own status, not whether `opencode serve` is alive. Include
+      Current routes: `/health`, `/projects`, `/sessions`,
+      `DELETE /session/:id`, `PATCH /session/:id`.
+- [ ] **Health check should report serve status.** `/health` only reports
+      `{status: "ok"}` (`http_routes.ts:195-198`). Include
       `opencodeRunning: true/false` so the app can distinguish "bridge down"
       from "serve down."

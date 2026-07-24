@@ -99,6 +99,17 @@ class ImageEvent extends ChatEvent {
   ImageEvent({required this.url, this.mimeType, this.filename});
 }
 
+class TurnStatusEvent extends ChatEvent {
+  final String? sessionId;
+  final bool isActive;
+  final String lastMessageContent;
+  TurnStatusEvent({
+    this.sessionId,
+    required this.isActive,
+    this.lastMessageContent = '',
+  });
+}
+
 @injectable
 class ChatSocketClient {
   WebSocketChannel? _channel;
@@ -197,6 +208,12 @@ class ChatSocketClient {
               mimeType: parsed['mime_type'],
               filename: parsed['filename'],
             ));
+          case 'turn_status':
+            _eventController.add(TurnStatusEvent(
+              sessionId: parsed['session_id'],
+              isActive: parsed['is_active'] == true,
+              lastMessageContent: parsed['last_message_content'] ?? '',
+            ));
           }
         } catch (_) {}
       },
@@ -283,6 +300,12 @@ class ChatSocketClient {
         'session_id': sessionId,
         'path': path,
       }));
+    }
+  }
+
+  void requestTurnStatus() {
+    if (_channel != null) {
+      _channel!.sink.add(jsonEncode({'type': 'turn_status'}));
     }
   }
 

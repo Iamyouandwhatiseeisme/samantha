@@ -46,6 +46,8 @@ class ChatRepository {
   void setSession(String sessionId, String path) =>
       _socketClient.setSession(sessionId, path);
 
+  void requestTurnStatus() => _socketClient.requestTurnStatus();
+
   Future<String?> getProjectPath() => _settingsRepository.getProjectPath();
 
   Future<String?> getSessionId() => _settingsRepository.getSessionId();

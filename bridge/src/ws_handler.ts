@@ -455,6 +455,64 @@ export function setupWebSocket(wss: WebSocketServer, config: BridgeConfig) {
           }
           break;
 
+        case "turn_status":
+          if (currentSessionId) {
+            const url = new URL(
+              `/session/${currentSessionId}/message`,
+              config.opencodeServeUrl,
+            );
+            fetchJson(url.href)
+              .then((messages: any) => {
+                if (!Array.isArray(messages) || messages.length === 0) {
+                  ws.send(
+                    JSON.stringify({
+                      type: "turn_status",
+                      session_id: currentSessionId,
+                      is_active: false,
+                    }),
+                  );
+                  return;
+                }
+                const last = messages[messages.length - 1];
+                const parts = last.parts ?? [];
+                const hasIncompleteTool = parts.some(
+                  (p: any) =>
+                    p.type === "tool" &&
+                    p.state?.status !== "completed" &&
+                    p.state?.status !== "error",
+                );
+                ws.send(
+                  JSON.stringify({
+                    type: "turn_status",
+                    session_id: currentSessionId,
+                    is_active: hasIncompleteTool,
+                    last_message_content: (parts
+                      .filter((p: any) => p.type === "text")
+                      .map((p: any) => p.text ?? "")
+                      .join("\n\n") ?? ""),
+                  }),
+                );
+              })
+              .catch(() => {
+                ws.send(
+                  JSON.stringify({
+                    type: "turn_status",
+                    session_id: currentSessionId,
+                    is_active: false,
+                  }),
+                );
+              });
+          } else {
+            ws.send(
+              JSON.stringify({
+                type: "turn_status",
+                session_id: null,
+                is_active: false,
+              }),
+            );
+          }
+          break;
+
         case "get_models":
           fetchModels();
           break;

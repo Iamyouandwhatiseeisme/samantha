@@ -161,6 +161,8 @@ class ChatCubit extends Cubit<ChatState> {
             _handlePermission(id, title);
           case ImageEvent(:final url, :final mimeType, :final filename):
             _handleImage(url, mimeType, filename);
+          case TurnStatusEvent(:final sessionId, :final isActive, :final lastMessageContent):
+            _handleTurnStatus(sessionId, isActive, lastMessageContent);
         }
       },
       onError: (err) {
@@ -335,6 +337,33 @@ class ChatCubit extends Cubit<ChatState> {
       messages: messages,
       connectionStatus: ChatConnectionStatus.streaming,
     ));
+  }
+
+  void _handleTurnStatus(String? sessionId, bool isActive, String lastMessageContent) {
+    if (!isActive) {
+      final messages = List<ChatMessage>.from(state.messages);
+      if (messages.isNotEmpty &&
+          messages.last.role == ChatRole.assistant &&
+          messages.last.isStreaming) {
+        if (lastMessageContent.isNotEmpty) {
+          final last = messages.removeLast();
+          messages.add(last.copyWith(
+            content: lastMessageContent,
+            isStreaming: false,
+          ));
+        } else {
+          final last = messages.removeLast();
+          messages.add(last.copyWith(isStreaming: false));
+        }
+      }
+      emit(state.copyWith(
+        messages: messages,
+        connectionStatus: ChatConnectionStatus.connected,
+        clearToolName: true,
+        clearToolStatus: true,
+      ));
+      _reconnectAttempt = 0;
+    }
   }
 
   void respondToPermission(bool allow) {
@@ -623,22 +652,17 @@ class ChatCubit extends Cubit<ChatState> {
       _reconnectTimer?.cancel();
       _repository.disconnect();
 
+      await connect();
+
       if (_wasStreamingBeforeBackground) {
-        final messages = List<ChatMessage>.from(state.messages);
-        if (messages.isNotEmpty &&
-            messages.last.role == ChatRole.assistant &&
-            messages.last.isStreaming) {
-          messages.removeLast();
+        final sessionId = await _repository.getSessionId();
+        final projectPath = await _repository.getProjectPath();
+        if (sessionId != null && projectPath != null) {
+          _repository.setSession(sessionId, projectPath);
+          _repository.requestTurnStatus();
         }
-        emit(state.copyWith(
-          messages: messages,
-          connectionStatus: ChatConnectionStatus.disconnected,
-          clearToolName: true,
-          clearToolStatus: true,
-        ));
       }
 
-      await connect();
       _wasStreamingBeforeBackground = false;
     }
   }
