@@ -27,6 +27,7 @@ class ChatMessageContent extends StatelessWidget {
   final bool isStreaming;
   final List<ToolResult> toolResults;
   final List<ChatImage> images;
+  final String searchQuery;
 
   const ChatMessageContent({
     super.key,
@@ -37,6 +38,7 @@ class ChatMessageContent extends StatelessWidget {
     required this.isStreaming,
     this.toolResults = const [],
     this.images = const [],
+    this.searchQuery = '',
   });
 
   @override
@@ -107,20 +109,20 @@ class ChatMessageContent extends StatelessWidget {
     } else if (content.isNotEmpty) {
       final segments = _parseContent(content);
 
-      if (segments.isEmpty) {
-        children.add(
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Flexible(child: Text(content)),
-              if (isStreaming) ...[
-                const SizedBox(width: 2),
-                const TerminalCursor(),
+        if (segments.isEmpty) {
+          children.add(
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Flexible(child: _buildHighlightedText(context, content)),
+                if (isStreaming) ...[
+                  const SizedBox(width: 2),
+                  const TerminalCursor(),
+                ],
               ],
-            ],
-          ),
-        );
+            ),
+          );
       } else {
         children.add(
           Column(
@@ -137,7 +139,7 @@ class ChatMessageContent extends StatelessWidget {
                 else
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 1),
-                    child: Text(seg.text),
+                    child: _buildHighlightedText(context, seg.text),
                   ),
               if (isStreaming)
                 const Padding(
@@ -158,6 +160,56 @@ class ChatMessageContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: children,
+    );
+  }
+
+  Widget _buildHighlightedText(BuildContext context, String text) {
+    if (searchQuery.isEmpty) return Text(text);
+
+    final lowerText = text.toLowerCase();
+    final lowerQuery = searchQuery.toLowerCase();
+    final index = lowerText.indexOf(lowerQuery);
+    if (index == -1) return Text(text);
+
+    final theme = Theme.of(context);
+    final highlightColor = theme.colorScheme.primary.withValues(alpha: 0.2);
+
+    final spans = <TextSpan>[];
+    var start = 0;
+    var searchStart = 0;
+
+    while (true) {
+      final matchIndex = lowerText.indexOf(lowerQuery, searchStart);
+      if (matchIndex == -1) break;
+
+      if (matchIndex > start) {
+        spans.add(TextSpan(text: text.substring(start, matchIndex)));
+      }
+      spans.add(
+        TextSpan(
+          text: text.substring(matchIndex, matchIndex + searchQuery.length),
+          style: TextStyle(
+            backgroundColor: highlightColor,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+      start = matchIndex + searchQuery.length;
+      searchStart = start;
+    }
+
+    if (start < text.length) {
+      spans.add(TextSpan(text: text.substring(start)));
+    }
+
+    return RichText(
+      text: TextSpan(
+        style: TextStyle(
+          color: theme.textTheme.bodyLarge?.color,
+          fontSize: theme.textTheme.bodyLarge?.fontSize,
+        ),
+        children: spans,
+      ),
     );
   }
 

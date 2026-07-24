@@ -27,7 +27,7 @@ class MessageList extends StatefulWidget {
   State<MessageList> createState() => _MessageListState();
 }
 
-class _MessageListState extends State<MessageList> {
+class _MessageListState extends State<MessageList> with SingleTickerProviderStateMixin {
   // Presentation flag — mirrors whether the "scroll to bottom" chevron shows.
   // Reflects the observed fact that content is taller than the viewport AND the
   // viewport is not currently near the bottom.
@@ -59,11 +59,30 @@ class _MessageListState extends State<MessageList> {
   static const double _scrollUpDeadband = 8; // px; smaller upward moves ignored
   static const double _scrollableOverflow = 8; // px; content taller than this is scrollable
 
+  // Search state
+  bool _searchVisible = false;
+  double _overscrollAccumulator = 0;
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
+  late AnimationController _searchAnimationController;
+  late Animation<double> _searchAnimation;
+  String _searchQuery = '';
+
+  static const _pullThreshold = 40.0;
+
   @override
   void initState() {
     super.initState();
     _showScrollToBottom = ValueNotifier(false);
     widget.scrollController.addListener(_onScroll);
+    _searchAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _searchAnimation = CurvedAnimation(
+      parent: _searchAnimationController,
+      curve: Curves.easeOut,
+    );
     // First appearance: settle at the tail (newest message), like onAppear.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _settleAtTail();
@@ -78,6 +97,9 @@ class _MessageListState extends State<MessageList> {
     }
     _settleTimers.clear();
     _showScrollToBottom.dispose();
+    _searchController.dispose();
+    _searchFocus.dispose();
+    _searchAnimationController.dispose();
     super.dispose();
   }
 
@@ -195,6 +217,67 @@ class _MessageListState extends State<MessageList> {
     });
   }
 
+  void _showSearch() {
+    setState(() {
+      _searchVisible = true;
+      _overscrollAccumulator = 0;
+    });
+    _searchAnimationController.forward();
+    _searchFocus.requestFocus();
+  }
+
+  void _hideSearch() {
+    _searchAnimationController.reverse().then((_) {
+      if (mounted) {
+        setState(() {
+          _searchVisible = false;
+          _searchQuery = '';
+        });
+        _searchController.clear();
+      }
+    });
+  }
+
+  void _onSearchChanged(String query) {
+    setState(() {
+      _searchQuery = query;
+    });
+  }
+
+  bool _onScrollNotification(ScrollNotification notification) {
+    if (_searchVisible) return false;
+
+    if (notification is ScrollUpdateNotification && notification.metrics.pixels <= 0) {
+      if (notification.dragDetails != null && notification.dragDetails!.delta.dy > 0) {
+        _overscrollAccumulator += notification.dragDetails!.delta.dy;
+        if (_overscrollAccumulator > _pullThreshold) {
+          _showSearch();
+          return true;
+        }
+      }
+    }
+
+    if (notification is ScrollEndNotification) {
+      _overscrollAccumulator = 0;
+    }
+
+    return false;
+  }
+
+  List<ChatMessage> _filterMessages(List<ChatMessage> messages) {
+    if (_searchQuery.isEmpty) return messages;
+    final query = _searchQuery.toLowerCase();
+    return messages.where((m) {
+      if (m.content.toLowerCase().contains(query)) return true;
+      if (m.thinkingContent.toLowerCase().contains(query)) return true;
+      for (final result in m.toolResults) {
+        if (result.tool.toLowerCase().contains(query)) return true;
+        if (result.description.toLowerCase().contains(query)) return true;
+      }
+      return false;
+    }).toList();
+  }
+
   /// Discrete-event handler (analog of the onChange observers). Respects
   /// followsStream everywhere except when the user sends a message, which
   /// always yanks to the bottom.
@@ -238,94 +321,112 @@ class _MessageListState extends State<MessageList> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<ChatCubit>().state;
-    final messages = state.messages;
+    final messages = _filterMessages(state.messages);
 
-    return BlocListener<ChatCubit, ChatState>(
-      listenWhen: (prev, next) {
-        if (prev.messages.isEmpty != next.messages.isEmpty) return true;
-        if (next.messages.isEmpty) return false;
-        final p = prev.messages.last;
-        final n = next.messages.last;
-        return prev.messages.length != next.messages.length ||
-            p.id != n.id ||
-            p.role != n.role ||
-            prev.connectionStatus != next.connectionStatus;
-      },
-      listener: (context, state) => _onStateChanged(state),
-      child: Column(
-        children: [
-          Expanded(
-            child: Stack(
-              children: [
-                AnimatedBuilder(
-                  animation: widget.revealController,
-                  builder: (context, _) {
-                    final shift = -widget.revealController.value * widget.maxReveal;
-                    return ClipRect(
-                      clipper: _VerticalClipper(horizontalSlack: widget.maxReveal),
-                      child: Transform.translate(
-                        offset: Offset(shift, 0),
-                        child: ListView.builder(
-                          controller: widget.scrollController,
-                          clipBehavior: Clip.none,
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                        itemCount: messages.length,
-                        itemBuilder: (context, index) {
-                          final msg = messages[index];
-                          final isUser = msg.role == ChatRole.user;
-                          return AnimatedBuilder(
-                            animation: widget.revealController,
-                            builder: (context, _) {
-                              final fraction = widget.revealController.value;
-                              return Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  Align(
-                                    alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                                    child: MessageBubble(msg: msg, isUser: isUser),
-                                  ),
-                                  Positioned(
-                                    right: -fraction * widget.maxReveal,
-                                    bottom: 4,
-                                    child: Opacity(
-                                      opacity: fraction,
-                                      child: Text(
-                                        msg.timestamp.toTimeString(),
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+    return NotificationListener<ScrollNotification>(
+      onNotification: _onScrollNotification,
+      child: BlocListener<ChatCubit, ChatState>(
+        listenWhen: (prev, next) {
+          if (prev.messages.isEmpty != next.messages.isEmpty) return true;
+          if (next.messages.isEmpty) return false;
+          final p = prev.messages.last;
+          final n = next.messages.last;
+          return prev.messages.length != next.messages.length ||
+              p.id != n.id ||
+              p.role != n.role ||
+              prev.connectionStatus != next.connectionStatus;
+        },
+        listener: (context, state) => _onStateChanged(state),
+        child: Column(
+          children: [
+            if (_searchVisible)
+              SizeTransition(
+                sizeFactor: _searchAnimation,
+                child: _SearchBar(
+                  controller: _searchController,
+                  focusNode: _searchFocus,
+                  onChanged: _onSearchChanged,
+                  onClear: _hideSearch,
+                ),
+              ),
+            if (!_searchVisible) const _PullCue(),
+            Expanded(
+              child: Stack(
+                children: [
+                  AnimatedBuilder(
+                    animation: widget.revealController,
+                    builder: (context, _) {
+                      final shift = -widget.revealController.value * widget.maxReveal;
+                      return ClipRect(
+                        clipper: _VerticalClipper(horizontalSlack: widget.maxReveal),
+                        child: Transform.translate(
+                          offset: Offset(shift, 0),
+                          child: ListView.builder(
+                            controller: widget.scrollController,
+                            clipBehavior: Clip.none,
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                            itemCount: messages.length,
+                            itemBuilder: (context, index) {
+                              final msg = messages[index];
+                              final isUser = msg.role == ChatRole.user;
+                              return AnimatedBuilder(
+                                animation: widget.revealController,
+                                builder: (context, _) {
+                                  final fraction = widget.revealController.value;
+                                  return Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      Align(
+                                        alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                                        child: MessageBubble(
+                                          msg: msg,
+                                          isUser: isUser,
+                                          searchQuery: _searchQuery,
                                         ),
                                       ),
-                                    ),
-                                  ),
-                                ],
+                                      Positioned(
+                                        right: -fraction * widget.maxReveal,
+                                        bottom: 4,
+                                        child: Opacity(
+                                          opacity: fraction,
+                                          child: Text(
+                                            msg.timestamp.toTimeString(),
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
                               );
                             },
-                          );
-                        },
-                      ),
-                    ),
-                    );
-                  },
-                ),
-                Positioned(
-                  bottom: 16,
-                  left: 0,
-                  right: 0,
-                  child: ScrollToBottomFab(
-                    showScrollToBottom: _showScrollToBottom,
-                    onPressed: _onButtonPressed,
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                ),
-              ],
+                  Positioned(
+                    bottom: 16,
+                    left: 0,
+                    right: 0,
+                    child: ScrollToBottomFab(
+                      showScrollToBottom: _showScrollToBottom,
+                      onPressed: _onButtonPressed,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          if (state.currentToolName != null)
-            ToolStatusBanner(
-              tool: state.currentToolName!,
-              status: state.currentToolStatus ?? state.currentToolName!,
-            ),
-        ],
+            if (state.currentToolName != null)
+              ToolStatusBanner(
+                tool: state.currentToolName!,
+                status: state.currentToolStatus ?? state.currentToolName!,
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -344,4 +445,88 @@ class _VerticalClipper extends CustomClipper<Rect> {
   @override
   bool shouldReclip(_VerticalClipper oldClipper) =>
       horizontalSlack != oldClipper.horizontalSlack;
+}
+
+class _PullCue extends StatelessWidget {
+  const _PullCue();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.search,
+            size: 14,
+            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            'Pull down to search',
+            style: TextStyle(
+              fontSize: 12,
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SearchBar extends StatelessWidget {
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+
+  const _SearchBar({
+    required this.controller,
+    required this.focusNode,
+    required this.onChanged,
+    required this.onClear,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: theme.colorScheme.surface,
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        decoration: InputDecoration(
+          hintText: 'Search messages...',
+          prefixIcon: const Icon(Icons.search, size: 20),
+          suffixIcon: IconButton(
+            icon: const Icon(Icons.close, size: 20),
+            onPressed: onClear,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: theme.colorScheme.primary),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          isDense: true,
+        ),
+        onChanged: onChanged,
+        textInputAction: TextInputAction.search,
+      ),
+    );
+  }
 }

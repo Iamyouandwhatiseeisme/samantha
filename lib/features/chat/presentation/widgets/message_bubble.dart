@@ -16,8 +16,14 @@ import 'package:samantha/features/chat/presentation/widgets/message_edit_dialog.
 class MessageBubble extends StatefulWidget {
   final ChatMessage msg;
   final bool isUser;
+  final String searchQuery;
 
-  const MessageBubble({required this.msg, required this.isUser, super.key});
+  const MessageBubble({
+    required this.msg,
+    required this.isUser,
+    this.searchQuery = '',
+    super.key,
+  });
 
   @override
   State<MessageBubble> createState() => _MessageBubbleState();
@@ -232,6 +238,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                     isStreaming: msg.isStreaming,
                     toolResults: msg.toolResults,
                     images: msg.images,
+                    searchQuery: widget.searchQuery,
                   ),
                 ),
               ),
